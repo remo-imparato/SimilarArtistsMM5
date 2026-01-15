@@ -308,9 +308,9 @@ function attachAuto() {
 	const player = app.player;
 	if (!player) return;
 	if (app.listen) {
-		state.autoListen = app.listen(player, 'trackchanged', handleAuto);
+		state.autoListen = app.listen(player, 'trackChange', handleAuto);
 	} else if (player.on) {
-		state.autoListen = player.on('trackchanged', handleAuto);
+		state.autoListen = player.on('trackChange', handleAuto);
 	}
 }
 
