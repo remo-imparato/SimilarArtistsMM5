@@ -1,34 +1,12 @@
 {
-    "id": "SimilarArtists",
-    "title": "Similar Artists",
-    "description": "Creates a playlist of similar artists",
-    "version": "3.0",
-    "minAppVersion": "5.0.0",
-    "type": "script",
-    "author": "trixmoto (rimparato for MM5 port)",
-    "homepage": "",
-    "files": [
-        {
-            "source": "SimilarArtists.js",
-            "target": "Scripts/Auto/SimilarArtists.js"
-        },
-        {
-            "source": "sa_auto_on.ico",
-            "target": "Scripts/Auto/sa_auto_on.ico"
-        },
-        {
-            "source": "sa_auto_off.ico",
-            "target": "Scripts/Auto/sa_auto_off.ico"
-        },
-        {
-            "source": "Uninstall.js",
-            "target": "Scripts/Auto/Uninstall.js"
-        }
-    ],
-    "execute": [
-        {
-            "file": "Scripts/Auto/SimilarArtists.js",
-            "function": "start"
-        }
-    ]
+	"id": "remo_SimilarArtists",
+	"title": "Similar Artists",
+	"description": "Create/enqueue playlists of similar artists using Last.fm and your MediaMonkey library.",
+	"version": "1.0.0",
+	"type": "general",
+	"author": "trixmoto (rimparato for MM5 port)",
+	"icon": "smiley_yellow_128.png",
+	"updateURL": "https://github.com/remo-imparato/SimilarArtistsMM5",
+	"homepage": "",
+	"minAppVersion": "5.0.0"
 }
