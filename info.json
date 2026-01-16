@@ -8,5 +8,9 @@
 	"icon": "smiley_yellow_128.png",
 	"updateURL": "https://github.com/remo-imparato/SimilarArtistsMM5",
 	"homepage": "",
-	"minAppVersion": "5.0.0"
+	"minAppVersion": "5.0.0",
+	"scripts": [
+		"actions_add.js",
+		"init.js"
+	]
 }

@@ -793,9 +793,10 @@
 		}
 
 		ensureDefaults();
-		registerActions();
+		//registerActions();
 		registerSettingsSheet();
-		if (getSetting('OnPlay', false)) attachAuto();
+		if (getSetting('OnPlay', false))
+			attachAuto();
 
 		log('SimilarArtists addon started successfully.');
 	}
@@ -1166,7 +1167,7 @@
 
 	function registerSettingsSheet() {
 		try {
-			if (typeof app === 'undefined') return;
+			//if (typeof app === 'undefined') return;
 			if (!app.ui?.addOptionSheet) return;
 			app.ui.addOptionSheet({
 				id: SETTINGS_SHEET_ID,

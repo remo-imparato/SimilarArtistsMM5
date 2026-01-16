@@ -49,6 +49,9 @@ localRequirejs('js/similarArtists'); // -> window.SimilarArtists
 			}
 		}
 
+		console.log('app.ui', app?.ui);
+		console.log('window.actions', window.actions);
+		console.log('window._menuItems', window._menuItems);
 		// (Optional) register the Options sheet if you split it out
 		// window.SimilarArtistsSettings?.registerSettingsSheet?.();
 
