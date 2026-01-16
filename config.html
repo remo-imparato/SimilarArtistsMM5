@@ -1,191 +1,125 @@
+<div data-id="SimilarArtistsSettings" class="innerDlg">
 
-<div data-id="SimilarArtistsSettings" style="position:relative; width:420px; height:480px; font-family: sans-serif;">
+	<fieldset>
+		<legend>Toolbar and Last.fm</legend>
+		<div class="uiRows">
+			<div class="uiRow">
+				<label class="inline">Toolbar buttons:</label>
+				<div data-id="SAToolbar" data-control-class="Dropdown" data-init-params='{"items":["None","Run script","Auto on/off","Both"]}'></div>
+			</div>
 
-	<!-- Toolbar dropdown -->
-	<label for="SAToolbar" style="position:absolute; left:5px; top:10px; width:80px;">Toolbar buttons:</label>
-	<select id="SAToolbar" style="position:absolute; left:90px; top:7px; width:100px;"
-			data-selected-index="intSetting('Toolbar')">
-		<option>None</option>
-		<option>Run script</option>
-		<option>Auto on/off</option>
-		<option>Both</option>
-	</select>
+			<div class="uiRow">
+				<label class="inline">Last.fm API key:</label>
+				<div data-id="SAApiKey" data-control-class="Edit" data-init-params='{"hint":"Enter your Last.fm API key"}'></div>
+			</div>
+		</div>
+	</fieldset>
 
-	<!-- Last.fm API key -->
-	<label for="SAApiKey" style="position:absolute; left:5px; top:440px; width:120px;">Last.fm API key:</label>
-	<input id="SAApiKey" type="text" style="position:absolute; left:130px; top:437px; width:260px;"
-		   placeholder="Enter your Last.fm API key"
-		   data-value="app.settings?.getValue?.('SimilarArtists.ApiKey', '') || ''" />
+	<fieldset>
+		<legend>General options</legend>
+		<div class="uiRows">
+			<div>
+				<div data-id="SAConfirm" data-control-class="Checkbox">Show confirmation prompt?</div>
+			</div>
+			<div>
+				<div data-id="SASort" data-control-class="Checkbox">Sort artists before processing?</div>
+			</div>
+			<div>
+				<div data-id="SARandom" data-control-class="Checkbox">Randomise playlists?</div>
+			</div>
+			<div>
+				<div data-id="SASeed" data-control-class="Checkbox">Include seed artist?</div>
+			</div>
+			<div>
+				<div data-id="SASeed2" data-control-class="Checkbox">Include seed track (if only one)?</div>
+			</div>
+		</div>
+	</fieldset>
 
-	<!-- Confirm checkbox -->
-	<label style="position:absolute; left:5px; top:35px; width:200px;">
-		<input id="SAConfirm" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Confirm')" />
-		Show confirmation prompt?
-	</label>
+	<fieldset>
+		<legend>Playlist creation</legend>
+		<div class="uiRows">
+			<div class="left-indent uiRow">
+				<label class="inline">Playlist name:</label>
+				<div data-id="SAName" data-control-class="Edit" data-init-params='{"hint":"Use % to represent the artist name"}'></div>
+			</div>
 
-	<!-- Sort checkbox -->
-	<label style="position:absolute; left:5px; top:60px; width:200px;">
-		<input id="SASort" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Sort')" />
-		Sort artists before processing?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Playlist creation:</label>
+				<div data-id="SAOverwrite" data-control-class="Dropdown" data-init-params='{"items":["Create new playlist","Overwrite existing playlist","Do not create playlist"]}'></div>
+			</div>
 
-	<!-- Random checkbox -->
-	<label style="position:absolute; left:225px; top:10px; width:200px;">
-		<input id="SARandom" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Random')" />
-		Randomise playlists?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Artist limit:</label>
+				<div data-id="SALimit" data-control-class="SpinEdit" data-init-params='{"minValue":0,"maxValue":9999}'></div>
+			</div>
 
-	<!-- Seed artist checkbox -->
-	<label style="position:absolute; left:225px; top:35px; width:200px;">
-		<input id="SASeed" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Seed')" />
-		Include seed artist?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Tracks/artist:</label>
+				<div data-id="SATPA" data-control-class="SpinEdit" data-init-params='{"minValue":0,"maxValue":9999}'></div>
+			</div>
 
-	<!-- Seed track checkbox -->
-	<label style="position:absolute; left:225px; top:60px; width:200px;">
-		<input id="SASeed2" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Seed2')" />
-		Include seed track (if only one)?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Tracks/playlist:</label>
+				<div data-id="SATPL" data-control-class="SpinEdit" data-init-params='{"minValue":0,"maxValue":9999}'></div>
+			</div>
 
-	<!-- Overwrite dropdown -->
-	<label for="SAOverwrite" style="position:absolute; left:5px; top:85px; width:80px;">Playlist creation:</label>
-	<select id="SAOverwrite" style="position:absolute; left:90px; top:82px; width:300px;"
-			data-selected-index="intSetting('Overwrite')">
-		<option>Create new playlist</option>
-		<option>Overwrite existing playlist</option>
-		<option>Do not create playlist</option>
-	</select>
+			<div class="uiRow">
+				<div data-id="SABest" data-control-class="Checkbox">Select highest rated in library?</div>
+				<div data-id="SARank" data-control-class="Checkbox">Select highest ranked by Last.Fm?</div>
+			</div>
+		</div>
+	</fieldset>
 
-	<!-- Playlist name -->
-	<label for="SAName" style="position:absolute; left:5px; top:110px; width:80px;">Playlist name:</label>
-	<input id="SAName" type="text" style="position:absolute; left:90px; top:107px; width:300px;"
-		   placeholder="Use % to represent the artist name"
-		   data-value="stringSetting('Name')" />
+	<fieldset>
+		<legend>Filters and parent playlist</legend>
+		<div class="uiRows">
+			<div class="uiRow">
+				<label class="inline">Parent playlist:</label>
+				<div data-id="SAParent" data-control-class="Dropdown"></div>
+			</div>
 
-	<!-- Artist limit (spin) -->
-	<label for="SALimit" style="position:absolute; left:5px; top:135px; width:80px;">Artist limit:</label>
-	<input id="SALimit" type="number" style="position:absolute; left:90px; top:132px; width:50px;"
-		   min="0" max="9999" data-value="intSetting('Limit')" />
+			<div class="uiRow">
+				<label class="inline">Exclude artists:</label>
+				<div data-id="SABlack" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of artists names"}'></div>
+			</div>
 
-	<!-- Tracks per artist (spin) -->
-	<label for="SATPA" style="position:absolute; left:5px; top:160px; width:80px;">Tracks/artist:</label>
-	<input id="SATPA" type="number" style="position:absolute; left:90px; top:157px; width:50px;"
-		   min="0" max="9999" data-value="intSetting('TPA')"
-		   title="Maximum number of tracks from a single artist in a playlist" />
+			<div class="uiRow">
+				<label class="inline">Exclude genres:</label>
+				<div data-id="SAGenre" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of genres"}'></div>
+			</div>
 
-	<!-- Best checkbox -->
-	<label style="position:absolute; left:225px; top:135px; width:200px;">
-		<input id="SABest" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Best')" />
-		Select highest rated in library?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Exclude titles:</label>
+				<div data-id="SAExclude" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of words in titles"}'></div>
+			</div>
 
-	<!-- Rank checkbox -->
-	<label style="position:absolute; left:225px; top:160px; width:200px;">
-		<input id="SARank" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Rank')" />
-		Select highest ranked by Last.Fm?
-	</label>
+			<div class="uiRow">
+				<label class="inline">Minimum rating:</label>
+				<div data-id="SARating" data-control-class="Dropdown" data-init-params='{"items":["0 stars","0.5 stars","1 star","1.5 stars","2 stars","2.5 stars","3 stars","3.5 stars","4 stars","4.5 stars","5 stars"]}'></div>
+				<div data-id="SAUnknown" data-control-class="Checkbox">Include unknown rating?</div>
+			</div>
+		</div>
+	</fieldset>
 
-	<!-- Tracks per playlist (spin) -->
-	<label for="SATPL" style="position:absolute; left:5px; top:186px; width:80px;">Tracks/playlist:</label>
-	<input id="SATPL" type="number" style="position:absolute; left:90px; top:182px; width:50px;"
-		   min="0" max="9999" data-value="intSetting('TPL')"
-		   title="Maximum number of tracks in total in a playlist" />
+	<fieldset>
+		<legend>Behaviour</legend>
+		<div class="uiRows">
+			<div class="uiRow">
+				<label class="inline">Navigation:</label>
+				<div data-id="SANavigate" data-control-class="Dropdown" data-init-params='{"items":["None","Navigate to new playlist","Navigate to now playing"]}'></div>
+			</div>
 
-	<!-- Parent playlist -->
-	<label for="SAParent" style="position:absolute; left:5px; top:210px; width:80px;">Parent playlist:</label>
-	<select id="SAParent" style="position:absolute; left:90px; top:207px; width:300px;"
-			data-selected-index="parentIndex"
-			title="Please select a playlist">
-		<option>[Playlists]</option>
-		<!-- additional options appended from getPlaylistNames() -->
-		<option data-dynamic>...playlists from getPlaylistNames()...</option>
-	</select>
+			<div class="uiRow">
+				<div data-id="SAOnPlay" data-control-class="Checkbox">Automatically run the script when playing the last track?</div>
+			</div>
 
-	<!-- Exclude artists (blacklist) -->
-	<label for="SABlack" style="position:absolute; left:5px; top:235px; width:80px;">Exclude artists:</label>
-	<input id="SABlack" type="text" style="position:absolute; left:90px; top:232px; width:300px;"
-		   placeholder="Comma separated list of artists names"
-		   data-value="stringSetting('Black')" />
-
-	<!-- Exclude genres -->
-	<label for="SAGenre" style="position:absolute; left:5px; top:260px; width:80px;">Exclude genres:</label>
-	<input id="SAGenre" type="text" style="position:absolute; left:90px; top:257px; width:300px;"
-		   placeholder="Comma separated list of genres"
-		   data-value="stringSetting('Genre')" />
-
-	<!-- Exclude titles -->
-	<label for="SAExclude" style="position:absolute; left:5px; top:285px; width:80px;">Exclude titles:</label>
-	<input id="SAExclude" type="text" style="position:absolute; left:90px; top:282px; width:300px;"
-		   placeholder="Comma separated list of words in titles"
-		   data-value="stringSetting('Exclude')" />
-
-	<!-- Minimum rating -->
-	<label for="SARating" style="position:absolute; left:5px; top:310px; width:80px;">Minimum rating:</label>
-	<select id="SARating" style="position:absolute; left:90px; top:307px; width:100px;"
-			data-selected-index="Math.floor(intSetting('Rating') / 10)"
-			title="Select minimum rating stars">
-		<option>0 stars</option>
-		<option>0.5 stars</option>
-		<option>1 star</option>
-		<option>1.5 stars</option>
-		<option>2 stars</option>
-		<option>2.5 stars</option>
-		<option>3 stars</option>
-		<option>3.5 stars</option>
-		<option>4 stars</option>
-		<option>4.5 stars</option>
-		<option>5 stars</option>
-	</select>
-
-	<!-- Unknown rating checkbox -->
-	<label style="position:absolute; left:225px; top:310px; width:200px;">
-		<input id="SAUnknown" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Unknown')" />
-		Include unknown rating?
-	</label>
-
-	<!-- Navigation -->
-	<label for="SANavigate" style="position:absolute; left:5px; top:335px; width:80px;">Navigation:</label>
-	<select id="SANavigate" style="position:absolute; left:90px; top:332px; width:300px;"
-			data-selected-index="intSetting('Navigate')">
-		<option>None</option>
-		<option>Navigate to new playlist</option>
-		<option>Navigate to now playing</option>
-	</select>
-
-	<!-- OnPlay checkbox -->
-	<label style="position:absolute; left:5px; top:360px; width:400px;">
-		<input id="SAOnPlay" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('OnPlay')" />
-		Automatically run the script when playing the last track?
-	</label>
-
-	<!-- Enqueue checkbox -->
-	<label style="position:absolute; left:5px; top:385px; width:400px;">
-		<input id="SAEnqueue" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Enqueue')" />
-		Automatically enqueue tracks?
-	</label>
-
-	<!-- ClearNP checkbox -->
-	<label style="position:absolute; left:5px; top:410px; width:400px;">
-		<input id="SAClearNP" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('ClearNP')" />
-		Clear list before enqueuing tracks?
-	</label>
-
-	<!-- Ignore checkbox -->
-	<label style="position:absolute; left:5px; top:435px; width:400px;">
-		<input id="SAIgnore" type="checkbox" style="vertical-align:middle;"
-			   data-checked="boolSetting('Ignore')" />
-		Ignore recently played tracks when enqueuing?
-	</label>
+			<div class="uiRow">
+				<div data-id="SAEnqueue" data-control-class="Checkbox">Automatically enqueue tracks?</div>
+				<div data-id="SAClearNP" data-control-class="Checkbox">Clear list before enqueuing tracks?</div>
+				<div data-id="SAIgnore" data-control-class="Checkbox">Ignore recently played tracks when enqueuing?</div>
+			</div>
+		</div>
+	</fieldset>
 
 </div>
