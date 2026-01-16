@@ -401,7 +401,7 @@
 			list = app.player?.getCurrentTrack?.();// || app.player?.playlist;
 		}
 		if (!list) return [];
-		const tracks = list.toArray ? list.toArray() : list;
+		const tracks = list.toArray ? list.toArray() : [list];
 		const seeds = [];
 		(tracks || []).forEach((t) => {
 			if (t && t.artist) {
