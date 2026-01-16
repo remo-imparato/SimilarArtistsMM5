@@ -13,30 +13,30 @@
 	//const API_KEY = app.settings.getValue('ApiKey', '') || '6cfe51c9bf7e77d6449e63ac0db2ac24';
 
 	const defaults = {
-	//	Toolbar: 1, // 0=none 1=run 2=auto 3=both
-	//	Confirm: true,
-	//	Sort: false,
-	//	Limit: 5,
-	//	Name: 'Artists similar to %',
-	//	TPA: 9999,
-	//	TPL: 9999,
-	//	Random: false,
-	//	Seed: false,
-	//	Seed2: false,
-	//	Best: false,
-	//	Rank: false,
-	//	Rating: 0,
-	//	Unknown: true,
-	//	Overwrite: 0, // 0=create, 1=overwrite, 2=do not create playlist (enqueue only)
-	//	Enqueue: false,
-	//	Navigate: 0,
-	//	OnPlay: false,
-	//	ClearNP: false,
-	//	Ignore: false,
-	//	Parent: '',
-	//	Black: '',
-	//	Exclude: '',
-	//	Genre: '',
+		//	Toolbar: 1, // 0=none 1=run 2=auto 3=both
+		//	Confirm: true,
+		//	Sort: false,
+		//	Limit: 5,
+		//	Name: 'Artists similar to %',
+		//	TPA: 9999,
+		//	TPL: 9999,
+		//	Random: false,
+		//	Seed: false,
+		//	Seed2: false,
+		//	Best: false,
+		//	Rank: false,
+		//	Rating: 0,
+		//	Unknown: true,
+		//	Overwrite: 0, // 0=create, 1=overwrite, 2=do not create playlist (enqueue only)
+		//	Enqueue: false,
+		//	Navigate: 0,
+		//	OnPlay: false,
+		//	ClearNP: false,
+		//	Ignore: false,
+		//	Parent: '',
+		//	Black: '',
+		//	Exclude: '',
+		//	Genre: '',
 	};
 
 	const state = {
@@ -405,7 +405,7 @@
 		const seeds = [];
 		(tracks || []).forEach((t) => {
 			if (t && t.artist) {
-				seeds.push({ name: normalizeName(t.artist), track: t });
+				seeds.push({ name: normalizeName(t.artist), track: getTrackInfo(t) });
 			}
 		});
 		return seeds;
@@ -455,20 +455,22 @@
 			return;
 		}
 
+		var config = app.getValue('SimilarArtist', defaults);
+
 		const progress = app.ui?.createProgress?.('SimilarArtists', seeds.length) || null;
-		const artistLimit = intSetting('Limit');
-		const tracksPerArtist = intSetting('TPA');
-		const totalLimit = intSetting('TPL');
-		const includeSeedArtist = boolSetting('Seed');
-		const includeSeedTrack = boolSetting('Seed2');
-		const randomise = boolSetting('Random');
-		const enqueue = boolSetting('Enqueue');
-		const ignoreDupes = boolSetting('Ignore');
-		const clearNP = boolSetting('ClearNP');
-		const overwriteMode = intSetting('Overwrite');
-		const confirm = boolSetting('Confirm');
-		const rankEnabled = boolSetting('Rank');
-		const bestEnabled = boolSetting('Best');
+		const artistLimit = config.Limit;// intSetting('Limit');
+		const tracksPerArtist = config.TPA;// intSetting('TPA');
+		const totalLimit = config.TPL;// intSetting('TPL');
+		const includeSeedArtist = config.Seed;// boolSetting('Seed');
+		const includeSeedTrack = config.Seed2;// boolSetting('Seed2');
+		const randomise = config.Random;// boolSetting('Random');
+		const enqueue = config.Enqueue;// boolSetting('Enqueue');
+		const ignoreDupes = config.Ignore;// boolSetting('Ignore');
+		const clearNP = config.ClearNP;// boolSetting('ClearNP');
+		const overwriteMode = config.Overwrite;// intSetting('Overwrite');
+		const confirm = config.Confirm;// boolSetting('Confirm');
+		const rankEnabled = config.Rank;// boolSetting('Rank');
+		const bestEnabled = Config.Best;// boolSetting('Best');
 
 		if (rankEnabled) {
 			await ensureRankTable();
@@ -616,7 +618,7 @@
 				sql += ' INNER JOIN Artists ON ArtistsSongs.IDArtist = Artists.ID';
 
 				if (opts.rank) {
-					sql += ' LEFT OUTER JOIN TrixSongRank ON Songs.ID = TrixSongRank.ID';
+					sql += ' LEFT OUTER JOIN SimArtSongRank ON Songs.ID = SimArtSongRank.ID';
 				}
 
 				if (excludeGenres.length > 0) {
@@ -684,7 +686,7 @@
 
 				// Order by
 				const order = [];
-				if (opts.rank) order.push('TrixSongRank.Rank DESC');
+				if (opts.rank) order.push('SimArtSongRank.Rank DESC');
 				if (opts.best) order.push('Songs.Rating DESC');
 				order.push('Random()');
 				const orderBy = ` ORDER BY ${order.join(',')}`;
@@ -790,7 +792,7 @@
 	async function ensureRankTable() {
 		if (!app.db?.executeAsync) return;
 		try {
-			await app.db.executeAsync('CREATE TABLE IF NOT EXISTS TrixSongRank (ID INTEGER PRIMARY KEY, Rank INTEGER)');
+			await app.db.executeAsync('CREATE TABLE IF NOT EXISTS SimArtSongRank (ID INTEGER PRIMARY KEY, Rank INTEGER)');
 		} catch (e) {
 			log(e.toString());
 		}
@@ -799,7 +801,7 @@
 	async function resetRankTable() {
 		if (!app.db?.executeAsync) return;
 		try {
-			await app.db.executeAsync('DELETE FROM TrixSongRank');
+			await app.db.executeAsync('DELETE FROM SimArtSongRank');
 		} catch (e) {
 			log(e.toString());
 		}
@@ -821,7 +823,7 @@
 	async function upsertRank(id, rank) {
 		if (!app.db?.executeAsync) return;
 		try {
-			await app.db.executeAsync('REPLACE INTO TrixSongRank (ID, Rank) VALUES (?, ?)', [id, rank]);
+			await app.db.executeAsync('REPLACE INTO SimArtSongRank (ID, Rank) VALUES (?, ?)', [id, rank]);
 		} catch (e) {
 			log(e.toString());
 		}
