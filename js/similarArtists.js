@@ -184,7 +184,9 @@
 	}
 
 	function registerActions() {
-		if (typeof app === 'undefined') return;
+		// Actions/menus are registered via `actions_add.js` + `init.js` (window.actions + window._menuItems)
+		// `app.actions` / `app.menu.*` are not stable/available across MM5 builds.
+		return;
 
 		// MM5 uses actions.add() to register actions
 		try {
@@ -287,6 +289,7 @@
 			if (app.toolbar?.setButtonIcon) {
 				app.toolbar.setButtonIcon(TOOLBAR_AUTO_ID, iconNum);
 			}
+			// app.actions is not available in some MM5 builds; ignore if missing.
 			if (app.actions?.updateActionIcon) {
 				app.actions.updateActionIcon(ACTION_AUTO_ID, iconNum);
 			}

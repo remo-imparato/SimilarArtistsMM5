@@ -11,6 +11,7 @@
 	"minAppVersion": "5.0.0",
 	"scripts": [
 		"actions_add.js",
-		"init.js"
+		"init.js",
+		"js/similarArtists.js"
 	]
 }
