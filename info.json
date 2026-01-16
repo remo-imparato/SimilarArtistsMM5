@@ -1,17 +1,12 @@
 {
-	"id": "SimilarArtists",
 	"title": "Similar Artists",
+	"id": "SimilarArtists",
 	"description": "Create/enqueue playlists of similar artists using Last.fm and your MediaMonkey library.",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"type": "general",
 	"author": "trixmoto (rimparato for MM5 port)",
 	"icon": "smiley_yellow_128.png",
 	"updateURL": "https://github.com/remo-imparato/SimilarArtistsMM5",
 	"homepage": "",
-	"minAppVersion": "5.0.0",
-	"scripts": [
-		"actions_add.js",
-		"init.js",
-		"js/similarArtists.js"
-	]
+	"minAppVersion": "5.0.0"
 }
