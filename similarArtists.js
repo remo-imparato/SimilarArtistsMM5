@@ -670,6 +670,51 @@
 		});
 	}
 
+	// Creates (or finds) a playlist then adds tracks. Matches APIs used in this repo.
+	async function createPlaylistAndPopulate(tracks, title, parent, overwrite = false) {
+		if (!tracks || tracks.length === 0) return null;
+
+		// Try find existing
+		let playlist = null;
+		if (app.playlists?.findByTitle) playlist = app.playlists.findByTitle(title);
+		else if (app.playlists?.getByTitle) playlist = app.playlists.getByTitle(title);
+
+		// Create if missing
+		if (!playlist) {
+			if (app.playlists?.createPlaylist) {
+				playlist = app.playlists.createPlaylist(title, parent || '');
+			} else if (app.playlists?.root?.newPlaylist) {
+				playlist = app.playlists.root.newPlaylist();
+				if (playlist) playlist.title = title;
+			}
+		} else if (overwrite && playlist.clear) {
+			// Overwrite existing
+			playlist.clear();
+		}
+
+		if (!playlist) return null;
+
+		// Add tracks (prefer bulk add)
+		if (playlist.addTracks) {
+			playlist.addTracks(tracks);
+		} else if (playlist.addTrack) {
+			tracks.forEach(t => playlist.addTrack(t));
+		} else if (app.player?.appendTracks) {
+			app.player.appendTracks(tracks);
+		}
+
+		// Optional: navigate to playlist
+		try {
+			if (app.ui?.navigateToPlaylist && playlist.id) {
+				app.ui.navigateToPlaylist(playlist.id);
+			}
+		} catch (e) {
+			console.log('navigateToPlaylist failed: ' + e);
+		}
+
+		return playlist;
+	}
+
 	async function createPlaylist(tracks, seedName, overwriteMode) {
 		const titleTemplate = stringSetting('Name');
 		const baseName = titleTemplate.replace('%', seedName || '');
