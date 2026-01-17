@@ -1186,6 +1186,7 @@
 		if (!playlist) {
 			if (app.playlists?.createPlaylist) {
 				playlist = app.playlists.createPlaylist(name, stringSetting('Parent'));
+				log(`SimilarArtists: Created playlist: ${name}`);
 			} else if (app.playlists?.root?.newPlaylist) {
 				// Old API path: newPlaylist() + set name + commitAsync() to persist.
 				playlist = app.playlists.root.newPlaylist();
@@ -1193,12 +1194,14 @@
 					playlist.name = name;
 					if (playlist.commitAsync) {
 						await playlist.commitAsync();
+						log(`SimilarArtists: Created playlist (legacy API): ${name}`);
 					}
 				}
 			}
 		}
 
 		if (!playlist) {
+			log('SimilarArtists: Failed to create or find playlist');
 			return;
 		} else {
 			log(`SimilarArtists: Using playlist '${name}' (ID: ${playlist.id || playlist.ID})`);
@@ -1214,10 +1217,10 @@
 		}
 
 		// Add tracks to playlist. Some builds don't allow JS arrays to be passed into native methods.
-		if (playlist.addTracksAsync) {
-			// OPTIMIZED: Create tracklist, disable notifications, add all at once, then re-enable
+		if (playlist.addTracksAsync && app.utils?.createTracklist) {
+			// OPTIMIZED: Create tracklist, disable notifications, add all at once
 			// This pattern matches MM5's autoDJ.js approach for maximum performance
-			if (app.utils?.createTracklist) {
+			try {
 				let tracklist = app.utils.createTracklist(false); // false = don't set loaded flag yet
 				
 				// Disable notifications during bulk add to prevent UI flooding
@@ -1236,22 +1239,32 @@
 					await playlist.addTracksAsync(tracklist);
 					log(`SimilarArtists: Added ${tracklist.count} tracks to playlist via addTracksAsync`);
 				}
-			} else {
-				// Fallback: add tracks individually (slower, but compatible)
-				log('SimilarArtists: createTracklist not available, falling back to individual track addition');
-				for (let i = 0; i < (tracks || []).length; i++) {
-					const t = tracks[i];
-					if (t && playlist.addTrackAsync) {
-						await playlist.addTrackAsync(t);
-					}
+			} catch (e) {
+				log(`SimilarArtists: Error in addTracksAsync: ${e.toString()}, attempting fallback`);
+				// Fallback: try addTracks synchronously
+				if (playlist.addTracks && typeof playlist.addTracks === 'function') {
+					playlist.addTracks(tracks);
+					log(`SimilarArtists: Added ${tracks.length} tracks to playlist via addTracks`);
 				}
 			}
-		} else if (playlist.addTracks) {
+		} else if (playlist.addTracks && typeof playlist.addTracks === 'function') {
 			// Synchronous method: pass array directly
 			playlist.addTracks(tracks);
-		} else if (playlist.addTrack) {
+			log(`SimilarArtists: Added ${tracks.length} tracks to playlist via addTracks`);
+		} else if (playlist.addTrack && typeof playlist.addTrack === 'function') {
 			// Single track addition: slowest method, use as last resort
-			tracks.forEach((t) => playlist.addTrack(t));
+			log(`SimilarArtists: Adding ${tracks.length} tracks individually via addTrack`);
+			let addedCount = 0;
+			for (const t of tracks) {
+				if (t) {
+					playlist.addTrack(t);
+					addedCount++;
+				}
+			}
+			log(`SimilarArtists: Added ${addedCount} tracks to playlist via addTrack`);
+		} else {
+			log('SimilarArtists: No suitable method found to add tracks to playlist');
+			return;
 		}
 
 		// navigation: 1 navigate to playlist, 2 navigate to now playing
