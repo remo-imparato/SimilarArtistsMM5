@@ -1,0 +1,18 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="flex fill column padding hSeparatorsTiny">
+    <div class="flex maskEdit">
+        <div data-id="chbSyncFromDevice" data-control-class="Checkbox" data-tip="Syncs files from the selected folders on the device to the PC.">Auto-sync playlists and new files from the device to the PC</div>
+        <div data-control-class="Button" data-id="btnAddSyncFolder" data-add-dots>Add folder</div>
+    </div>
+    <div class="flex fill column left-indent hSeparatorsTiny hSeparatorTiny">
+        <div data-id="treeSyncFromDeviceFolders" class="fill" data-control-class="FolderTree"></div>
+        <div class="flex maskEdit" data-tip="Choose the folder on the PC to which new content on the device is synced. Note that content already synced from the PC to the Device will update within the existing locations.">
+            <label data-add-colon>Destination</label>
+            <div data-id="edtDestDir" class="fill" data-control-class="Edit"></div>
+            <div data-control-class="Button" data-id="btnDestDir">Browse</div>
+        </div>
+        <div data-id="chbConfirmSyncFromDevice" data-control-class="Checkbox" data-tip="Shows a confirmation dialog with a list of the files that will be affected">Show confirmation dialog</div>
+    </div>
+    <div data-id="chbSyncFromDeviceMetadata" data-control-class="Checkbox" data-tip="Syncs updated metadata such as ratings and play counts from the device to the PC.">Auto-Sync file metadata from the device to the PC</div>
+</div>

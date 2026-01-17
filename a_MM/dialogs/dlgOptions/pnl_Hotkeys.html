@@ -1,0 +1,30 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="dynamic flex column" data-tip="Hotkeys let you define keyboard shortcuts to accomplish various actions. Select [New Hotkey] to create a new shortcut." data-help="Keyboard Shortcuts">
+    <div data-id="lvHotkeysList" class="fill flex column hSeparatorTiny" data-control-class="GridView"></div>
+    <div class="flex row">
+        <fieldset class="fill">
+            <legend>Edit hotkey</legend>
+            <div class="uiRows">
+                <div class="flex row">
+                    <label class="middleControl" data-add-colon>Action</label>
+                    <div data-id="cbAction" class="fill" data-control-class="Dropdown" data-init-params="{readOnly: true}" data-tip="Choose the action for which a Hotkey should be created">
+                    </div>
+                </div>
+                <div class="flex row">
+                    <label class="middleControl" data-add-colon>Hotkey</label>
+                    <div data-id="edtHotkey" class="fill" data-control-class="Edit" data-init-params="{type: 'text'}" data-tip="Type the key combination to activate the selected action"></div>
+                    <div data-id="chbGlobal" data-control-class="Checkbox" data-tip="Causes the Hotkey to function even when MediaMonkey isn't in focus">Global</div>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+    <div class="hSeparator">
+        <div data-control-class="Buttons">
+            <div data-id='btnApplyHotkey' data-position="opposite" data-tip="Applies the changes made to an existing Hotkey entry">Apply</div>
+            <div data-id='btnDeleteHotkey' data-position="opposite" data-tip="Deletes existing Hotkey">Delete</div>
+            <div data-id='btnImportHotkeys' data-add-dots>Import</div>
+            <div data-id='btnExportHotkeys' data-add-dots>Export</div>
+        </div>
+    </div>
+</div>

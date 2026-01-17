@@ -1,0 +1,36 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgSearchImage.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgSearchImage' data-defaultSize='60em,30em' data-help="Getting Track Information from the Internet#Artwork_lookup">
+    <div class="fill flex column">
+        <div class="fill flex column">
+            <div class="flex column padding">
+                <div class="flex row maskEdit">
+                    <div data-id="iSearch" class="fill" data-control-class="Edit"></div>
+                    <div data-control-class="Button" data-id="btnSearch">Search</div>
+                </div>
+            </div>
+            <div class="fill paddingColumn flex column">
+                <div data-id="lvImages" class="fill" data-control-class="SimpleImageGrid"></div>
+                <div data-id="searchingPlaceholder" class="fill"><label data-add-dots>Searching</label>
+                    <div data-icon="progress" class="inline" style="width: 1em; height: 1em"></div>
+                </div>
+            </div>
+        </div>
+        <div id="bottom">
+            <div data-control-class="Buttons">
+                <div data-id='btnApply' data-default="1">Apply</div>
+                <div data-id='btnCancel'></div>
+                <div data-id='btnDefaultIcon' data-position='opposite'>Default icon</div>
+                <div data-id='btnGenerated' data-position='opposite'>Generated image</div>
+                <div data-id='btnBrowse' data-position='opposite' data-add-dots>Browse</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

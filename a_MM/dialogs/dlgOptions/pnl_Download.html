@@ -1,0 +1,75 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-help="Podcasts">
+    <fieldset data-control-class="Control" class="uiRows">
+        <div class="flex row" data-tip="Choose the location where downloaded content is saved by default">
+            <label>Default download location:</label>
+            <div data-id="edtDownloadDir" class="fill" data-control-class="MaskEdit" data-init-params="{hideMaskMenuButton: true}"></div>
+        </div>
+        <div>
+            <label>Number of concurrent downloads:</label>
+            <div data-id="cbMaxDownloadsAtOnce" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min: 1, max: 9}"></div>
+        </div>
+    </fieldset>
+    <div class="hSeparator"></div>
+    <fieldset data-control-class="Control">
+        <legend>Global podcast options</legend>
+        <div class="uiRows">
+            <div class="noWrap" data-tip="Determines how often MediaMonkey checks for updates">
+                <label for="cbPodcastCheckUpdateType">Check for new episodes:</label>
+                <div data-id="cbPodcastCheckUpdateType" data-control-class="Dropdown" data-init-params="{readOnly: true, autoWidth: false}">
+                    <option>Every hour</option>
+                    <option>Every day</option>
+                    <option>Every week</option>
+                    <option>Manually</option>
+                </div>
+                <label data-id="lblPodcastLastCheck"></label>
+            </div>
+            <div class="flex row" data-tip="Choose a directory and filename mask to which podcasts should be saved. If a filename mask is not chosen, then the podcast's original filename will be used">
+                <label>Download podcasts to:</label>
+                <div data-id="edtPodcastDir" class="fill" data-control-class="MaskEdit" data-init-params="{hideMaskMenuButton: true}"></div>
+            </div>
+            <div class="noWrap" data-tip="Defines how many new episodes are downloaded if new episodes are detected">
+                <label for="cbPodcastUpdate">On update, download</label>
+                <div data-id="cbPodcastUpdate" data-control-class="Dropdown" data-init-params="{readOnly: true, autoWidth: false}"></div>
+                <div data-id="cbPodcastUpdate2" data-control-class="Dropdown" data-init-params="{readOnly: true, autoWidth: false}"></div>
+            </div>
+            <div class="noWrap" data-tip="Defines which episodes are to be deleted">
+                <div data-id="chbPodcastDelete" data-control-class="Checkbox" data-init-params="{ type: 'checkbox'}">Delete episodes older than</div>
+                <div data-id="cbPodcastDelete" data-control-class="Dropdown" data-init-params="{readOnly: true, preload: true}">
+                    <option>1 day</option>
+                    <option>3 days</option>
+                    <option>1 week</option>
+                    <option>2 weeks</option>
+                    <option>1 month</option>
+                </div>
+            </div>
+            <div data-id="deletionSubBox" class="left-indent uiRows" data-control-class="Control">
+                <div data-tip="Prevents episodes that haven't been listened to from being deleted.">
+                    <div data-id="chbPodcastListened" data-control-class="Checkbox">Only if they have been listened to</div>
+                </div>
+                <div class="flex row" data-tip="Prevents episodes that have been highly rated from being deleted.">
+                    <div data-id="chbPodcastRating" data-control-class="Checkbox">Only if rating is less than</div>
+                    <div data-id="btnPodcastRating" class="verticalCenter" data-control-class="Rating" data-init-params="{starMargin: 1, tabbable: true}"></div>
+                </div>
+                <div class="noWrap" data-tip="Prevents recent episodes from being deleted.">
+                    <div data-id="chbPodcastRetain" data-control-class="Checkbox">Always retain the</div>
+                    <div data-id="cbPodcastRetain" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                        <option>1</option>
+                        <option>2</option>
+                        <option>3</option>
+                        <option>5</option>
+                        <option>10</option>
+                    </div>
+                    <label for="cbPodcastRetain">most recent episodes</label>
+                </div>
+            </div>
+            <div data-tip="Causes data from the feed to overwrite data embedded by the author within episode tags">
+                <div data-id="chbPodcastTag" data-control-class="Checkbox">On download, tag episodes based on data from podcast feed</div>
+            </div>
+            <div data-tip="Displays all episodes including those that have previously been deleted">
+                <div data-id="chbPodcastRemoved" data-control-class="Checkbox">Show removed episode links</div>
+            </div>    
+        </div>
+    </fieldset>
+</div>

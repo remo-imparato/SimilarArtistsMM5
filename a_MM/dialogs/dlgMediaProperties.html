@@ -1,0 +1,51 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgMediaProperties.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName="dlgMediaProperties" data-defaultSize="40em,20em">
+    <div class="flex column padding nonGreedy">
+        <div class="padding wideControl hSeparator">
+            <table class="marginBottom paddingBottomLarge">
+                <tr>
+                    <td data-add-colon>Type</td>
+                    <td>
+                        <div data-id="edtType" data-control-class="Edit" data-init-params="{readOnly: true}"></div>
+                    </td>
+                    <td data-add-colon>Serial</td>
+                    <td>
+                        <div data-id="edtSerial" data-control-class="Edit" data-init-params="{readOnly: true}"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td data-add-colon>Label</td>
+                    <td colspan="3">
+                        <div data-id="edtLabel" data-control-class="Edit" class="stretchWidth"></div>
+                    </td>
+                </tr>
+                <tr data-id="rowLocation">
+                    <td data-add-colon>Location</td>
+                    <td colspan="3">
+                        <div data-id="edtLocation" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="stretchWidth"></div>
+                    </td>
+                </tr>
+                <tr data-id="rowNetwork">
+                    <td data-add-colon>Path</td>
+                    <td colspan="3">
+                        <div data-id="edtNetworkPath" data-control-class="Edit"></div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="bottom" class="alignbottom fillWidth">
+            <div data-control-class="Buttons">
+                <div data-default="1" data-id="btnOK"></div>
+                <div data-id="btnCancel"></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

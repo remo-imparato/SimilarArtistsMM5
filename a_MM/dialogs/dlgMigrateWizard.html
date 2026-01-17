@@ -1,0 +1,34 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+<script src="dlgMigrateWizard.js"></script>
+<script src="file:///controls/deviceConfig.js" type="text/javascript"></script>
+
+<body data-posSaveName='dlgMigrateWizard' data-defaultSize='550,450'>
+    <div class="fill flex column padding">
+        <label data-id="lblHeading" class="textWrap"></label>
+        <div class="hSeparator"></div>
+        <label data-id="lblSubHeading" class="textWrap"></label>
+        <div class="hSeparatorTiny"></div>
+        <label data-id="linkSetContent" class="hotlink textWrap"></label>
+        <div class="hSeparatorTiny"></div>
+        <div data-id="chbCacheContent" data-control-class="Checkbox"></div>
+        <div class="hSeparatorTiny"></div>
+        <div data-id="boxMigrate" class="flex fill column">
+            <fieldset data-id="summaryBox" class="flex fill padding column uiRows">
+
+            </fieldset>
+        </div>
+        <div data-id="boxScan" class="flex fill column">
+            <div data-id="chbScan" data-control-class="Checkbox"></div>
+        </div>
+        <div data-control-class="Buttons">
+            <div data-id='btnOk' data-default="1">OK</div>
+            <div data-id='btnCancel'></div>
+        </div>
+    </div>
+</body>
+
+</html>

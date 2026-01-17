@@ -1,0 +1,16 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="fill flex column hSeparatorsTiny">
+    <div data-id="chbUpdatePlayCounter" data-control-class="Checkbox" data-tip="Increases the play counter for items played via this server. This may not be accurate for partially played tracks.">Update play count when playing remotely</div>
+    <div data-id="chbScrobble" data-control-class="Checkbox" class="left-indent">Scrobble to last.fm if Scrobbling is enabled</div>    
+    <div data-id="chbAutoShare" data-control-class="Checkbox" data-tip="Shares the server contents with all devices that attempt to connect">Share automatically with all new devices</div>
+    <div></div>
+    <label data-add-colon>Devices</label>
+    <div data-id="lvRemoteDevicesListView" class="fill flex column hSeparatorTiny" data-control-class="GridView"></div>
+    <div class="hSeparatorTiny">
+        <div data-control-class="Buttons">
+            <div data-id='btnRemoveDevice'>Remove</div>
+            <div data-id='btnConfDevice' data-add-dots>Options</div>
+        </div>
+    </div>
+</div>

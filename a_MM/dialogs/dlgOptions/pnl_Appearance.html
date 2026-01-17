@@ -1,0 +1,71 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-help="Settings Fields">
+    <div class="uiRows">
+        <div class="noWrap" data-tip="This specifies a single character used to enter multiple values within a field (e.g. Rock;Folk). Spaces determine how the character is displayed.">
+            <label data-id="chbMultiSep">Split multiple-value fields with:</label>
+            <div data-id="cbMultiSep" class="marginsRow" data-control-class="Dropdown" data-init-params="{readOnly: false, filtering: false, preserveSpaces: true, multivalue: false}">
+                <option data-no-localize>; </option>
+                <option data-no-localize>|</option>
+                <option data-no-localize> | </option>
+            </div>
+        </div>
+        <div class="" data-tip="This causes MediaMonkey to ignore the specified prefixes when sorting (separate multiple prefixes with a ','). For instance 'The Beatles' and 'Beatles' will appear directly adjacent to one another if this is enabled and 'the' is configured.">
+            <div data-id="chbIgnorePrefixes" data-control-class="Checkbox">Ignore prefixes:</div>
+            <div data-id="cbIgnorePrefixes" data-control-class="Edit"> </div>
+            <label data-id="lblIgnorePrefix">when sorting by</label><span data-id="lblIgnorePrefixFields"></span>
+            <div data-control-class="Button" data-id="btnChooseIgnorePrefixFields" class="inline" data-add-dots>Choose</div>
+        </div>
+        <!--  // following two choices no longer need to be optional as concluded in #13264
+        <div data-tip="Displays file information that is obscured in a Tooltip.">
+            <div data-id="chbShowTrackToolTip" data-control-class="Checkbox">Show tooltips for obscured file properties</div>
+        </div>
+        <div data-tip="If enabled, in addition to Tracks, MediaMonkey will display .m3u playlists that appear in directories in the My Computer node.">
+            <div data-id="chbM3UComp" data-control-class="Checkbox">Show M3U playlists in My Computer nodes</div>
+        </div>
+-->
+    </div>
+
+    <div class="hSeparator"></div>
+    <div>
+        <fieldset>
+            <legend>Column settings</legend>
+            <div class="uiRow"><label>Define columns for:</label></div>
+            <div data-id="shared_columns_mode" class="flex column uiRows">
+                <div data-id="perNode" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'perNode', name: 'copyrename'}" data-localize>Each Node in each Collection</div>
+                <div data-id="perCollection" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'perCollection', name: 'copyrename'}" data-localize>Each Collection</div>
+                <div data-id="perCollections" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'perCollections', name: 'copyrename'}" data-localize>The entire Library</div>
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="hSeparator"></div>
+    <div>
+        <fieldset data-tip="This changes the header for each custom field.">
+            <legend>Rename custom fields (requires restart)</legend>
+            <div class="optionsFieldsGrid marginsColumn">
+                <label data-id="lblCustom1" data-add-colon>Custom 1</label>
+                <div data-id="edtCustom1" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom2" data-add-colon>Custom 2</label>
+                <div data-id="edtCustom2" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom3" data-add-colon>Custom 3</label>
+                <div data-id="edtCustom3" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom4" data-add-colon>Custom 4</label>
+                <div data-id="edtCustom4" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom5" data-add-colon>Custom 5</label>
+                <div data-id="edtCustom5" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom6" data-add-colon>Custom 6</label>
+                <div data-id="edtCustom6" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom7" data-add-colon>Custom 7</label>
+                <div data-id="edtCustom7" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom8" data-add-colon>Custom 8</label>
+                <div data-id="edtCustom8" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom9" data-add-colon>Custom 9</label>
+                <div data-id="edtCustom9" class="middleControl" data-control-class="Edit"></div>
+                <label data-id="lblCustom10" data-add-colon>Custom 10</label>
+                <div data-id="edtCustom10" class="middleControl" data-control-class="Edit"></div>
+            </div>
+        </fieldset>
+    </div>
+
+</div>

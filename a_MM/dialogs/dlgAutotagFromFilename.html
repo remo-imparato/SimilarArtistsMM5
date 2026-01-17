@@ -1,0 +1,44 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgAutotagFromFilename.js"></script>
+<script src="file:///commonControls.js" type="module"></script>
+
+<body data-posSaveName='dlgAutotagFromFilename' data-defaultSize='1008,722' data-help="Auto-Tag from filename">
+    <div class="padding fill flex column">
+        <div class="flex column padding uiRows">
+
+            <label>Update tags based on existing filenames</label>
+            <div class="flex row" data-id="lineMaskConfig" data-control-class="Control">
+                <div>
+                    <label>Filename format:</label>
+                </div>
+                <div class="fill">
+                    <div data-id="cbMasks" data-control-class="MaskEdit"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fill padding flex column">
+            <div data-id="lvTracksList" class="transparentList fill" data-store data-control-class="AutotagTrackList" data-init-params="{isSortable: false, showHeader: true, hideOdd: true, adaptColumnsWidth: false, disableDragNDrop: true}"></div>
+        </div>
+
+        <div data-id="bottom" class="flex row">
+            <div class="flex column uiRows">
+                <div data-id="chbUpdateEmptyFieldsOnly" data-control-class="Checkbox">Update empty fields only</div>
+                <div data-id="chbRemoveUnderscores" data-control-class="Checkbox">Remove underscores</div>
+            </div>
+            <div class="fill"></div>
+            <div class="uiRow semitransparent">
+                <label data-id="lblProgress"></label>
+            </div>
+            <div data-control-class="Buttons" class="fill">
+                <div data-id='btnOK' data-default="1"></div>
+                <div data-id='btnCancel'></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

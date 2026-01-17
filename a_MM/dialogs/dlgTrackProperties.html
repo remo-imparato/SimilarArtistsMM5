@@ -1,0 +1,23 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgTrackProperties.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body class="dialog" data-posSaveName='dlgProperties' data-defaultSize='47em,56em' data-minimalSize='47em,56em' data-help="Editing Track Properties">
+    <div data-id="dlgTrackProperties" class="padding flex column fill">
+        <div class="dynamic flex column">
+            <div data-id="loading" data-icon="progress" style="width: 2em; height: 2em; margin: 15em;"></div>
+            <div data-id="tabs" data-control-class="Tabs" data-init-params="{resizeable: true}"></div>
+        </div>
+        <div data-control-class="Buttons" data-id="bottom">
+            <div data-id="btnPrev" data-position="opposite" data-tip="Update & Previous song (Alt-Left)">Previous</div>
+            <div data-id="btnNext" data-position="opposite" data-tip="Update & Next song (Alt-Right)">Next</div>            
+            <div data-id="btnOK" data-default="1"></div>
+            <div data-id="btnCancel" data-no-close></div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,41 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgSleep.js"></script>
+<script src="file:///commonControls.js" type="module"></script>
+
+<body data-posSaveName='dlgSleep' data-help="Sleep">
+    <div class="padding flex column nonGreedy">
+        <div class="padding wideControl uiRows hSeparator">
+            <div class="hSeparator">
+                <label>Play audio for</label>
+                <div data-id="edtTime" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:1, max:480}"></div>
+                <label>minutes</label>
+            </div>
+            <div data-id="chbFadeVolume" data-control-class="Checkbox">Fade volume</div>
+            <div data-id="boxFadeSettings" class="left-indent uiRows" data-control-class="Control">
+                <div>
+                    <label>Start fading in</label>
+                    <div data-id="edtFadeAfter" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:0, max:480}"></div>
+                    <label>minutes</label>
+                </div>
+                <div>
+                    <label>Fade to</label>
+                    <div data-id="edtVolumePercent" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:0, max:100}"></div>
+                    <label>% of current volume</label>
+                </div>
+            </div>
+            <div>
+                <label>Action at end:</label>
+                <div data-id="cbAction" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+            </div>
+        </div>
+        <div data-control-class="Buttons">
+            <div data-id="btnSleep" class="inline" data-default="1">Sleep</div>
+            <div data-id="btnCancel">Cancel Sleep</div>
+        </div>
+    </div>
+</body>
+
+</html>

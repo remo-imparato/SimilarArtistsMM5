@@ -1,0 +1,26 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script type="module" src="dlgCDDBResult.js"></script>
+
+<body data-id='dlgBody' data-posSaveName='dlgCDDBResult' data-defaultSize='850,550'>
+    <div class="fill flex column" data-store data-control-class="Control">
+        <div class="fill flex column padding">
+            <div class="flex column hSeparatorTiny">
+                <label data-id="lblCaption"></label>
+            </div>
+            <div data-id="lvDiscList" class="fill flex column" data-control-class="DiscListView" data-init-params="{showHeader: true}"></div>
+            <div data-control-class="Splitter"></div>
+            <div data-id="lvTracks" class="fill flex column" data-control-class="ColumnTrackList" data-init-params="{showHeader: true}"></div>
+        </div>
+        <div id="bottom" class="padding">
+            <div data-control-class="Buttons">
+                <div data-id='btnOK' data-default="1"></div>
+                <div data-id='btnCancel' data-no-close></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,204 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<style>
+    .qualitySlider {
+        width: 15em;
+        margin-right: 1em;
+    }
+    
+    .editMinWidth {
+        min-width: 9em;
+    }
+
+</style>
+
+<div data-id="tabs" data-control-class="Tabs" data-init-params="{resizeable: false}" class="innerDlg" style="min-heightX: 27em; min-widthX: 37em">
+    <ul>
+        <li data-id="tabVideo">Video</li>
+        <li data-id="tabAudio">Audio</li>
+    </ul>
+    <div data-id="videoSettings" class="">
+        <div class="hSeparator"></div>
+        <table>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Codec</label>
+                </td>
+                <td>
+                    <div data-id="cbVCodec" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Max. resolution</label>
+                </td>
+                <td>
+                    <div data-id="cbMaxResolution" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                    <label>px</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Output quality</label>
+                </td>
+                <td>
+                    <div class="flex row marginsColumn">
+                        <div class="flex column">
+                            <div data-id="outputQualitySlider" data-control-class="Slider" data-init-params="{orientation: 'horizontal', tickInterval: 10, max: 100, step: 1, tickPlacement: 'bottomRight'}" class="inline qualitySlider hSeparatorTiny"></div>
+                            <div class="flex row smallText">
+                                <label class="fill" data-no-localize>0% (<span data-localize>small</span>)</label>
+                                <label class="fill" data-no-localize>50%</label>
+                                <label data-no-localize>(<span data-localize>large</span>) 100%</label>
+                            </div>
+                        </div>
+                        <div data-id="outputQuality" class="thinControl" data-control-class="Edit" data-init-params="{type:'number', min:0, max:100}"></div>
+                        <label>%</label>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Bitrate (for max. res.)</label>
+                </td>
+                <td>
+                    <div data-id="vBitrate" class="thinControl" data-control-class="Edit" data-init-params="{type:'number', min:0, max:99999}"></div>
+                    <label>kbps</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Conversion quality</label>
+                </td>
+                <td>
+                    <div class="flex row marginsColumn">
+                        <div class="flex column">
+                            <div data-id="convQualitySlider" data-control-class="Slider" data-init-params="{orientation: 'horizontal', tickInterval: 10, max: 100, step: 1, tickPlacement: 'bottomRight'}" class="inline qualitySlider hSeparatorTiny"></div>
+                            <div class="flex row smallText">
+                                <label class="fill" data-no-localize>0% (<span data-localize>small</span>)</label>
+                                <label class="fill" data-no-localize>50%</label>
+                                <label data-no-localize>(<span data-localize>large</span>) 100%</label>
+                            </div>
+                        </div>
+                        <div data-id="convQuality" class="thinControl" data-control-class="Edit" data-init-params="{type:'number', min:0, max:100}"></div>
+                        <label>%</label>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Framerate</label>
+                </td>
+                <td>
+                    <div data-id="cbFramerate" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                    <label>fps</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div class="hSeparator"></div>
+                    <div data-id="chbFitSize" data-control-class="Checkbox">Fit size exactly</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div data-id="chbPreserveAR" data-control-class="Checkbox">Preserve aspect ratio</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div data-id="audioSettings" class="">
+        <div class="hSeparator"></div>
+        <table>
+            <tr class="hSeparator">
+                <td class="noStretch">
+                    <label data-add-colon>Codec</label>
+                </td>
+                <td>
+                    <div data-id="cbACodec" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                </td>
+            </tr>
+            <tr data-id="tr_brtype">
+                <td class="noStretch">
+                    <label data-add-colon>Type of bitrate</label>
+                </td>
+                <td>
+                    <div data-id="cbBrType" class="editMinWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                </td>
+            </tr>
+            <tr data-id="tr_qtype">
+                <td class="noStretch">
+                </td>
+                <td>
+                    <div data-id="cbQType" class="editMinWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                        <option>by Quality</option>
+                        <option>by Bitrate</option>
+                    </div>
+                </td>
+            </tr>
+            <tr data-id="tr_bitrate">
+                <td class="noStretch">
+                    <label data-add-colon>Bitrate</label>
+                </td>
+                <td>
+                    <div data-id="cbABitrate" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                    <label>kbps</label>
+                </td>
+            </tr>
+            <tr data-id="tr_quality">
+                <td class="noStretch">
+                    <label data-add-colon>Quality</label>
+                </td>
+                <td>
+                    <div data-id="cbQuality" class="editMinWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                        <option data-no-localize>10 %</option>
+                        <option data-no-localize>25 %</option>
+                        <option data-no-localize>50 %</option>
+                        <option data-no-localize>75 %</option>
+                        <option data-no-localize>90 %</option>
+                        <option data-no-localize>98 %</option>
+                    </div>
+                    <div data-id="qualityBySlider" class="flex row marginsColumn">
+                        <div class="flex column">
+                            <div data-id="qualitySlider" data-control-class="Slider" data-init-params="{orientation: 'horizontal', tickInterval: 1, min: -1, max: 10, step: 1, tickPlacement: 'bottomRight'}" class="inline qualitySlider hSeparatorTiny"></div>
+                            <div class="flex row smallText">
+                                <label class="fill" data-no-localize>-1 (~45 kbps)</label>
+                                <label style="margin-right: 1em" data-no-localize>(~500 kbps) 10</label>
+                            </div>
+                        </div>
+                        <label data-id="qualityText" class="left-indent"></label>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Sample rate</label>
+                </td>
+                <td>
+                    <div data-id="cbSampleRate" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                    <label>Hz</label>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-add-colon>Channels</label>
+                </td>
+                <td>
+                    <div data-id="cbChannels" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="editMinWidth"></div>
+                </td>
+            </tr>
+            <tr data-id="tr_bps">
+                <td>
+                    <label data-add-colon>Bits per sample</label>
+                </td>
+                <td>
+                    <div data-id="cbBPS" class="editMinWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="innerDlg" data-control-class="Buttons">
+    <div data-id="btnOK"></div>
+    <div data-id="btnCancel"></div>
+</div>

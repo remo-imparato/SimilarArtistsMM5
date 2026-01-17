@@ -1,0 +1,36 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgAutotag.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgAutotag' data-defaultSize='75em,30em' data-minimalSize='65em,30em' data-help="Getting Track Information from the Internet">
+    <div class="flex fill column padding" data-store data-control-class="Control">
+        <div class="fill flex column">
+            <div class="fill flex column">
+                <div class="padding" data-localize>Auto-tag looks up track metadata (e.g. Artist, Genre, Album) based on the Title and track length, and Album metadata (e.g. Album Artist, Date) based on the Album. If the Title is missing it's looked up via an audio fingerprint. Change the recommendations if needed, and select which tracks to tag.</div>
+                <div data-id="copyright" class="smallText padding"></div>
+                <div data-id="lvTracksList" class="transparentList fill" data-control-class="AutoTagGroupedTrackList" data-init-params="{groupTemplate: albumGroupTemplate, useHeaderMenu: false, textOnly: true, disableDragNDrop: true}"></div>
+                <div data-id="toastMessage" class="toastContainer" data-control-class="ToastMessage" style="display: none;"></div>
+                <div data-id="progress" class="fillWidth marginsRow" data-control-class="ProgressBar"></div>
+            </div>
+        </div>
+        <div class="flex alignbottom center marginBottom topmost">
+        </div>
+        <div id="bottom" class="padding">
+            <div data-control-class="Buttons">
+                <div data-id='btnSettings' data-position="opposite">Options</div>
+                <div style="align-self: center" data-position="opposite" data-no-button>
+                    <div data-id='chbAllowCompilations' data-control-class="Checkbox" data-tip="Determines whether groups of tracks are treated as compilation albums or as individual tracks">Allow compilations</div>
+                </div>
+                <div data-id='btnTag' data-default="1">Tag & Continue</div>
+                <div data-id='btnSkip' data-default="1">Skip</div>
+                <div data-id='btnConfirmAll'>Confirm All</div>
+                <div data-id='btnCancel'></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgExtensions.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgExtensions' data-defaultSize='850,550' data-help="Creating Custom Scripts">
+    <div class="fill flex column">
+        <div class="fill flex column padding">
+            <div class="flex row uiRow hSeparatorTiny verticalBaseline">
+                <label data-add-colon>Show</label>
+                <div data-id="cbAddonType" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'addonCategories'}, preload: false, readOnly: true, autoWidth: false}" class="inline vSeparator"></div>
+                <label class="inline" data-add-colon>Search</label>
+                <div data-id="cbSearchAddon" data-control-class="Edit" class="inline"> </div>
+                <div class="fill"></div>
+                <div data-id='icnProgress' data-icon="progress" data-tip="Fetching update info" data-control-class="Icon"></div>
+            </div>
+            <div data-id="lvAddonList" class="fill flex column hSeparatorTiny" data-control-class="AddonListView"></div>
+        </div>
+        <div id="bottom" class="padding">
+            <div data-control-class="Buttons">
+                <div data-id='btnMoreAddons' data-position='opposite' data-add-dots>Find more addons</div>
+                <div data-id='btnAdd' data-position='opposite' data-add-dots>Install addon from file</div>
+                <div data-id='btnFindUpdates'>Check for updates</div>
+                <div data-id='btnOK' data-esc data-default="1">Close</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,48 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="innerDlg" data-id="tabClassificationContent">
+    <div class="flex column stretchWidth innerDlgHeightWithoutPadding">
+        <table data-id="section5" class="uiRowCenter">
+            <tr>
+                <td class="noStretch">
+                    <label data-id="lbl_tempo" data-add-colon>Tempo</label>
+                </td>
+                <td>
+                    <div data-id="tempo" class="stretchWidth50 middleControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'tempo'}, autoWidth: false}"></div>
+                    <div data-id="chb_tempo" data-group-only data-control-class="Checkbox" class=""></div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-id="lbl_mood" data-add-colon>Mood</label>
+                </td>
+                <td>
+                    <div data-id="mood" class="stretchWidth50 middleControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'mood'}, autoWidth: false}"></div>
+                    <div data-id="chb_mood" data-group-only data-control-class="Checkbox" class=""></div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-id="lbl_occasion" data-add-colon>Occasion</label>
+                </td>
+                <td>
+                    <div data-id="occasion" class="stretchWidth50 middleControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'occasion'}, autoWidth: false}"></div>
+                    <div data-id="chb_occasion" data-group-only data-control-class="Checkbox" class=""></div>
+                </td>
+            </tr>
+            <tr>
+                <td class="noStretch">
+                    <label data-id="lbl_quality" data-add-colon>Quality</label>
+                </td>
+                <td>
+                    <div data-id="quality" class="stretchWidth50 middleControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'quality'}, autoWidth: false}"></div>
+                    <div data-id="chb_quality" data-group-only data-control-class="Checkbox" class=""></div>
+                </td>
+            </tr>
+        </table>
+        <div class="paddingSmall flex column dynamic">
+            <label data-id="lblPlaylists" class="uiRow" data-add-colon>Playlists</label>
+            <div data-id="playlistTree" class="highControl dynamic" data-control-class="TrackPlaylistsTree"></div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,48 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgMovedFiles.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgMovedFiles' data-defaultSize='1024,768' data-help="Adding Existing Files to the Library#Manually Locate Moved/Missing Files">
+    <div class="fill flex column">
+        <div data-id="CaptionContainer" class="flex column padding uiRows">
+            <label>Update the Library with the new location for the following files:</label>
+        </div>
+
+        <div class="fill padding flex column">
+            <div data-id="tabs" data-control-class="Tabs">
+                <ul>
+                    <li tabname="tabLocated">Files Located in New Locations</li>
+                    <li tabname="tabUnmoved">Unmoved files</li>
+                    <li tabname="tabUnlocated">Unlocatable files</li>
+                </ul>
+            </div>
+
+            <div data-id="mainpanel" class="fill margins">
+                <div data-id="tabLocated" class="fill flex column" style="visibility:hidden">
+                    <div data-id="lvLocatedList" class="transparentList fill" data-control-class="myLocatedListView"></div>
+                    <div data-id="ChBUpdateTracks" data-control-class="Checkbox" data-init-params="{checked: true}">Update selected files in the database</div>
+                </div>
+                <div data-id="tabUnmoved" class="fill flex column" style="visibility:hidden">
+                    <div data-id="lvUnmovedList" class="transparentList fill" data-control-class="myUnmovedListView"></div>
+                </div>
+                <div data-id="tabUnlocated" class="fill flex column" style="visibility:hidden">
+                    <div data-id="lvUnlocatedList" class="transparentList fill" data-control-class="myUnlocatedListView"></div>
+                    <div data-id="ChBRemoveTracks" data-control-class="Checkbox">Remove selected files from the database</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div data-id="bottom">
+            <div data-control-class="Buttons">
+                <div data-id='btnUpdate' data-default="1">Update</div>
+                <div data-id='btnCancel'></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

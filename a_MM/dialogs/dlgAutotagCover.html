@@ -1,0 +1,40 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgAutotagCover.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgAutotagCover'>
+    <div class="flex column nonGreedy">
+        
+        <div class="fill flex row">
+            <div class="padding flex column">
+                <div class="center paddingRow" >Original</div>
+                <div>
+                    <div style="width: 10em; weight: 10em"  class="allinside autosize" data-id="imgOriginal"></div>
+                    <label data-id="origSizeLbl" class="sizeLabel"></label>
+                </div>
+                <div class="center paddingRow" data-control-class="Checkbox" data-id="rbOriginal" data-init-params="{type: 'radio', value: 'orig', name: 'cover'}"></div>
+            </div>
+            <div class="padding flex column">
+                <div class="center paddingRow" >New</div>
+                <div>
+                    <div style="width: 10em; weight: 10em" class="allinside autosize" data-id="imgLookup"></div>
+                    <label data-id="sizeLbl" class="sizeLabel"></label>
+                </div>
+                <div class="center paddingRow" data-control-class="Checkbox" data-id="rbLookup" data-init-params="{type: 'radio', value: 'lookup', name: 'cover'}"></div>
+            </div>
+        </div>
+        
+        <div id="bottom">
+            <div data-control-class="Buttons">
+                <div data-id='btnLookup' data-position="opposite">Lookup</div>
+                <div data-id='btnOK' data-default="1">OK</div>
+                <div data-id='btnClose'>Cancel</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

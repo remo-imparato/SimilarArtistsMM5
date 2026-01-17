@@ -1,0 +1,26 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="dynamic flex column" data-help="Setting UPnP DLNA Media Servers">
+    <div data-id="lvMediaServerListView" class="fill flex column hSeparatorTiny" data-control-class="GridView"></div>
+    <div class="hSeparatorTiny">
+        <div data-control-class="Buttons">
+            <div data-id='btnAddServer' data-add-dots>Add</div>
+            <div data-id='btnRemoveServer'>Remove</div>
+            <div data-id='btnConfServer' data-add-dots>Options</div>
+        </div>
+    </div>
+    <div data-id="chbFirewall" data-control-class="Checkbox" class="uiRow">Add Windows firewall exception</div>
+    <div class="flex row uiRow" data-tip="Saves auto-converted content to a temporary cache so that it can be re-used, as needed.">
+        <label>Cache auto-converted content to:</label>
+        <div data-id="edtUPnPDir" class="fill" data-control-class="Edit"></div>
+        <div class="button" data-id="btnUPnPDir" data-localize data-add-dots>Browse</div>
+    </div>
+    <div>
+        <div data-id="chbUPnPCacheSize" data-control-class="Checkbox" class="left-indent uiRow">Maximum cache size</div>
+        <div data-id="edtUPnPCacheSize" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:0, max:5000000}"></div>
+        <label data-id="lblUPnPCacheSize">MB</label>
+    </div>
+    <div data-control-class="Buttons">
+        <div data-id='btnInstallService' data-position="opposite"></div>
+    </div>
+</div>

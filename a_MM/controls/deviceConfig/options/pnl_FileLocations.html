@@ -1,0 +1,91 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="flex fill column">
+    <div class="flex column hSeparator">
+        <div class="hSeparatorTiny">
+            <label data-id="lblSyncFilesTo"></label>
+        </div>
+        <table class="hSeparatorTiny" data-tip="Choose the Directory/Filename format to be used for files on the device.">
+            <tr>
+                <td>
+                    <label>Music</label>
+                </td>
+                <td class="stretchWidth">
+                    <div data-id="cbmask_music" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Classical</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_classical" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Audiobook</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_audiobook" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Podcasts</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_podcast" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Video Podcasts</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_videopodcast" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Video</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_video" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>Music Video</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_musicvideo" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label>TV</label>
+                </td>
+                <td>
+                    <div data-id="cbmask_tv" data-control-class="MaskEdit" data-init-params="{showPlaylistMask: true}"></div>
+                </td>
+            </tr>
+            <tr data-id="boxRootDir" class="uiRow">
+                <td>
+                    <label>Root directory</label>
+                </td>
+                <td>
+                    <a data-id="lblWriteAccess" href="#"></a>
+                </td>
+            </tr>
+        </table>
+        <div data-id="chbEnforceMask" data-control-class="Checkbox" data-tip="Automatically organizes files on the device according to the settings above. This can take a lot of time if the sync masks are modified."></div>
+    </div>
+    <div class="hSeparatorTiny" data-tip="Describes directories other than the above that are scanned for media when syncing. Limit the directories scanned so as not to hurt performance.">
+        <label data-id="lblOtherMediaFiles"></label>
+        <div class="button rowButton" data-id="btnAddScanFolder" data-localize data-add-dots>Add folder</div>
+    </div>
+    <div class="flex fill row" data-tip="Describes any other directories that should be scanned for media.">
+        <div data-id="treeScanDeviceFolders" class="flex fill column" data-control-class="FolderTree"></div>
+    </div>
+</div>

@@ -1,0 +1,33 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="flex fill column paddingRow">
+    <div class="flex row paddingColumn">
+        <div class="inline"><label data-id="lblSyncToDevice"></label></div>
+        <div class="fill"></div>
+        <div data-id="chbHideUnselected" data-no-config-change data-control-class="Checkbox">Hide unselected items</div>
+    </div>
+    <div class="flex row paddingColumn">
+        <label data-id="lblSyncToDeviceSubText" class="smallText uiRow"></label>
+    </div>
+    <div class="hSeparatorTiny"></div>
+
+    <div class="flex fill row">
+        <div class="middleControl flex column transparentBackground borderRight vSeparator" data-id="syncCollectionsTree" data-control-class="CheckboxTree" data-init-params="{rootNode: 'syncCollectionsTreeRoot'}"></div>        
+        <div class="fill flex column">
+            <div class="fill" data-id="collectionContentBox"></div>
+        </div>
+    </div>
+    <div data-id="boxDelete" data-tip="Deletes remote content that isn't selected in the Sync list (either all unselected content or only unselected content that exists in the local database). Deletion occurs after remote content has been synced (if that option is available/enabled). In general, deletion should be enabled to prevent duplicates on the remote location, but the option to delete 'all' unselected content should be used carefully if the remote location contains new/modified content that isn't in the local database.">
+        <div class="padding noWrap">
+            <div data-id="chbDelete" data-control-class="Checkbox"></div>
+            <div data-id="cbDelete" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                <option>Unselected Library files</option>
+                <option>All other media files</option>
+            </div>
+        </div>
+        <div data-id="chbDeleteConfirm" class="left-indent" data-control-class="Checkbox" data-tip="Shows a confirmation dialog with a list of the files that will be affected">Show confirmation dialog</div>
+    </div>
+    <div data-id="boxCache" class="padding">
+        <div data-id="chbCacheContent" data-control-class="Checkbox">Keep this content locally cached</div>
+    </div>
+</div>

@@ -1,0 +1,261 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="innerDlg" data-id="tabDetailsContent" style="box-sizing: border-box;">
+    <table data-id="section3" class="uiRowCenter">
+        <tr data-id="tr_grouping">
+            <td class="noStretch">
+                <label data-id="lbl_grouping" data-add-colon>Grouping</label>
+            </td>
+            <td colspan="4">
+                <div data-id="grouping" class="stretchWidth wideControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'grouping'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_grouping" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>    
+        <tr data-id="tr_initialkeybpm">
+            <td>
+                <label data-id="lbl_initialKey" data-add-colon>Initial Key</label>
+            </td>
+            <td>
+                <div data-id="initialKey" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{multivalue: false, dbFunc:'getStringList', dbFuncParams: {category: 'initialKey'}, autoWidth: false}"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_initialKey" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_bpm" data-add-colon>BPM</label>
+            </td>
+            <td>
+                <div data-id="bpm" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_bpm" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_involvedpeople'>
+            <td>
+                <label data-id="lbl_involvedpeople" data-add-colon>Involved people</label>
+            </td>
+            <td colspan="4">
+                <div data-id="involvedpeople" class="stretchWidth wideControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'involvedpeople'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_involvedpeople" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_parentalrating'>
+            <td>
+                <label data-id="lbl_parentalrating" data-add-colon>Parental Rating</label>
+            </td>
+            <td colspan="4">
+                <div data-id="parentalrating" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_parentalrating" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_origartist'>
+            <td>
+                <label data-id="lbl_origartist" data-add-colon>Original Artist</label>
+            </td>
+            <td colspan="4">
+                <div data-id="origartist" class="stretchWidth wideControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'origartist'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_origartist" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_origtitle'>
+            <td>
+                <label data-id="lbl_origtitle" data-add-colon>Original Album</label>
+            </td>
+            <td colspan="4">
+                <div data-id="origtitle" class="stretchWidth wideControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'origtitle'}, autoWidth: false}"></div>                
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_origtitle" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_origlyricist'>
+            <td>
+                <label data-id="lbl_origlyricist" data-add-colon>Original Lyricist</label>
+            </td>
+            <td colspan="4">
+                <div data-id="origlyricist" class="stretchWidth wideControl" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'origlyricist'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_origlyricist" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        
+        <tr data-id="tr_isrcpublisher">
+            <td>
+                <label data-id="lbl_isrc" data-add-colon>ISRC</label>
+            </td>
+            <td>
+                <div data-id="isrc" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'isrc'}, autoWidth: false}"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_isrc" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_publisher" data-add-colon>Publisher</label>
+                <label data-id="lbl_authorsAB" data-add-colon>Composer(s)</label>
+            </td>
+            <td>
+                <div data-id="publisher" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{dbFunc:'getPeople', dbFuncParams: {category: 'publisher'}, autoWidth: false}"></div>
+                <div data-id="authorsAB" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{dbFunc:'getPeople', dbFuncParams: {category: 'author'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_publisher" data-group-only data-control-class="Checkbox" class=""></div>
+                <div data-id="chb_authorsAB" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id="tr_encodercopyright">
+            <td>
+                <label data-id="lbl_encoder" data-add-colon>Encoder</label>
+            </td>
+            <td>
+                <div data-id="encoder" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'encoder'}, autoWidth: false}"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_encoder" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_copyright" data-add-colon>Copyright</label>
+            </td>
+            <td>
+                <div data-id="copyright" class="editStretchWidth stretchWidth" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'copyright'}, autoWidth: false}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_copyright" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label data-id="lbl_starttime" data-add-colon>Start time</label>
+            </td>
+            <td>
+                <div data-id="starttime" class="stretchWidth" data-control-class="Edit" data-init-params="{noTagModify: true}"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_starttime" data-group-only data-control-class="Checkbox" class="vSeparator" data-init-params="{noTagModify: true}"></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_stoptime" data-add-colon>Stop time</label>
+            </td>
+            <td>
+                <div data-id="stoptime" class="stretchWidth" data-control-class="Edit" data-init-params="{noTagModify: true}"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_stoptime" data-group-only data-control-class="Checkbox" class="" data-init-params="{noTagModify: true}"></div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label data-id="lbl_playcounter" data-add-colon>Play counter</label>
+            </td>
+            <td>
+                <div data-id="playcounter" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_playcounter" data-group-only data-control-class="Checkbox" class="vSeparator"></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_skipcounter" data-add-colon>Skip counter</label>
+            </td>
+            <td>
+                <div data-id="skipcounter" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_skipcounter" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label data-id="lbl_volume_track" data-add-colon>Track volume</label>
+            </td>
+            <td>
+                <div data-id="volume_track" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_volume_track" data-group-only data-control-class="Checkbox" class="vSeparator"></div>
+            </td>
+            <td class="noStretch">
+                <label data-id="lbl_volume_album" data-add-colon>Album volume</label>
+            </td>
+            <td>
+                <div data-id="volume_album" class="stretchWidth" data-control-class="Edit"></div>
+            </td>
+            <td class="checkcontainer">
+                <div data-id="chb_volume_album" data-group-only data-control-class="Checkbox" class=""></div>
+            </td>
+        </tr>
+        <tr data-id='tr_bookmark'>
+            <td>
+                <label data-id="lbl_bookmark" data-add-colon>Bookmark</label>
+            </td>
+            <td>
+                <div data-id="bookmark" class="stretchWidth" data-control-class="Edit" data-init-params="{noTagModify: true}"></div>
+            </td>
+            <td class="noStretch">
+                <div data-id="chb_bookmark" data-group-only data-control-class="Checkbox" data-init-params="{noTagModify: true}" class=""></div>
+            </td>
+        </tr>
+    </table>
+    <div class="hSeparatorTiny">
+        <hr>
+    </div>
+    <table data-id="section4" class="uiRowCenter">
+        <tr>
+            <td>
+                <label data-id="lbl_len" data-add-colon>Length</label><label data-id="val_len"></label>
+            </td>
+            <td>
+                <label data-id="lbl_fs" data-add-colon>File size</label><label data-id="val_fs"></label>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label data-id="lbl_lastplay" data-add-colon>Last played</label><label data-id="val_lastplay"></label>
+            </td>
+            <td>
+                <label data-id="lbl_bitrate" data-add-colon>Bitrate</label><label data-id="val_bitrate"></label>
+            </td>
+        </tr>
+        <tr data-id="detailsLine3">
+            <td>
+                <label data-id="lbl_freq" data-add-colon>Sample rate</label><label data-id="val_freq"></label>
+            </td>
+            <td>
+                <label data-id="lbl_vbr" data-add-colon>VBR</label><label data-id="val_vbr"></label>
+            </td>
+        </tr>
+        <tr data-id="detailsLine4">
+            <td>
+                <label data-id="lbl_channels" data-add-colon>Channels</label><label data-id="val_channels"></label>
+            </td>
+            <td>
+                <!-- <label data-id="lbl_norm">Leveling:</label> -->
+                <label data-id="lbl_added" data-add-colon>Added</label><label data-id="val_added"></label>
+            </td>
+        </tr>
+        <tr data-id="detailsLine5">
+            <td>
+                <label data-id="lbl_bps" data-add-colon>Bit depth</label><label data-id="val_bps"></label>
+            </td>
+            <td>
+                <label data-id="lbl_timestamp" data-add-colon>Timestamp</label><label data-id="val_timestamp"></label>
+            </td>
+        </tr>
+        <tr data-id="streamsLine" style="display:none">
+            <td colspan="2">
+                <div class="flex row">
+                    <label class="vSeparator" data-add-colon>Streams</label>
+                    <div data-id="streamList" class="fill" data-control-class="StringListView" style="height: 7em;"></div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>

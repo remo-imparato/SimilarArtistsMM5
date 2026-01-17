@@ -1,0 +1,17 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="innerDlg" data-id="tabLyricsContent">
+    <div class="flex column stretchWidth stretchHeight">
+        <div class="hSeparatorTiny">
+            <label data-id="lbl_lyrics" class="verticalCenter" data-add-colon>Lyrics</label>
+            <div data-id="chb_lyrics" data-group-only data-control-class="Checkbox"></div>
+            <div data-id="saveLyricsBtn" data-icon="save" data-tip="Save lyrics to tag" style="display: none" class="noPadding inline icon verticalCenter" data-control-class="ToolButton"></div>
+        </div>
+        <div class="flex dynamic row">
+            <textarea data-id="lyrics" class="dynamic noresize"></textarea>
+            <div data-control-class="Buttons" class="static" data-init-params="{orientation: 'vertical', samewidth: true}">
+                <div data-id="btnSearchLyrics" class="toolbutton" data-position='opposite' data-icon="search" data-tip="Lookup lyrics"></div>
+            </div>
+        </div>
+    </div>
+</div>
