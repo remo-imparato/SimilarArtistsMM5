@@ -957,23 +957,28 @@
 
 		// Add tracks to playlist. Some builds don't allow JS arrays to be passed into native methods.
 		if (playlist.addTracksAsync) {
-			let tracklist = null;
-			if (app.utils?.createTracklist) {
-				tracklist = app.utils.createTracklist(true);
-				(tracks || []).forEach((t) => {
-					if (t) {
-						tracklist.add(t);
-					}
-				});
-			}
-			if (tracklist) {
-				await playlist.addTracksAsync(tracklist);
-			} else if (playlist.addTrack) {
-				(tracks || []).forEach((t) => {
-					if (t) {
-						playlist.addTrack(t);
-					}
-				});
+			var createTracklist = false;
+			if (createTracklist) {
+				let tracklist = null;
+				if (app.utils?.createTracklist) {
+					tracklist = app.utils.createTracklist(true);
+					(tracks || []).forEach((t) => {
+						if (t) {
+							tracklist.add(t);
+						}
+					});
+				}
+				if (tracklist) {
+					await playlist.addTracksAsync(tracklist);
+				} else if (playlist.addTrack) {
+					(tracks || []).forEach((t) => {
+						if (t) {
+							playlist.addTrack(t);
+						}
+					});
+				}
+			} else {
+				await playlist.addTracksAsync(tracks);
 			}
 		} else if (playlist.addTracks) {
 			playlist.addTracks(tracks);
