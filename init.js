@@ -3,10 +3,11 @@
 localRequirejs('similarArtists'); // -> window.SimilarArtists
 //requirejs('actions');
 requirejs('helpers/debugTools');
-registerDebuggerEntryPoint.call(this, 'start');
+
+// Register debugger entry point on the SimilarArtists module
+registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
 
 (function () {
-
 
 	window.whenReady(() => {
 

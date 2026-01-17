@@ -1101,6 +1101,29 @@
 		return (str || '').replace(/'/g, "''");
 	}
 
+	/**
+	 * Add-on initialization.
+	 * Ensures the app API is available and optionally attaches auto-mode.
+	 */
+	function start() {
+
+		if (state.started)
+			return;
+		state.started = true;
+		log('Starting SimilarArtists addon...');
+
+		// Check for MM5 environment
+		if (typeof app === 'undefined') {
+			log('MediaMonkey 5 app API not found.');
+			return;
+		}
+
+		if (getSetting('OnPlay', false))
+			attachAuto();
+
+		log('SimilarArtists addon started successfully.');
+	}
+
 	// Export functions to the global scope
 	globalArg.SimilarArtists = {
 		start,
