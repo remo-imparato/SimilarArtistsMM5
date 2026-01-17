@@ -1,0 +1,3 @@
+Application name	Similar Artists MediaMonkey5/2024
+API key	7fd988db0c4e9d8b12aed27d0a91a932
+Shared secret	dc39723358aca1bb206d6274034a2ec1
