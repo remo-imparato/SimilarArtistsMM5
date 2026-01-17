@@ -708,7 +708,14 @@
 				log('SQL: ' + sql);
 				const list = app.db.getTracklist(sql, -1);
 				const tl = await list.whenLoaded();
-				return tracklistToArray(tl, limit);
+
+				const lstAry = [];
+				tl.forEach((t) => lstAry.push(t));
+
+				if (tl.length > 0)
+					return typeof limit === 'number' ? lstAry.slice(0, limit) : lstAry;
+				else
+					return [];
 			}
 
 			// Fallback to query-based search
