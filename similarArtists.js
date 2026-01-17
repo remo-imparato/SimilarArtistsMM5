@@ -513,119 +513,109 @@
 	}
 
 	async function findLibraryTracks(artistName, title, limit, opts = {}) {
-		const excludeTitles = parseListSetting('Exclude');
-		const excludeGenres = parseListSetting('Genre');
-		const ratingMin = intSetting('Rating');
-		const allowUnknown = boolSetting('Unknown');
-
 		try {
-			// Try to use SQL-based search first (more accurate like the VBS version)
-			if (app.db?.getTracklist) {
-				const conds = [];
-				const params = [];
+			if (!app?.db?.getTracklist) return [];
 
-				// Build the base query joining through ArtistsSongs for proper artist matching
-				let sql = 'SELECT DISTINCT Songs.* FROM Songs';
-				sql += ' INNER JOIN ArtistsSongs ON Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1';
-				sql += ' INNER JOIN Artists ON ArtistsSongs.IDArtist = Artists.ID';
+			const excludeTitles = parseListSetting('Exclude');
+			const excludeGenres = parseListSetting('Genre');
+			const ratingMin = intSetting('Rating');
+			const allowUnknown = boolSetting('Unknown');
 
-				if (opts.rank) {
-					sql += ' LEFT OUTER JOIN SimArtSongRank ON Songs.ID = SimArtSongRank.ID';
-				}
+			// Start building SQL
+			let sql = 'SELECT DISTINCT Songs.* FROM Songs';
+			sql += ' INNER JOIN ArtistsSongs ON Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1';
+			sql += ' INNER JOIN Artists ON ArtistsSongs.IDArtist = Artists.ID';
 
-				if (excludeGenres.length > 0) {
-					sql += ' LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong';
-				}
-
-				// Artist condition - handle prefixes
-				const prefixes = getIgnorePrefixes();
-				const artistConditions = [`Artists.Artist = '${artistName}'`];
-				params.push(artistName);
-
-				// Add alternate artist name forms for prefix handling
-				for (const prefix of prefixes) {
-					const prefixLower = prefix.toLowerCase();
-					const nameLower = artistName.toLowerCase();
-					if (nameLower.startsWith(prefixLower + ' ')) {
-						// "The Beatles" -> also search "Beatles, The"
-						const withoutPrefix = artistName.slice(prefix.length + 1);
-						artistConditions.push(`Artists.Artist = '${withoutPrefix}, ${prefix}'`);
-						params.push(`${withoutPrefix}, ${prefix}`);
-					}
-				}
-				conds.push(`(${artistConditions.join(' OR ')})`);
-
-				// Title condition with fuzzy matching
-				if (title) {
-					const strippedTitle = stripName(title);
-					if (strippedTitle) {
-						// Use SQL function-based strip matching like VBS version
-						conds.push(`REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(Songs.SongTitle),'&','AND'),'+','AND'),' N ','AND'),'''N''','AND'),' ',''),'.',''),',',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'"','') = '${strippedTitle}'`);
-						params.push(strippedTitle);
-					} else {
-						conds.push(`Songs.SongTitle LIKE '${title}'`);
-						params.push(title);
-					}
-				}
-
-				// Exclude titles
-				excludeTitles.forEach((t) => {
-					conds.push(`Songs.SongTitle NOT LIKE '%${t}%'`);
-					params.push(`%${t}%`);
-				});
-
-				// Exclude genres
-				if (excludeGenres.length > 0) {
-					const genreConditions = excludeGenres.map(() => `Genres.GenreName LIKE GenresSongs.IDGenre NOT IN (SELECT IDGenre FROM Genres WHERE '${excludeGenres})'`);
-					conds.push(`GenresSongs.IDGenre NOT IN (SELECT IDGenre FROM Genres WHERE ${genreConditions.join(' OR ')})`);
-					excludeGenres.forEach((g) => params.push(g));
-				}
-
-				// Rating conditions
-				if (ratingMin > 0) {
-					if (allowUnknown) {
-						conds.push(`(Songs.Rating < 0 OR Songs.Rating > ${ratingMin - 5})`);
-						params.push(ratingMin - 5);
-					} else {
-						conds.push(`(Songs.Rating > ${ratingMin - 5} AND Songs.Rating < 101)`);
-						params.push(ratingMin - 5);
-					}
-				} else if (!allowUnknown) {
-					conds.push('(Songs.Rating > -1 AND Songs.Rating < 101)');
-				}
-
-				const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
-
-				// Order by
-				const order = [];
-				if (opts.rank)
-					order.push('SimArtSongRank.Rank DESC');
-				if (opts.best)
-					order.push('Songs.Rating DESC');
-				order.push('Random()');
-				const orderBy = ` ORDER BY ${order.join(',')}`;
-
-				sql += where + ' GROUP BY Songs.SongTitle' + orderBy + ` LIMIT ${limit}`;
-
-				log('SQL: ' + sql);
-				const list = app.db.getTracklist(sql, -1);
-				const tl = await list.whenLoaded();
-
-				const lstAry = [];
-				tl.forEach((t) => lstAry.push(t));
-
-				if (tl.length > 0)
-					return typeof limit === 'number' ? lstAry.slice(0, limit) : lstAry;
-				else
-					return [];
+			if (opts.rank) {
+				sql += ' LEFT OUTER JOIN SimArtSongRank ON Songs.ID = SimArtSongRank.ID';
 			}
 
+			if (excludeGenres.length > 0) {
+				sql += ' LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong';
+			}
+
+			const whereParts = [];
+
+			// Artist matching (handle prefixes)
+			if (artistName) {
+				const artistConds = [];
+				artistConds.push(`Artists.Artist = '${escapeSql(artistName)}'`);
+
+				const prefixes = getIgnorePrefixes();
+				for (const prefix of prefixes) {
+					const prefixLower = prefix.toLowerCase();
+					const nameLower = (artistName || '').toLowerCase();
+					if (nameLower.startsWith(prefixLower + ' ')) {
+						const withoutPrefix = artistName.slice(prefix.length + 1);
+						artistConds.push(`Artists.Artist = '${escapeSql(`${withoutPrefix}, ${prefix}`)}'`);
+					}
+				}
+
+				whereParts.push(`(${artistConds.join(' OR ')})`);
+			}
+
+			// Title matching (fuzzy strip)
+			if (title) {
+				const strippedTitle = stripName(title);
+				if (strippedTitle) {
+					// Mirror the VBS/SQL strip routine used elsewhere
+					const stripExpr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(Songs.SongTitle),'&','AND'),'+','AND'),' N ','AND'),'''N''','AND'),' ',''),'.',''),',',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'\"','')";
+					whereParts.push(`${stripExpr} = '${escapeSql(strippedTitle)}'`);
+				} else {
+					whereParts.push(`Songs.SongTitle LIKE '%${escapeSql(title)}%'`);
+				}
+			}
+
+			// Exclude titles
+			excludeTitles.forEach((t) => {
+				whereParts.push(`Songs.SongTitle NOT LIKE '%${escapeSql(t)}%'`);
+			});
+
+			// Exclude genres via subquery
+			if (excludeGenres.length > 0) {
+				const genreConditions = excludeGenres.map((g) => `GenreName LIKE '%${escapeSql(g)}%'`).join(' OR ');
+				whereParts.push(`GenresSongs.IDGenre NOT IN (SELECT IDGenre FROM Genres WHERE ${genreConditions})`);
+			}
+
+			// Rating conditions
+			if (ratingMin > 0) {
+				if (allowUnknown) {
+					whereParts.push(`(Songs.Rating < 0 OR Songs.Rating > ${ratingMin - 5})`);
+				} else {
+					whereParts.push(`(Songs.Rating > ${ratingMin - 5} AND Songs.Rating < 101)`);
+				}
+			} else if (!allowUnknown) {
+				whereParts.push('(Songs.Rating > -1 AND Songs.Rating < 101)');
+			}
+
+			const whereClause = whereParts.length ? ` WHERE ${whereParts.join(' AND ')}` : '';
+
+			// Order by
+			const order = [];
+			if (opts.rank) order.push('SimArtSongRank.Rank DESC');
+			if (opts.best) order.push('Songs.Rating DESC');
+			order.push('Random()');
+			const orderBy = ` ORDER BY ${order.join(',')}`;
+
+			const limitClause = typeof limit === 'number' && limit > 0 ? ` LIMIT ${limit}` : '';
+
+			sql += whereClause + ' GROUP BY Songs.SongTitle' + orderBy + limitClause;
+
+			log('SQL: ' + sql);
+
+			// Execute and wait for tracklist to load
+			const tl = app.db.getTracklist(sql, -1);
+			await tl.whenLoaded();
+
+			// Convert to array and return up to requested limit
+			const arr = [];
+			tl.forEach((t) => arr.push(t));
+			return typeof limit === 'number' ? arr.slice(0, limit) : arr;
 		} catch (e) {
 			log('findLibraryTracks error: ' + e.toString());
+			return [];
 		}
-		return [];
 	}
-
 
 	function start() {
 		if (state.started) return;
