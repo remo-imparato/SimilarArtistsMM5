@@ -980,14 +980,21 @@
 			playlist.toArray().forEach((t) => existing.add(t.id || t.ID));
 		}
 
-		// CORRECT: Multiple API fallbacks
-		tracks.forEach((t) => {
+		// Add tracks one at a time to prevent deadlock
+		for (let i = 0; i < tracks.length; i++) {
+			const t = tracks[i];
 			const id = t?.id || t?.ID;
-			if (ignoreDupes && id && existing.has(id)) return;
-			if (playlist.addTrack) playlist.addTrack(t);           // Primary method
-			else if (playlist.addTracks) playlist.addTracks([t]); // Secondary method
-			else if (player.appendTracks) player.appendTracks([t]); // Tertiary fallback
-		});
+			if (ignoreDupes && id && existing.has(id)) continue;
+			
+			// Use synchronous methods - MM5 handles queueing internally
+			if (playlist.addTrack) {
+				playlist.addTrack(t);
+			} else if (playlist.addTracks) {
+				playlist.addTracks([t]);
+			} else if (player.appendTracks) {
+				player.appendTracks([t]);
+			}
+		}
 	}
 
 	// Creates (or finds) a playlist then adds tracks. Matches APIs used in this repo.
@@ -1049,31 +1056,28 @@
 
 		// Add tracks to playlist. Some builds don't allow JS arrays to be passed into native methods.
 		if (playlist.addTracksAsync) {
-
-			var createTracklist = true;
-			if (createTracklist) {
+			// Try to add via tracklist for better performance
+			if (app.utils?.createTracklist) {
 				let tracklist = null;
-				if (app.utils?.createTracklist) {
-					tracklist = app.utils.createTracklist(true);
-					(tracks || []).forEach((t) => {
-						if (t) {
-							tracklist.add(t);
-						}
-					});
-				}
-
-				var addTracks = false;
-				if (tracklist && addTracks) {
+				tracklist = app.utils.createTracklist(true);
+				(tracks || []).forEach((t) => {
+					if (t) {
+						tracklist.add(t);
+					}
+				});
+				
+				// Use addTracksAsync with the tracklist
+				if (tracklist && tracklist.count > 0) {
 					await playlist.addTracksAsync(tracklist);
-				} else if (playlist.addTrackAsync) {
-					(tracks || []).forEach((t) => {
-						if (t) {
-							playlist.addTrackAsync(t);
-						}
-					});
 				}
 			} else {
-				await playlist.addTracksAsync(tracks);
+				// Fallback: add tracks individually
+				for (let i = 0; i < (tracks || []).length; i++) {
+					const t = tracks[i];
+					if (t && playlist.addTrackAsync) {
+						await playlist.addTrackAsync(t);
+					}
+				}
 			}
 		} else if (playlist.addTracks) {
 			playlist.addTracks(tracks);
