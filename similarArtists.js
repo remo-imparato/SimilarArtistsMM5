@@ -1,17 +1,23 @@
 (function (globalArg) {
 	'use strict';
 
+	// Script namespace used for settings, menu/action ids, and logging.
 	const SCRIPT_ID = 'SimilarArtists';
+	// Menu/action identifiers (used by MediaMonkey add-on framework when wiring UI actions).
 	const MENU_RUN_ID = SCRIPT_ID + '.menu.run';
 	const MENU_AUTO_ID = SCRIPT_ID + '.menu.toggleAuto';
 	const ACTION_RUN_ID = SCRIPT_ID + '.run';
 	const ACTION_AUTO_ID = SCRIPT_ID + '.toggleAuto';
+	// Toolbar button identifiers.
 	const TOOLBAR_RUN_ID = 'sa-run';
 	const TOOLBAR_AUTO_ID = 'sa-auto';
+	// Settings sheet identifier (Options page integration).
 	const SETTINGS_SHEET_ID = SCRIPT_ID + '.settings';
+	// Last.fm API base endpoint.
 	const API_BASE = 'https://ws.audioscrobbler.com/2.0/';
 	//const API_KEY = app.settings.getValue('ApiKey', '') || '6cfe51c9bf7e77d6449e63ac0db2ac24';
 
+	// Default settings (kept commented-out here because this add-on reads defaults from the Options page).
 	const defaults = {
 		//	Toolbar: 1, // 0=none 1=run 2=auto 3=both
 		//	Confirm: true,
@@ -39,12 +45,20 @@
 		//	Genre: '',
 	};
 
+	// Runtime state for the add-on (not persisted).
 	const state = {
+		// Holds the listener subscription for automatic mode so it can be detached.
 		autoListen: null,
+		// Prevents start() from running more than once.
 		started: false,
+		// Used by long-running operations to support cancellation (UI not currently exposed).
 		cancelled: false,
 	};
 
+	/**
+	 * Write a prefixed line to console.
+	 * @param {string} txt Log message string.
+	 */
 	function log(txt) {
 		try {
 			console.log('SimilarArtists: ' + txt);
@@ -53,6 +67,11 @@
 		}
 	}
 
+	/**
+	 * Display a toast-like UI notification when possible, otherwise fallback to logging.
+	 * @param {string} text Toast message.
+	 * @param {object} options Toast options object (implementation-specific).
+	 */
 	function showToast(text, options = {}) {
 		try {
 			// Prefer uitools.toastMessage.show (newer API)
@@ -83,10 +102,20 @@
 	}
 
 	// At top of js/similarArtists.js (or in your existing file)
+	/**
+	 * Get the Last.fm API key from MediaMonkey settings with a built-in fallback.
+	 * @returns {string} API key.
+	 */
 	function getApiKey() {
 		return app?.settings?.getValue?.('SimilarArtists.ApiKey', '') || '6cfe51c9bf7e77d6449e63ac0db2ac24';
 	}
 
+	/**
+	 * Read a setting stored under this script's namespace.
+	 * @param {string} key Setting name.
+	 * @param {*} fallback Value returned when setting is missing.
+	 * @returns {*} Stored value or fallback.
+	 */
 	function getSetting(key, fallback) {
 		if (typeof app === 'undefined' || !app.getValue) return fallback;
 		let val = app.getValue(SCRIPT_ID, {});
@@ -99,25 +128,49 @@
 		return val;
 	}
 
+	/**
+	 * Persist a setting under this script's namespace.
+	 * @param {string} key Setting name.
+	 * @param {*} value Setting value.
+	 */
 	function setSetting(key, value) {
 		if (typeof app === 'undefined' || !app.setValue) return;
 		app.setValue(SCRIPT_ID, key, value);
 	}
 
+	/**
+	 * Get a setting coerced to string.
+	 * @param {string} key Setting key.
+	 * @returns {string}
+	 */
 	function stringSetting(key) {
 		return String(getSetting(key, defaults[key] || ''));
 	}
 
+	/**
+	 * Get a setting coerced to boolean.
+	 * @param {string} key Setting key.
+	 * @returns {boolean}
+	 */
 	function boolSetting(key) {
 		const val = getSetting(key, defaults[key]);
 		return Boolean(val);
 	}
 
+	/**
+	 * Get a setting coerced to integer.
+	 * @param {string} key Setting key.
+	 * @returns {number}
+	 */
 	function intSetting(key) {
 		const val = getSetting(key, defaults[key]);
 		return parseInt(val, 10) || 0;
 	}
 
+	/**
+	 * Initialize missing settings to defaults.
+	 * Note: currently returns early because defaults are defined in Options UI.
+	 */
 	function ensureDefaults() {
 		return;
 		Object.keys(defaults).forEach((k) => {
@@ -175,6 +228,9 @@
 		return result;
 	}
 
+	/**
+	 * Sync the auto-mode toggle UI (toolbar/action icon) with the stored OnPlay setting.
+	 */
 	function refreshToggleUI() {
 		try {
 			const iconNum = getSetting('OnPlay', false) ? 32 : 33;
@@ -190,6 +246,9 @@
 		}
 	}
 
+	/**
+	 * Toggle automatic mode (run addon when playback reaches end of playlist).
+	 */
 	function toggleAuto() {
 		const next = !getSetting('OnPlay', false);
 		setSetting('OnPlay', next);
@@ -198,6 +257,9 @@
 		else detachAuto();
 	}
 
+	/**
+	 * Attach playback listener for auto-mode.
+	 */
 	function attachAuto() {
 		detachAuto();
 		if (typeof app === 'undefined') return;
@@ -214,6 +276,9 @@
 		}
 	}
 
+	/**
+	 * Detach playback listener for auto-mode.
+	 */
 	function detachAuto() {
 		if (!state.autoListen) return;
 		try {
@@ -225,6 +290,9 @@
 		state.autoListen = null;
 	}
 
+	/**
+	 * Auto-mode handler that triggers when the playlist cursor approaches the end.
+	 */
 	async function handleAuto() {
 		try {
 			if (!getSetting('OnPlay', false)) return;
@@ -232,6 +300,7 @@
 			if (!player || !player.playlist) return;
 			const list = player.playlist;
 			if (typeof list.getCursor === 'function' && typeof list.count === 'function') {
+				// When only 1 track remains (cursor + 2 > count), pre-fill with more similar tracks.
 				if (list.getCursor() + 2 > list.count()) {
 					await runSimilarArtists(true);
 				}
@@ -241,6 +310,11 @@
 		}
 	}
 
+	/**
+	 * Parse a comma-separated string setting into an array.
+	 * @param {string} key Setting key.
+	 * @returns {string[]}
+	 */
 	function parseListSetting(key) {
 		return stringSetting(key)
 			.split(',')
@@ -248,10 +322,20 @@
 			.filter((s) => s.length > 0);
 	}
 
+	/**
+	 * Normalize an artist name.
+	 * @param {string} name Artist name.
+	 * @returns {string}
+	 */
 	function normalizeName(name) {
 		return (name || '').trim();
 	}
 
+	/**
+	 * Collect seed tracks either from current selection or current playing track.
+	 * The resulting list is used as starting points for Last.fm similarity queries.
+	 * @returns {{name: string, track?: object}[]}
+	 */
 	function collectSeedTracks() {
 		if (typeof app === 'undefined') return [];
 		let list = null;
@@ -267,12 +351,17 @@
 		const seeds = [];
 		(tracks || []).forEach((t) => {
 			if (t && t.artist) {
-				seeds.push({ name: normalizeName(t.artist), track: getTrackInfo(t) });
+				seeds.push({ name: normalizeName(t.artist), track: t });
 			}
 		});
 		return seeds;
 	}
 
+	/**
+	 * Map a MediaMonkey track object to a simplified structure used by enqueue/playlist creation.
+	 * @param {object} track MediaMonkey track.
+	 * @returns {object} Track info.
+	 */
 	var getTrackInfo = function (track) {
 		var trackInfo = {
 			id: track.id,
@@ -291,6 +380,11 @@
 		return trackInfo;
 	};
 
+	/**
+	 * De-dupe seed artists while applying blacklist and optional sort.
+	 * @param {{name: string, track?: object}[]} seeds Raw seed list.
+	 * @returns {{name: string, track?: object}[]} Unique, filtered seed list.
+	 */
 	function uniqueArtists(seeds) {
 		const blacklist = new Set(parseListSetting('Black').map((s) => s.toUpperCase()));
 		const set = new Set();
@@ -308,6 +402,15 @@
 		return res;
 	}
 
+	/**
+	 * Main entry point for generating similar-artist tracks.
+	 * Steps:
+	 * - Collect seed artists from selection / playing track
+	 * - Query Last.fm for similar artists & top tracks
+	 * - Match returned tracks against the local MediaMonkey library
+	 * - Enqueue into Now Playing or create/overwrite a playlist
+	 * @param {boolean} autoRun True when invoked by auto-mode (suppresses completion toast).
+	 */
 	async function runSimilarArtists(autoRun) {
 		state.cancelled = false;
 		//var prog = uitools.showProgressWindow();
@@ -319,6 +422,7 @@
 				return;
 			}
 
+			// Load config block stored under this script id.
 			var config = app.getValue(SCRIPT_ID, defaults);
 
 			//const progress = app.ui?.createProgress?.('SimilarArtists', seeds.length) || null;
@@ -336,16 +440,19 @@
 			const rankEnabled = config.Rank;// boolSetting('Rank');
 			const bestEnabled = config.Best;// boolSetting('Best');
 
+			// Rank mode uses a temporary table to prioritize tracks by Last.fm top-track position.
 			if (rankEnabled) {
 				await ensureRankTable();
 				await resetRankTable();
 			}
 
 			const allTracks = [];
+			// Optional: include currently selected/playing seed track (only for single seed).
 			if (includeSeedTrack && seeds.length === 1 && seeds[0].track) {
 				allTracks.push(seeds[0].track);
 			}
 
+			// Process each seed artist up to configured limit.
 			const seedSlice = seeds.slice(0, artistLimit || seeds.length);
 			for (let i = 0; i < seedSlice.length; i++) {
 				// Check for cancellation
@@ -368,6 +475,7 @@
 				const artistNameForApi = fixPrefixes(seed.name);
 				const similar = await fetchSimilarArtists(artistNameForApi);
 
+				// Build pool: seed artist (optional) + similar artists.
 				const artistPool = [];
 				if (includeSeedArtist) artistPool.push(seed.name);
 				similar.slice(0, artistLimit).forEach((a) => {
@@ -383,6 +491,7 @@
 					if (rankEnabled) {
 						await updateRankForArtist(artName);
 					}
+					// Fetch top track titles from Last.fm, then try to find local matches.
 					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
 					for (const title of titles) {
 						const matches = await findLibraryTracks(artName, title, 1, { rank: rankEnabled, best: bestEnabled });
@@ -400,8 +509,11 @@
 				return;
 			}
 
+			// Optional: randomize final track set.
 			if (randomise)
 				shuffle(allTracks);
+
+			// Either enqueue to Now Playing or create a playlist, depending on settings.
 			if (enqueue || overwriteMode.toLowerCase().indexOf("do not") > -1) {
 				await enqueueTracks(allTracks, ignoreDupes, clearNP);
 			} else {
@@ -432,6 +544,12 @@
 		}
 	}
 
+	/**
+	 * Ask user for confirmation before creating/overwriting a playlist.
+	 * @param {string} seedName Seed artist name used in playlist naming.
+	 * @param {*} overwriteMode Mode label (Create/Overwrite/Do not create).
+	 * @returns {Promise<boolean>} True when OK to proceed.
+	 */
 	async function confirmPlaylist(seedName, overwriteMode) {
 		const baseName = stringSetting('Name').replace('%', seedName || '');
 		const action = overwriteMode === 1 ? 'overwrite' : 'create';
@@ -439,6 +557,11 @@
 		return true;// res === 'yes';
 	}
 
+	/**
+	 * Fetch similar artists from Last.fm.
+	 * @param {string} artistName Main artist.
+	 * @returns {Promise<any[]>} Last.fm similar-artist array.
+	 */
 	async function fetchSimilarArtists(artistName) {
 		try {
 			if (!artistName) return [];
@@ -472,6 +595,12 @@
 		}
 	}
 
+	/**
+	 * Fetch top track titles for an artist from Last.fm.
+	 * @param {string} artistName Artist name.
+	 * @param {number} limit Max number of titles to return.
+	 * @returns {Promise<string[]>} Track titles.
+	 */
 	async function fetchTopTracks(artistName, limit) {
 		try {
 			if (!artistName) return [];
@@ -509,10 +638,24 @@
 		}
 	}
 
+	/**
+	 * Fetch a larger top-track list to build ranking weights.
+	 * @param {string} artistName Artist name.
+	 * @returns {Promise<string[]>}
+	 */
 	async function fetchTopTracksForRank(artistName) {
 		return fetchTopTracks(artistName, 100);
 	}
 
+	/**
+	 * Find matching tracks in the MediaMonkey library.
+	 * Uses SQL against the MediaMonkey DB to match by artist/title with optional filters.
+	 * @param {string} artistName Artist to match.
+	 * @param {string} title Track title to match.
+	 * @param {number} limit Max matches to return.
+	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (rank table / rating).
+	 * @returns {Promise<object[]>} Array of track objects.
+	 */
 	async function findLibraryTracks(artistName, title, limit, opts = {}) {
 		try {
 			if (!app?.db?.getTracklist) return [];
@@ -651,6 +794,12 @@
 		}
 	}
 
+	/**
+	 * Add tracks to the active playback list / queue.
+	 * @param {object[]} tracks Track objects.
+	 * @param {boolean} ignoreDupes Skip tracks that are already present.
+	 * @param {boolean} clearFirst Clear playlist/queue before adding.
+	 */
 	async function enqueueTracks(tracks, ignoreDupes, clearFirst) {
 		const player = app.player;
 		if (!player) return;
@@ -671,6 +820,14 @@
 	}
 
 	// Creates (or finds) a playlist then adds tracks. Matches APIs used in this repo.
+	/**
+	 * Create or locate a playlist, optionally overwrite its content, then add tracks.
+	 * @param {object[]} tracks Tracks to add.
+	 * @param {string} title Playlist title.
+	 * @param {string} parent Parent playlist path/title.
+	 * @param {boolean} overwrite Whether to clear existing playlist content.
+	 * @returns {Promise<object|null>} Playlist object.
+	 */
 	async function createPlaylistAndPopulate(tracks, title, parent, overwrite = false) {
 		if (!tracks || tracks.length === 0) return null;
 
@@ -687,6 +844,7 @@
 			if (app.playlists?.createPlaylist) {
 				playlist = app.playlists.createPlaylist(title, parent || '');
 			} else if (app.playlists?.root?.newPlaylist) {
+				// Old API path: newPlaylist() + set name + commitAsync() to persist.
 				playlist = app.playlists.root.newPlaylist();
 				if (playlist) {
 					playlist.name = title;
@@ -709,9 +867,28 @@
 
 		if (!playlist) return null;
 
-		// Add tracks (prefer bulk add)
+		// Add tracks (prefer bulk add) - some MM5/Cef builds don't allow passing JS arrays into native methods.
 		if (playlist.addTracksAsync) {
 			await playlist.addTracksAsync(tracks);
+			/*
+			let tracklist = null;
+			if (app.utils?.createTracklist) {
+				tracklist = app.utils.createTracklist(true);
+				(tracks || []).forEach((t) => {
+					if (t) {
+						tracklist.add(t);
+					}
+				});
+			}
+			if (tracklist) {
+				await playlist.addTracksAsync(tracklist);
+			} else if (playlist.addTrack) {
+				(tracks || []).forEach((t) => {
+					if (t) {
+						playlist.addTrack(t);
+					}
+				});
+			}*/
 		} else if (playlist.addTracks) {
 			playlist.addTracks(tracks);
 		} else if (playlist.addTrack) {
@@ -754,6 +931,7 @@
 			if (app.playlists?.createPlaylist) {
 				playlist = app.playlists.createPlaylist(name, stringSetting('Parent'));
 			} else if (app.playlists?.root?.newPlaylist) {
+				// Old API path: newPlaylist() + set name + commitAsync() to persist.
 				playlist = app.playlists.root.newPlaylist();
 				if (playlist) {
 					playlist.name = name;
@@ -768,6 +946,7 @@
 			return;
 		}
 
+		// If overwrite is selected, clear existing playlist content.
 		if (overwriteText.toLowerCase().indexOf('overwrite') > -1) {
 			if (playlist.clearTracksAsync) {
 				await playlist.clearTracksAsync();
@@ -776,8 +955,26 @@
 			}
 		}
 
+		// Add tracks to playlist. Some builds don't allow JS arrays to be passed into native methods.
 		if (playlist.addTracksAsync) {
-			await playlist.addTracksAsync(tracks);
+			let tracklist = null;
+			if (app.utils?.createTracklist) {
+				tracklist = app.utils.createTracklist(true);
+				(tracks || []).forEach((t) => {
+					if (t) {
+						tracklist.add(t);
+					}
+				});
+			}
+			if (tracklist) {
+				await playlist.addTracksAsync(tracklist);
+			} else if (playlist.addTrack) {
+				(tracks || []).forEach((t) => {
+					if (t) {
+						playlist.addTrack(t);
+					}
+				});
+			}
 		} else if (playlist.addTracks) {
 			playlist.addTracks(tracks);
 		} else if (playlist.addTrack) {
@@ -797,12 +994,21 @@
 		}
 	}
 
+	/**
+	 * Find an existing playlist by title.
+	 * @param {string} name Playlist title.
+	 * @returns {object|null}
+	 */
 	function findPlaylist(name) {
 		if (app.playlists?.findByTitle) return app.playlists.findByTitle(name);
 		if (app.playlists?.getByTitle) return app.playlists.getByTitle(name);
 		return null;
 	}
 
+	/**
+	 * In-place Fisher–Yates shuffle.
+	 * @param {any[]} arr Array to shuffle.
+	 */
 	function shuffle(arr) {
 		for (let i = arr.length - 1; i > 0; i -= 1) {
 			const j = Math.floor(Math.random() * (i + 1));
@@ -810,6 +1016,9 @@
 		}
 	}
 
+	/**
+	 * Ensure the ranking table exists (used when Rank mode is enabled).
+	 */
 	async function ensureRankTable() {
 		if (!app.db?.executeAsync) return;
 		try {
@@ -819,6 +1028,9 @@
 		}
 	}
 
+	/**
+	 * Clear existing rank weights for a new run.
+	 */
 	async function resetRankTable() {
 		if (!app.db?.executeAsync) return;
 		try {
@@ -828,6 +1040,11 @@
 		}
 	}
 
+	/**
+	 * Populate ranking weights for tracks by an artist based on Last.fm top track order.
+	 * Higher rank means higher priority in SQL ORDER BY.
+	 * @param {string} artistName Artist name.
+	 */
 	async function updateRankForArtist(artistName) {
 		if (!artistName || !app.db?.executeAsync) return;
 		const titles = await fetchTopTracksForRank(fixPrefixes(artistName));
@@ -841,6 +1058,11 @@
 		}
 	}
 
+	/**
+	 * Insert/update a rank value for a track id.
+	 * @param {number} id Track ID.
+	 * @param {number} rank Rank value.
+	 */
 	async function upsertRank(id, rank) {
 		if (!app.db?.executeAsync) return;
 		try {
@@ -851,6 +1073,10 @@
 	}
 
 
+	/**
+	 * Add-on initialization.
+	 * Ensures the app API is available and optionally attaches auto-mode.
+	 */
 	function start() {
 		if (state.started) return;
 		state.started = true;
@@ -944,6 +1170,11 @@
 		}
 	}
 
+	/**
+	 * Normalize a string for fuzzy title comparison in SQL.
+	 * @param {string} name Title.
+	 * @returns {string} Uppercased string with punctuation/whitespace removed.
+	 */
 	function stripName(name) {
 		if (!name) return '';
 		let result = name.toUpperCase();
