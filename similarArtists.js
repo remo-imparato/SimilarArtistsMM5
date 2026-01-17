@@ -466,6 +466,25 @@
 	}
 
 	/**
+	 * Global progress task reference for use across functions
+	 */
+	let globalProgressTask = null;
+
+	/**
+	 * Update progress bar with informative message
+	 * @param {string} message Progress message to display
+	 * @param {number} value Progress value (0-1)
+	 */
+	function updateProgress(message, value) {
+		if (globalProgressTask) {
+			globalProgressTask.text = message;
+			if (value !== undefined) {
+				globalProgressTask.value = value;
+			}
+		}
+	}
+
+	/**
 	 * Main entry point for generating similar-artist tracks.
 	 * Steps:
 	 * - Collect seed artists from selection / playing track
@@ -495,7 +514,8 @@
 			let progressTask = null;
 			if (app.backgroundTasks?.createNew) {
 				progressTask = app.backgroundTasks.createNew();
-				progressTask.leadingText = 'SimilarArtists: Initializing...';
+				progressTask.leadingText = 'SimilarArtists: Processing playlist...';
+				globalProgressTask = progressTask;
 				log('SimilarArtists: Progress task created');
 			}
 
@@ -536,11 +556,9 @@
 			for (let i = 0; i < seedSlice.length; i++) {
 				const seed = seedSlice[i];
 
-				// Update progress task with current status
-				if (progressTask) {
-					progressTask.text = `Processing ${seed.name} (${i + 1}/${seedSlice.length})`;
-					progressTask.value = (i + 1) / seedSlice.length;
-				}
+				// Update progress: Fetching similar artists
+				const seedProgress = (i + 1) / seedSlice.length;
+				updateProgress(`Fetching similar artists for "${seed.name}" (${i + 1}/${seedSlice.length})`, seedProgress * 0.3);
 
 				// Use fixPrefixes for the API call
 				const artistNameForApi = fixPrefixes(seed.name);
@@ -556,10 +574,14 @@
 						artistPool.push(a.name);
 				});
 
+				updateProgress(`Found ${similar.length} similar artist(s) for "${seed.name}", querying tracks...`, seedProgress * 0.3);
+
 				for (const artName of artistPool) {
 					// Populate rank map: fetch top tracks for this artist and score them
 					if (rankEnabled) {
+						updateProgress(`Ranking: Fetching top 100 tracks for "${artName}"...`, seedProgress * 0.3);
 						const titles = await fetchTopTracksForRank(fixPrefixes(artName));
+						updateProgress(`Ranking: Scoring ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
 						for (let rankIdx = 0; rankIdx < titles.length; rankIdx++) {
 							const title = titles[rankIdx];
 							// Score: higher rank for earlier positions (101 = 1st, 1 = 100th)
@@ -577,7 +599,9 @@
 					}
 
 					// Fetch top track titles from Last.fm, then try to find local matches.
+					updateProgress(`Fetching top ${tracksPerArtist} tracks for "${artName}" from Last.fm...`, seedProgress * 0.3);
 					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
+					updateProgress(`Searching library for ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
 					for (const title of titles) {
 						const matches = await findLibraryTracks(artName, title, 1, { rank: false, best: false });
 						matches.forEach((m) => allTracks.push(m));
@@ -591,11 +615,15 @@
 			if (!allTracks.length) {
 				showToast('SimilarArtists: No matching tracks found in library.');
 				if (progressTask) progressTask.terminate();
+				globalProgressTask = null;
 				return;
 			}
 
+			updateProgress(`Found ${allTracks.length} total tracks. Processing...`, 0.6);
+
 			// Sort by rank score if enabled (before randomizing)
 			if (rankEnabled && trackRankMap.size > 0) {
+				updateProgress(`Ranking: Sorting ${allTracks.length} tracks by popularity score...`, 0.7);
 				allTracks.sort((a, b) => {
 					const aScore = trackRankMap.get(a.id || a.ID) || 0;
 					const bScore = trackRankMap.get(b.id || b.ID) || 0;
@@ -604,19 +632,25 @@
 			}
 
 			// Optional: randomize final track set.
-			if (randomise)
+			if (randomise) {
+				updateProgress(`Randomizing ${allTracks.length} tracks...`, 0.75);
 				shuffle(allTracks);
+			}
 
 			// Either enqueue to Now Playing or create a playlist, depending on settings.
 			// In auto-mode, always enqueue to Now Playing
 			if (enqueue || autoRun || overwriteMode.toLowerCase().indexOf("do not") > -1) {
+				updateProgress(`Adding ${allTracks.length} tracks to Now Playing...`, 0.8);
 				await enqueueTracks(allTracks, ignoreDupes, clearNP);
 				log(`SimilarArtists: Enqueued ${allTracks.length} track(s) to Now Playing`);
+				updateProgress(`Successfully added ${allTracks.length} tracks to Now Playing!`, 1.0);
 			} else {
 				const seedName = seeds[0]?.name || 'Similar Artists';
 				const selectedPlaylist = !confirm ? null : (await confirmPlaylist(seedName, overwriteMode));
 				if (selectedPlaylist || !confirm) {
+					updateProgress(`Creating playlist "${selectedPlaylist?.name || seedName}" with ${allTracks.length} tracks...`, 0.85);
 					await createPlaylist(allTracks, seedName, overwriteMode, selectedPlaylist);
+					updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
 				} else {
 					log('SimilarArtists: User cancelled playlist creation.');
 				}
@@ -634,11 +668,18 @@
 
 		} catch (e) {
 			log(e.msg || e.toString());
+			updateProgress(`Error: ${e.toString()}`, 1.0);
 			showToast('SimilarArtists: An error occurred - see log for details.');
 		} finally {
 			// Cleanup progress task
-			if (progressTask) {
-				progressTask.terminate();
+			if (globalProgressTask) {
+				// Keep progress visible for 2 seconds after completion
+				setTimeout(() => {
+					if (globalProgressTask) {
+						globalProgressTask.terminate();
+						globalProgressTask = null;
+					}
+				}, 2000);
 			}
 		}
 	}
@@ -752,12 +793,14 @@
 				params.set('limit', String(limitVal));
 
 			const url = API_BASE + '?' + params.toString();
+			updateProgress(`Querying Last.fm API: getSimilar for "${artistName}"...`);
 			log('fetchSimilarArtists: querying ' + url);
-			//call to last fm api
+			
 			const res = await fetch(url);
 
 			if (!res || !res.ok) {
 				log(`fetchSimilarArtists: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+				updateProgress(`Failed to fetch similar artists for "${artistName}" (HTTP ${res?.status})`);
 				return [];
 			}
 			let data;
@@ -765,18 +808,22 @@
 				data = await res.json();
 			} catch (e) {
 				console.warn('fetchSimilarArtists: invalid JSON response: ' + e.toString());
+				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 				return [];
 			}
 			if (data?.error) {
 				console.warn('fetchSimilarArtists: API error: ' + (data.message || data.error));
+				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 				return [];
 			}
 			const artists = data?.similarartists?.artist || [];
 			if (!Array.isArray(artists) && artists)
 				return [artists];
+			log(`fetchSimilarArtists: Retrieved ${artists.length} similar artists for "${artistName}"`);
 			return artists;
 		} catch (e) {
 			log(e.toString());
+			updateProgress(`Error fetching similar artists: ${e.toString()}`);
 			return [];
 		}
 	}
@@ -798,11 +845,13 @@
 				params.set('limit', String(lim));
 
 			const url = API_BASE + '?' + params.toString();
+			updateProgress(`Querying Last.fm API: getTopTracks for "${artistName}" (limit: ${lim || 'default'})...`);
 			log('fetchTopTracks: querying ' + url);
 
 			const res = await fetch(url);
 			if (!res || !res.ok) {
 				log(`fetchTopTracks: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+				updateProgress(`Failed to fetch top tracks for "${artistName}" (HTTP ${res?.status})`);
 				return [];
 			}
 			let data;
@@ -810,10 +859,12 @@
 				data = await res.json();
 			} catch (e) {
 				console.warn('fetchTopTracks: invalid JSON response: ' + e.toString());
+				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 				return [];
 			}
 			if (data?.error) {
 				console.warn('fetchTopTracks: API error: ' + (data.message || data.error));
+				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 				return [];
 			}
 			let tracks = data?.toptracks?.track || [];
@@ -823,14 +874,16 @@
 				if (t && (t.name || t.title))
 					titles.push(t.name || t.title);
 			});
+			log(`fetchTopTracks: Retrieved ${titles.length} top tracks for "${artistName}"`);
 			return typeof lim === 'number' ? titles.slice(0, lim) : titles;
 		} catch (e) {
 			log(e.toString());
+			updateProgress(`Error fetching top tracks: ${e.toString()}`);
 			return [];
 		}
 	}
 
-	/**
+	 /**
 	 * In-place Fisher–Yates shuffle.
 	 * @param {any[]} arr Array to shuffle.
 	 */
@@ -973,7 +1026,8 @@
 				sql += ` LIMIT ${limit}`;
 			}
 
-			// Execute query
+			// Execute query with progress reporting
+			updateProgress(`Querying library for "${title}" by "${artistName}"...`);
 			const tl = app?.db?.getTracklist(sql, -1);
 			
 			// CRITICAL: Disable auto-update and notifications to prevent UI flooding during iteration
@@ -1002,10 +1056,15 @@
 				tl.dontNotify = notifyWasDisabled;
 			}
 
+			if (arr.length > 0) {
+				log(`findLibraryTracks: Found ${arr.length} match(es) for "${title}" by "${artistName}"`);
+			}
+
 			return typeof limit === 'number' ? arr.slice(0, limit) : arr;
 
 		} catch (e) {
 			log('findLibraryTracks error: ' + e.toString());
+			updateProgress(`Database lookup error: ${e.toString()}`);
 			return [];
 		}
 	}
