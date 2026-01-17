@@ -215,15 +215,20 @@
 	function toggleAuto() {
 		const next = !getSetting('OnPlay', false);
 		setSetting('OnPlay', next);
-		//refreshToggleUI();
-		if (next)
+		// Update UI icon to reflect new state
+		refreshToggleUI();
+		if (next) {
 			attachAuto();
-		else
+			log('SimilarArtists: Auto-mode enabled');
+		} else {
 			detachAuto();
+			log('SimilarArtists: Auto-mode disabled');
+		}
 	}
 
 	/**
 	 * Attach playback listener for auto-mode.
+	 * Listens for 'trackChanged' event to detect when approaching end of playlist.
 	 */
 	function attachAuto() {
 		detachAuto();
@@ -232,14 +237,27 @@
 		const player = app.player;
 		if (!player)
 			return;
+
+		// Use app.listen for proper MM5 event handling
 		if (app.listen) {
 			state.autoListen = app.listen(player, 'playbackState', (newState) => {
-				if (newState === 'trackChanged') handleAuto();
+				log(`SimilarArtists: playbackState changed to '${newState}'`);
+				if (newState === 'trackChanged') {
+					handleAuto();
+				}
 			});
+			log('SimilarArtists: Auto-mode listener attached (using app.listen)');
 		} else if (player.on) {
+			// Fallback for older API
 			state.autoListen = player.on('playbackState', (newState) => {
-				if (newState === 'trackChanged') handleAuto();
+				log(`SimilarArtists: playbackState changed to '${newState}'`);
+				if (newState === 'trackChanged') {
+					handleAuto();
+				}
 			});
+			log('SimilarArtists: Auto-mode listener attached (using player.on)');
+		} else {
+			log('SimilarArtists: No event listener API available');
 		}
 	}
 
@@ -250,33 +268,55 @@
 		if (!state.autoListen)
 			return;
 		try {
-			if (app.unlisten) app.unlisten(state.autoListen);
-			else if (state.autoListen.off) state.autoListen.off();
+			if (app.unlisten) {
+				app.unlisten(state.autoListen);
+				log('SimilarArtists: Auto-mode listener detached (using app.unlisten)');
+			} else if (state.autoListen.off) {
+				state.autoListen.off();
+				log('SimilarArtists: Auto-mode listener detached (using listener.off)');
+			}
 		} catch (e) {
-			log(e.toString());
+			log('SimilarArtists: Error detaching auto-mode listener: ' + e.toString());
 		}
 		state.autoListen = null;
 	}
 
 	/**
-	 * Auto-mode handler that triggers when the playlist cursor approaches the end.
+	 * Auto-mode handler that triggers when track changes near end of playlist.
+	 * Generates similar artist tracks and enqueues them into Now Playing.
 	 */
 	async function handleAuto() {
 		try {
-			if (!getSetting('OnPlay', false))
+			if (!getSetting('OnPlay', false)) {
+				log('SimilarArtists: Auto-mode disabled, skipping handleAuto');
 				return;
+			}
+
 			const player = app.player;
-			if (!player || !player.playlist)
+			if (!player || !player.playlist) {
+				log('SimilarArtists: Player or playlist not available');
 				return;
+			}
+
 			const list = player.playlist;
 			if (typeof list.getCursor === 'function' && typeof list.count === 'function') {
-				// When only 1 track remains (cursor + 2 > count), pre-fill with more similar tracks.
-				if (list.getCursor() + 2 > list.count()) {
+				const cursor = list.getCursor();
+				const count = list.count();
+				const remainingTracks = count - cursor;
+
+				log(`SimilarArtists: Playlist position: ${cursor}/${count} (${remainingTracks} tracks remaining)`);
+
+				// When fewer than 3 tracks remain, trigger auto-queue
+				if (remainingTracks < 3) {
+					log('SimilarArtists: Near end of playlist, triggering auto-queue');
 					await runSimilarArtists(true);
+					return;
 				}
 			}
+
+			log('SimilarArtists: Not near end of playlist, skipping auto-queue');
 		} catch (e) {
-			log(e.toString());
+			log('SimilarArtists: Error in handleAuto: ' + e.toString());
 		}
 	}
 
@@ -403,7 +443,7 @@
 	 * - Query Last.fm for similar artists & top tracks
 	 * - Match returned tracks against the local MediaMonkey library
 	 * - Enqueue into Now Playing or create/overwrite a playlist
-	 * @param {boolean} autoRun True when invoked by auto-mode (suppresses completion toast).
+	 * @param {boolean} autoRun True when invoked by auto-mode (suppresses completion toast, forces enqueue).
 	 */
 	async function runSimilarArtists(autoRun) {
 		state.cancelled = false;
@@ -431,13 +471,19 @@
 			const includeSeedArtist = boolSetting('Seed');
 			const includeSeedTrack = boolSetting('Seed2');
 			const randomise = boolSetting('Random');
-			const enqueue = boolSetting('Enqueue');
+			let enqueue = boolSetting('Enqueue');
 			const ignoreDupes = boolSetting('Ignore');
 			const clearNP = boolSetting('ClearNP');
 			const overwriteMode = config.Overwrite;
 			const confirm = boolSetting('Confirm');
 			const rankEnabled = boolSetting('Rank');
 			const bestEnabled = boolSetting('Best');
+
+			// In auto-mode, force enqueue and suppress UI
+			if (autoRun) {
+				enqueue = true;
+				log('SimilarArtists: Auto-mode enabled - forcing enqueue to Now Playing');
+			}
 
 			// Log settings for debugging
 			log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}`);
@@ -527,8 +573,10 @@
 				shuffle(allTracks);
 
 			// Either enqueue to Now Playing or create a playlist, depending on settings.
-			if (enqueue || overwriteMode.toLowerCase().indexOf("do not") > -1) {
+			// In auto-mode, always enqueue to Now Playing
+			if (enqueue || autoRun || overwriteMode.toLowerCase().indexOf("do not") > -1) {
 				await enqueueTracks(allTracks, ignoreDupes, clearNP);
+				log(`SimilarArtists: Enqueued ${allTracks.length} track(s) to Now Playing`);
 			} else {
 				const seedName = seeds[0]?.name || 'Similar Artists';
 				const selectedPlaylist = !confirm ? null : (await confirmPlaylist(seedName, overwriteMode));
@@ -539,7 +587,7 @@
 				}
 			}
 
-			// Show completion message if confirm is enabled
+			// Show completion message if confirm is enabled (suppress in auto-mode)
 			if (confirm && !autoRun) {
 				const count = seedSlice.length;
 				if (count === 1) {
