@@ -1183,119 +1183,139 @@
 			}
 		}
 
+		// Create new playlist if not found
 		if (!playlist) {
-			if (app.playlists?.createPlaylist) {
-				playlist = app.playlists.createPlaylist(name, stringSetting('Parent'));
-				log(`SimilarArtists: Created playlist: ${name}`);
-			} else if (app.playlists?.root?.newPlaylist) {
-				// Old API path: newPlaylist() + set name + commitAsync() to persist.
-				playlist = app.playlists.root.newPlaylist();
-				if (playlist) {
-					playlist.name = name;
-					if (playlist.commitAsync) {
-						await playlist.commitAsync();
-						log(`SimilarArtists: Created playlist (legacy API): ${name}`);
-					}
+			try {
+				const parentName = stringSetting('Parent');
+				
+				// Try modern async API first
+				if (app.playlists?.createPlaylistAsync && typeof app.playlists.createPlaylistAsync === 'function') {
+					playlist = await app.playlists.createPlaylistAsync(name, parentName);
+					log(`SimilarArtists: Created playlist (async API): ${name}`);
 				}
+				// Try synchronous createPlaylist API
+				else if (app.playlists?.createPlaylist && typeof app.playlists.createPlaylist === 'function') {
+					playlist = app.playlists.createPlaylist(name, parentName);
+					log(`SimilarArtists: Created playlist (sync API): ${name}`);
+				}
+				// Fallback to legacy newPlaylist API
+				else if (app.playlists?.root?.newPlaylist && typeof app.playlists.root.newPlaylist === 'function') {
+					playlist = app.playlists.root.newPlaylist();
+					if (playlist) {
+						playlist.name = name;
+						// Set parent if available in legacy API
+						if (parentName && playlist.parent) {
+							const parentPL = findPlaylist(parentName);
+							if (parentPL) {
+								playlist.parent = parentPL;
+							}
+						}
+						// Persist the new playlist
+						if (playlist.commitAsync && typeof playlist.commitAsync === 'function') {
+							await playlist.commitAsync();
+							log(`SimilarArtists: Created playlist (legacy async API): ${name}`);
+						} else if (playlist.commit && typeof playlist.commit === 'function') {
+							playlist.commit();
+							log(`SimilarArtists: Created playlist (legacy sync API): ${name}`);
+						}
+					}
+				} else {
+					log('SimilarArtists: No playlist creation API available');
+					return;
+				}
+			} catch (e) {
+				log(`SimilarArtists: Error creating playlist: ${e.toString()}`);
+				return;
 			}
 		}
 
 		if (!playlist) {
 			log('SimilarArtists: Failed to create or find playlist');
 			return;
-		} else {
-			log(`SimilarArtists: Using playlist '${name}' (ID: ${playlist.id || playlist.ID})`);
 		}
 
-		// If overwrite is selected, clear existing playlist content.
+		log(`SimilarArtists: Using playlist '${name}' (ID: ${playlist.id || playlist.ID})`);
+
+		// If overwrite is selected, clear existing playlist content
 		if (overwriteText.toLowerCase().indexOf('overwrite') > -1) {
-			if (playlist.clearTracksAsync) {
-				await playlist.clearTracksAsync();
-			} else if (playlist.clear) {
-				playlist.clear();
-			}
-		}
-
-		// Add tracks to playlist. Some builds don't allow JS arrays to be passed into native methods.
-		if (playlist.addTracksAsync && app.utils?.createTracklist) {
-			// OPTIMIZED: Create tracklist, disable notifications, add all at once
-			// This pattern matches MM5's autoDJ.js approach for maximum performance
 			try {
-				let tracklist = app.utils.createTracklist(false); // false = don't set loaded flag yet
-				
-				// Disable notifications during bulk add to prevent UI flooding
-				tracklist.dontNotify = true;
-				tracklist.autoUpdateDisabled = true;
-				
-				// Batch add all tracks to tracklist efficiently
-				(tracks || []).forEach((t) => {
-					if (t) {
-						tracklist.add(t);
-					}
-				});
-				
-				// Single async operation: add entire tracklist to playlist
-				if (tracklist && tracklist.count > 0) {
-					await playlist.addTracksAsync(tracklist);
-					log(`SimilarArtists: Added ${tracklist.count} tracks to playlist via addTracksAsync`);
+				if (playlist.clearTracksAsync && typeof playlist.clearTracksAsync === 'function') {
+					await playlist.clearTracksAsync();
+					log('SimilarArtists: Cleared existing playlist tracks');
+				} else if (playlist.clear && typeof playlist.clear === 'function') {
+					playlist.clear();
+					log('SimilarArtists: Cleared existing playlist tracks (sync)');
 				}
 			} catch (e) {
-				log(`SimilarArtists: Error in addTracksAsync: ${e.toString()}, attempting fallback`);
-				// Fallback: try addTracks synchronously
-				if (playlist.addTracks && typeof playlist.addTracks === 'function') {
-					playlist.addTracks(tracks);
-					log(`SimilarArtists: Added ${tracks.length} tracks to playlist via addTracks`);
-				}
+				log(`SimilarArtists: Error clearing playlist: ${e.toString()}`);
 			}
-		} else if (playlist.addTracks && typeof playlist.addTracks === 'function') {
-			// Synchronous method: pass array directly
-			playlist.addTracks(tracks);
-			log(`SimilarArtists: Added ${tracks.length} tracks to playlist via addTracks`);
-		} else if (playlist.addTrack && typeof playlist.addTrack === 'function') {
-			// Single track addition: slowest method, use as last resort
-			log(`SimilarArtists: Adding ${tracks.length} tracks individually via addTrack`);
-			let addedCount = 0;
-			for (const t of tracks) {
-				if (t) {
-					playlist.addTrack(t);
-					addedCount++;
-				}
-			}
-			log(`SimilarArtists: Added ${addedCount} tracks to playlist via addTrack`);
-		} else {
-			log('SimilarArtists: No suitable method found to add tracks to playlist');
-			return;
 		}
 
-		// navigation: 1 navigate to playlist, 2 navigate to now playing
-		const nav = getSetting('Navigate');
+		// Add tracks to playlist using best available method
+		if (!tracks || tracks.length === 0) {
+			log('SimilarArtists: No tracks to add to playlist');
+		} else {
+			try {
+				// Primary: Try async batch add with tracklist (modern MM5 pattern)
+				if (playlist.addTracksAsync && app.utils?.createTracklist) {
+					const tracklist = app.utils.createTracklist(false);
+					tracklist.dontNotify = true;
+					tracklist.autoUpdateDisabled = true;
+
+					(tracks || []).forEach((t) => {
+						if (t) tracklist.add(t);
+					});
+
+					if (tracklist.count > 0) {
+						await playlist.addTracksAsync(tracklist);
+						log(`SimilarArtists: Added ${tracklist.count} tracks to playlist (async batch)`);
+					}
+				} else if (playlist.addTracks && typeof playlist.addTracks === 'function') {
+					// Secondary: Try synchronous batch add
+					playlist.addTracks(tracks);
+					log(`SimilarArtists: Added ${tracks.length} tracks to playlist (sync batch)`);
+				} else if (playlist.addTrack && typeof playlist.addTrack === 'function') {
+					// Tertiary: Add tracks individually (slowest, most compatible)
+					let addedCount = 0;
+					for (const t of (tracks || [])) {
+						if (t) {
+							playlist.addTrack(t);
+							addedCount++;
+						}
+					}
+					log(`SimilarArtists: Added ${addedCount} tracks to playlist (individual)`);
+				} else {
+					log('SimilarArtists: No suitable method found to add tracks to playlist');
+				}
+			} catch (e) {
+				log(`SimilarArtists: Error adding tracks to playlist: ${e.toString()}`);
+			}
+		}
+
+		// Handle navigation based on user settings
 		try {
+			const nav = getSetting('Navigate');
 			if (typeof window !== 'undefined' && window.navigationHandlers) {
-				// Check nav setting and navigate accordingly
 				const navStr = String(nav || '').toLowerCase();
-				if (navStr.indexOf('new') > -1 && playlist.id) {
+				if (navStr.indexOf('new') > -1 && (playlist.id || playlist.ID)) {
 					// Navigate to the newly created playlist
-					log(`SimilarArtists: Navigating to playlist ID: ${playlist.id}`);
-					if (window.navigationHandlers.playlist && window.navigationHandlers.playlist.navigate) {
-						window.navigationHandlers.playlist.navigate(playlist.id);
-					} else {
-						log('SimilarArtists: navigationHandlers.playlist not available');
+					log(`SimilarArtists: Navigating to playlist ID: ${playlist.id || playlist.ID}`);
+					if (window.navigationHandlers.playlist?.navigate) {
+						window.navigationHandlers.playlist.navigate(playlist);
 					}
 				} else if (navStr.indexOf('now') > -1) {
 					// Navigate to Now Playing
 					log('SimilarArtists: Navigating to Now Playing');
-					if (window.navigationHandlers.nowPlaying && window.navigationHandlers.nowPlaying.navigate) {
+					if (window.navigationHandlers.nowPlaying?.navigate) {
 						window.navigationHandlers.nowPlaying.navigate();
-					} else {
-						log('SimilarArtists: navigationHandlers.nowPlaying not available');
 					}
 				}
-			} else {
-				log('SimilarArtists: navigationHandlers not available in window context');
 			}
 		} catch (e) {
-			log('SimilarArtists: Navigation error: ' + e.toString());
+			log(`SimilarArtists: Navigation error: ${e.toString()}`);
 		}
+
+		return playlist;
 	}
 
 	/**
