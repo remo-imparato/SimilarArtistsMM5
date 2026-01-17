@@ -415,11 +415,8 @@
 			const rankEnabled = config.Rank;// boolSetting('Rank');
 			const bestEnabled = config.Best;// boolSetting('Best');
 
-			// Rank mode uses a temporary table to prioritize tracks by Last.fm top-track position.
-			if (rankEnabled) {
-				await ensureRankTable();
-				await resetRankTable();
-			}
+			// In-memory rank map: track ID -> rank score (used if rankEnabled)
+			const trackRankMap = rankEnabled ? new Map() : null;
 
 			const allTracks = [];
 			// Optional: include currently selected/playing seed track (only for single seed).
@@ -463,13 +460,29 @@
 					//	break;
 					//}
 
+					// Populate rank map: fetch top tracks for this artist and score them
 					if (rankEnabled) {
-						await updateRankForArtist(artName);
+						const titles = await fetchTopTracksForRank(fixPrefixes(artName));
+						for (let rankIdx = 0; rankIdx < titles.length; rankIdx++) {
+							const title = titles[rankIdx];
+							// Score: higher rank for earlier positions (101 = 1st, 1 = 100th)
+							const rankScore = 101 - (rankIdx + 1);
+							const matches = await findLibraryTracks(artName, title, 5, { rank: false, best: false });
+							for (const m of matches) {
+								const trackId = m.id || m.ID;
+								// Keep highest score if track appears in multiple artists' top tracks
+								const currentScore = trackRankMap.get(trackId) || 0;
+								if (rankScore > currentScore) {
+									trackRankMap.set(trackId, rankScore);
+								}
+							}
+						}
 					}
+
 					// Fetch top track titles from Last.fm, then try to find local matches.
 					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
 					for (const title of titles) {
-						const matches = await findLibraryTracks(artName, title, 1, { rank: rankEnabled, best: bestEnabled });
+						const matches = await findLibraryTracks(artName, title, 1, { rank: false, best: false });
 						matches.forEach((m) => allTracks.push(m));
 						if (allTracks.length >= totalLimit) break;
 					}
@@ -482,6 +495,15 @@
 				//if (progress?.close) progress.close();
 				showToast('SimilarArtists: No matching tracks found in library.');
 				return;
+			}
+
+			// Sort by rank score if enabled (before randomizing)
+			if (rankEnabled && trackRankMap.size > 0) {
+				allTracks.sort((a, b) => {
+					const aScore = trackRankMap.get(a.id || a.ID) || 0;
+					const bScore = trackRankMap.get(b.id || b.ID) || 0;
+					return bScore - aScore; // Higher score first
+				});
 			}
 
 			// Optional: randomize final track set.
@@ -669,7 +691,20 @@
 	}
 
 	/**
+	 * In-place Fisher–Yates shuffle.
+	 * @param {any[]} arr Array to shuffle.
+	 */
+	function shuffle(arr) {
+		if (!arr || arr.length <= 1) return;
+		for (let i = arr.length - 1; i > 0; --i) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[arr[i], arr[j]] = [arr[j], arr[i]];
+		}
+	}
+
+	/**
 	 * Fetch a larger top-track list to build ranking weights.
+	 * Used in rank mode to score tracks by their position in the artist's top tracks.
 	 * @param {string} artistName Artist name.
 	 * @returns {Promise<string[]>}
 	 */
@@ -683,7 +718,7 @@
 	 * @param {string} artistName Artist to match.
 	 * @param {string} title Track title to match.
 	 * @param {number} limit Max matches to return.
-	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (rank table / rating).
+	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (not used; ranking handled in-memory).
 	 * @returns {Promise<object[]>} Array of track objects.
 	 */
 	async function findLibraryTracks(artistName, title, limit, opts = {}) {
@@ -698,7 +733,7 @@
 
 			// Base SELECT — no DISTINCT needed because Songs.ID is unique
 			let sql = `
-			SELECT Songs.*${opts.rank ? ', SimArtSongRank.Rank AS RankValue' : ''}
+			SELECT Songs.*
 			FROM Songs
 			INNER JOIN ArtistsSongs 
 				ON Songs.ID = ArtistsSongs.IDSong 
@@ -706,13 +741,6 @@
 			INNER JOIN Artists 
 				ON ArtistsSongs.IDArtist = Artists.ID
 		`;
-
-			if (opts.rank) {
-				sql += `
-				LEFT OUTER JOIN SimArtSongRank 
-					ON Songs.ID = SimArtSongRank.ID
-			`;
-			}
 
 			if (excludeGenres.length > 0) {
 				sql += `
@@ -795,15 +823,8 @@
 				sql += ` WHERE ${whereParts.join(' AND ')}`;
 			}
 
-			// ORDER BY
-			const order = [];
-			if (opts.rank)
-				order.push('RankValue DESC');
-			if (opts.best)
-				order.push('Songs.Rating DESC');
-			order.push('Random()');
-
-			sql += ` ORDER BY ${order.join(', ')}`;
+			// ORDER BY (randomize only; ranking is applied in-memory in runSimilarArtists)
+			sql += ` ORDER BY Random()`;
 
 			// LIMIT
 			if (typeof limit === 'number' && limit > 0) {
@@ -1044,176 +1065,6 @@
 
 		log(`findPlaylist: Playlist not found: "${name}"`);
 		return null;
-	}
-
-	/**
-	 * In-place Fisher–Yates shuffle.
-	 * @param {any[]} arr Array to shuffle.
-	 */
-	function shuffle(arr) {
-		for (let i = arr.length - 1; i > 0; i -= 1) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[arr[i], arr[j]] = [arr[j], arr[i]];
-		}
-	}
-
-	/**
-	 * Ensure the ranking table exists (used when Rank mode is enabled).
-	 */
-	async function ensureRankTable() {
-		if (!app.db?.executeQueryAsync)
-			return;
-		try {
-			await app.db.executeQueryAsync('CREATE TABLE IF NOT EXISTS SimArtSongRank (ID INTEGER PRIMARY KEY, Rank INTEGER)');
-		} catch (e) {
-			log(e.toString());
-		}
-	}
-
-	/**
-	 * Clear existing rank weights for a new run.
-	 */
-	async function resetRankTable() {
-		if (!app.db?.executeQueryAsync)
-			return;
-		try {
-			await app.db.executeQueryAsync('DELETE FROM SimArtSongRank');
-		} catch (e) {
-			log(e.toString());
-		}
-	}
-
-	/**
-	 * Populate ranking weights for tracks by an artist based on Last.fm top track order.
-	 * Higher rank means higher priority in SQL ORDER BY.
-	 * @param {string} artistName Artist name.
-	 */
-	async function updateRankForArtist(artistName) {
-		if (!artistName || !app.db?.executeQueryAsync)
-			return;
-
-		const titles = await fetchTopTracksForRank(fixPrefixes(artistName));
-		for (let i = 0; i < titles.length; i++) {
-			const title = titles[i];
-			const matches = await findLibraryTracks(artistName, title, 5, { rank: false, best: false });
-			const rank = 101 - (i + 1);
-			for (const m of matches) {
-				await upsertRank(m.id || m.ID, rank);
-			}
-		}
-	}
-
-	/**
-	 * Insert/update a rank value for a track id.
-	 * @param {number} id Track ID.
-	 * @param {number} rank Rank value.
-	 */
-	async function upsertRank(id, rank) {
-		if (!app.db?.executeQueryAsync) return;
-		try {
-			await app.db.executeQueryAsync('REPLACE INTO SimArtSongRank (ID, Rank) VALUES (?, ?)', [id, rank]);
-		} catch (e) {
-			log(e.toString());
-		}
-	}
-
-
-	/**
-	 * Add-on initialization.
-	 * Ensures the app API is available and optionally attaches auto-mode.
-	 */
-	function start() {
-		requirejs('helpers/debugTools');
-		registerDebuggerEntryPoint.call(this, 'start');
-
-		if (state.started)
-			return;
-		state.started = true;
-		log('Starting SimilarArtists addon...');
-
-		// Check for MM5 environment
-		if (typeof app === 'undefined') {
-			log('MediaMonkey 5 app API not found.');
-			return;
-		}
-
-		if (getSetting('OnPlay', false))
-			attachAuto();
-
-		log('SimilarArtists addon started successfully.');
-	}
-
-	//// Auto-initialize when script loads
-	//(function init() {
-	//	// Wait for app to be available
-	//	if (typeof app !== 'undefined') {
-	//		start();
-	//	} else if (typeof window !== 'undefined') {
-	//		// Try to start when window is ready
-	//		window.addEventListener('load', function () {
-	//			start();
-	//		});
-	//	}
-	//})();
-
-	//// Export functions to window/global scope for info.json access
-	//if (typeof window !== 'undefined') {
-	//	window.start = start;
-	//	window.runSimilarArtists = runSimilarArtists;
-	//	window.toggleAuto = toggleAuto;
-	//}
-
-	//// For CommonJS/module environments
-	//if (typeof module !== 'undefined' && module.exports) {
-	//	module.exports = {
-	//		start: start,
-	//		runSimilarArtists: runSimilarArtists,
-	//		toggleAuto: toggleAuto
-	//	};
-	//}
-
-	//// For ES6 module environments
-	//if (typeof exports !== 'undefined') {
-	//	exports.start = start;
-	//	exports.runSimilarArtists = runSimilarArtists;
-	//	exports.toggleAuto = toggleAuto;
-	//}
-
-	/**
-	 * Get list of playlist names for the parent playlist dropdown
-	 * @returns {string[]} Array of playlist names
-	 */
-	function getPlaylistNames() {
-		const names = [];
-		try {
-			if (app.playlists?.getAll) {
-				const playlists = app.playlists.getAll();
-				if (playlists?.forEach) {
-					playlists.forEach((p) => {
-						if (p?.title) names.push(p.title);
-					});
-				}
-			}
-		} catch (e) {
-			log(e.toString());
-		}
-		names.sort((a, b) => a.localeCompare(b));
-		return names;
-	}
-
-	/**
-	 * Refresh toolbar button visibility based on settings
-	 */
-	function refreshToolbarVisibility() {
-		try {
-			const toolbarMode = intSetting('Toolbar');
-			if (app.toolbar?.setButtonVisible) {
-				app.toolbar.setButtonVisible(TOOLBAR_RUN_ID, toolbarMode === 1 || toolbarMode === 3);
-				app.toolbar.setButtonVisible(TOOLBAR_AUTO_ID, toolbarMode === 2 || toolbarMode === 3);
-			}
-		} catch (e) {
-			log(e.toString());
-		}
 	}
 
 	/**
