@@ -449,115 +449,123 @@
 
 	async function runSimilarArtists(autoRun) {
 		state.cancelled = false;
-		const seedsRaw = collectSeedTracks();
-		const seeds = uniqueArtists(seedsRaw);
-		if (!seeds.length) {
-			showToast('SimilarArtists: Select at least one track to seed the playlist.');
-			return;
-		}
-
-		var config = app.getValue(SCRIPT_ID, defaults);
-
-		const progress = app.ui?.createProgress?.('SimilarArtists', seeds.length) || null;
-		const artistLimit = config.Limit;// intSetting('Limit');
-		const tracksPerArtist = config.TPA;// intSetting('TPA');
-		const totalLimit = config.TPL;// intSetting('TPL');
-		const includeSeedArtist = config.Seed;// boolSetting('Seed');
-		const includeSeedTrack = config.Seed2;// boolSetting('Seed2');
-		const randomise = config.Random;// boolSetting('Random');
-		const enqueue = config.Enqueue;// boolSetting('Enqueue');
-		const ignoreDupes = config.Ignore;// boolSetting('Ignore');
-		const clearNP = config.ClearNP;// boolSetting('ClearNP');
-		const overwriteMode = config.Overwrite;// intSetting('Overwrite');
-		const confirm = config.Confirm;// boolSetting('Confirm');
-		const rankEnabled = config.Rank;// boolSetting('Rank');
-		const bestEnabled = config.Best;// boolSetting('Best');
-
-		if (rankEnabled) {
-			await ensureRankTable();
-			await resetRankTable();
-		}
-
-		const allTracks = [];
-		if (includeSeedTrack && seeds.length === 1 && seeds[0].track) {
-			allTracks.push(seeds[0].track);
-		}
-
-		const seedSlice = seeds.slice(0, artistLimit || seeds.length);
-		for (let i = 0; i < seedSlice.length; i++) {
-			// Check for cancellation
-			if (progress?.terminate || state.cancelled) {
-				if (progress?.close) progress.close();
-				if (confirm) {
-					showToast('SimilarArtists: Process cancelled by user.');
-				}
+		uitools.showProgresWindow();
+		try {
+			const seedsRaw = collectSeedTracks();
+			const seeds = uniqueArtists(seedsRaw);
+			if (!seeds.length) {
+				showToast('SimilarArtists: Select at least one track to seed the playlist.');
 				return;
 			}
 
-			const seed = seedSlice[i];
-			if (progress) {
-				progress.maxValue = seedSlice.length;
-				progress.value = i;
-				progress.text = `Processing ${seed.name} (${i + 1}/${seedSlice.length})`;
+			var config = app.getValue(SCRIPT_ID, defaults);
+
+			const progress = app.ui?.createProgress?.('SimilarArtists', seeds.length) || null;
+			const artistLimit = config.Limit;// intSetting('Limit');
+			const tracksPerArtist = config.TPA;// intSetting('TPA');
+			const totalLimit = config.TPL;// intSetting('TPL');
+			const includeSeedArtist = config.Seed;// boolSetting('Seed');
+			const includeSeedTrack = config.Seed2;// boolSetting('Seed2');
+			const randomise = config.Random;// boolSetting('Random');
+			const enqueue = config.Enqueue;// boolSetting('Enqueue');
+			const ignoreDupes = config.Ignore;// boolSetting('Ignore');
+			const clearNP = config.ClearNP;// boolSetting('ClearNP');
+			const overwriteMode = config.Overwrite;// intSetting('Overwrite');
+			const confirm = config.Confirm;// boolSetting('Confirm');
+			const rankEnabled = config.Rank;// boolSetting('Rank');
+			const bestEnabled = config.Best;// boolSetting('Best');
+
+			if (rankEnabled) {
+				await ensureRankTable();
+				await resetRankTable();
 			}
 
-			// Use fixPrefixes for the API call
-			const artistNameForApi = fixPrefixes(seed.name);
-			const similar = await fetchSimilarArtists(artistNameForApi);
+			const allTracks = [];
+			if (includeSeedTrack && seeds.length === 1 && seeds[0].track) {
+				allTracks.push(seeds[0].track);
+			}
 
-			const artistPool = [];
-			if (includeSeedArtist) artistPool.push(seed.name);
-			similar.slice(0, artistLimit).forEach((a) => {
-				if (a?.name) artistPool.push(a.name);
-			});
-
-			for (const artName of artistPool) {
+			const seedSlice = seeds.slice(0, artistLimit || seeds.length);
+			for (let i = 0; i < seedSlice.length; i++) {
 				// Check for cancellation
 				if (progress?.terminate || state.cancelled) {
-					break;
+					if (progress?.close) progress.close();
+					if (confirm) {
+						showToast('SimilarArtists: Process cancelled by user.');
+					}
+					return;
 				}
 
-				if (rankEnabled) {
-					await updateRankForArtist(artName);
+				const seed = seedSlice[i];
+				if (progress) {
+					progress.maxValue = seedSlice.length;
+					progress.value = i;
+					progress.text = `Processing ${seed.name} (${i + 1}/${seedSlice.length})`;
 				}
-				const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
-				for (const title of titles) {
-					const matches = await findLibraryTracks(artName, title, 1, { rank: rankEnabled, best: bestEnabled });
-					matches.forEach((m) => allTracks.push(m));
+
+				// Use fixPrefixes for the API call
+				const artistNameForApi = fixPrefixes(seed.name);
+				const similar = await fetchSimilarArtists(artistNameForApi);
+
+				const artistPool = [];
+				if (includeSeedArtist) artistPool.push(seed.name);
+				similar.slice(0, artistLimit).forEach((a) => {
+					if (a?.name) artistPool.push(a.name);
+				});
+
+				for (const artName of artistPool) {
+					// Check for cancellation
+					if (progress?.terminate || state.cancelled) {
+						break;
+					}
+
+					if (rankEnabled) {
+						await updateRankForArtist(artName);
+					}
+					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
+					for (const title of titles) {
+						const matches = await findLibraryTracks(artName, title, 1, { rank: rankEnabled, best: bestEnabled });
+						matches.forEach((m) => allTracks.push(m));
+						if (allTracks.length >= totalLimit) break;
+					}
 					if (allTracks.length >= totalLimit) break;
 				}
 				if (allTracks.length >= totalLimit) break;
 			}
-			if (allTracks.length >= totalLimit) break;
-		}
 
-		if (!allTracks.length) {
-			if (progress?.close) progress.close();
-			showToast('SimilarArtists: No matching tracks found in library.');
-			return;
-		}
-
-		if (randomise) shuffle(allTracks);
-		if (enqueue || overwriteMode === 2) {
-			await enqueueTracks(allTracks, ignoreDupes, clearNP);
-		} else {
-			const seedName = seeds[0]?.name || 'Similar Artists';
-			const proceed = !confirm || (await confirmPlaylist(seedName, overwriteMode));
-			if (proceed) {
-				await createPlaylist(allTracks, seedName, overwriteMode);
+			if (!allTracks.length) {
+				if (progress?.close) progress.close();
+				showToast('SimilarArtists: No matching tracks found in library.');
+				return;
 			}
-		}
 
-		if (progress?.close) progress.close();
-
-		// Show completion message if confirm is enabled
-		if (confirm && !autoRun) {
-			const count = seedSlice.length;
-			if (count === 1) {
-				showToast('SimilarArtists: Artist has been processed.');
+			if (randomise) shuffle(allTracks);
+			if (enqueue || overwriteMode === 2) {
+				await enqueueTracks(allTracks, ignoreDupes, clearNP);
 			} else {
-				showToast(`SimilarArtists: All ${count} artists have been processed.`);
+				const seedName = seeds[0]?.name || 'Similar Artists';
+				const proceed = !confirm || (await confirmPlaylist(seedName, overwriteMode));
+				if (proceed) {
+					await createPlaylist(allTracks, seedName, overwriteMode);
+				}
 			}
+
+			if (progress?.close) progress.close();
+
+			// Show completion message if confirm is enabled
+			if (confirm && !autoRun) {
+				const count = seedSlice.length;
+				if (count === 1) {
+					showToast('SimilarArtists: Artist has been processed.');
+				} else {
+					showToast(`SimilarArtists: All ${count} artists have been processed.`);
+				}
+			}
+		} catch (e) {
+			log(e.msg);
+			showToast('SimilarArtists: An error occurred - see log for details.');
+		} finally {
+			uitools.hideProgresWindow();
 		}
 	}
 
