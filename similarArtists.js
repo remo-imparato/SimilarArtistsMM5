@@ -979,17 +979,70 @@
 	}
 
 	/**
-	 * Find an existing playlist by title.
-	 * @param {string} name Playlist title.
-	 * @returns {object|null}
+	 * Find an existing playlist by title (case-insensitive).
+	 * Tries multiple methods to support different MediaMonkey API versions.
+	 * @param {string} name Playlist title to search for.
+	 * @returns {object|null} Playlist object if found, null otherwise.
 	 */
 	function findPlaylist(name) {
-		if (app.playlists?.findByTitle)
-			return app.playlists.findByTitle(name);
+		if (!name || typeof app === 'undefined' || !app.playlists) {
+			return null;
+		}
 
-		if (app.playlists?.getByTitle)
-			return app.playlists.getByTitle(name);
+		try {
+			// Method 1: Try findByTitle (newer API)
+			if (app.playlists?.findByTitle && typeof app.playlists.findByTitle === 'function') {
+				const playlist = app.playlists.findByTitle(name);
+				if (playlist) {
+					log(`findPlaylist: Found playlist by title (findByTitle): "${name}"`);
+					return playlist;
+				}
+			}
+		} catch (e) {
+			log(`findPlaylist: findByTitle error: ${e.toString()}`);
+		}
 
+		try {
+			// Method 2: Try getByTitle (alternative API)
+			if (app.playlists?.getByTitle && typeof app.playlists.getByTitle === 'function') {
+				const playlist = app.playlists.getByTitle(name);
+				if (playlist) {
+					log(`findPlaylist: Found playlist by title (getByTitle): "${name}"`);
+					return playlist;
+				}
+			}
+		} catch (e) {
+			log(`findPlaylist: getByTitle error: ${e.toString()}`);
+		}
+
+		try {
+			// Method 3: Manual iteration with case-insensitive match (fallback)
+			if (app.playlists?.getAll && typeof app.playlists.getAll === 'function') {
+				const playlists = app.playlists.getAll();
+				if (playlists && typeof playlists.forEach === 'function') {
+					const nameLower = String(name || '').toLowerCase();
+					let found = null;
+
+					playlists.forEach((p) => {
+						if (p && (p.title || p.name)) {
+							const pName = String(p.title || p.name).toLowerCase();
+							if (pName === nameLower) {
+								found = p;
+							}
+						}
+					});
+
+					if (found) {
+						log(`findPlaylist: Found playlist by manual search (case-insensitive): "${name}"`);
+						return found;
+					}
+				}
+			}
+		} catch (e) {
+			log(`findPlaylist: Manual iteration error: ${e.toString()}`);
+		}
+
+		log(`findPlaylist: Playlist not found: "${name}"`);
 		return null;
 	}
 
