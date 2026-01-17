@@ -307,18 +307,18 @@
 	 * @returns {{name: string, track?: object}[]}
 	 */
 	function collectSeedTracks() {
-		if (typeof app === 'undefined')
-			return [];
+		if (typeof app === 'undefined') return [];
 		let list = null;
+		// Try to get selected tracks from the UI
 		if (uitools?.getSelectedTracklist) {
 			list = uitools.getSelectedTracklist();
 		}
 		const count = typeof list?.count === 'function' ? list.count() : (list?.count || 0);
+		// Fallback to current playing track if no selection
 		if (!list || count === 0) {
 			list = app.player?.getCurrentTrack?.();// || app.player?.playlist;
 		}
-		if (!list)
-			return [];
+		if (!list) return [];
 		const tracks = list.toArray ? list.toArray() : [list];
 		const seeds = [];
 		(tracks || []).forEach((t) => {
@@ -393,6 +393,8 @@
 				showToast('SimilarArtists: Select at least one track to seed the playlist.');
 				return;
 			}
+			log(`SimilarArtists: Collected ${seeds.length} seed artist(s): ${seeds.map(s => s.name).join(', ')}`);
+
 			showToast('SimilarArtists: Running');
 
 			// Load config block stored under this script id.
@@ -491,9 +493,11 @@
 				await enqueueTracks(allTracks, ignoreDupes, clearNP);
 			} else {
 				const seedName = seeds[0]?.name || 'Similar Artists';
-				const proceed = !confirm || (await confirmPlaylist(seedName, overwriteMode));
-				if (proceed) {
-					await createPlaylist(allTracks, seedName, overwriteMode);
+				const selectedPlaylist = !confirm ? null : (await confirmPlaylist(seedName, overwriteMode));
+				if (selectedPlaylist || !confirm) {
+					await createPlaylist(allTracks, seedName, overwriteMode, selectedPlaylist);
+				} else {
+					log('SimilarArtists: User cancelled playlist creation.');
 				}
 			}
 
@@ -521,15 +525,52 @@
 
 	/**
 	 * Ask user for confirmation before creating/overwriting a playlist.
+	 * Opens dlgSelectPlaylist dialog to let user select or create a playlist.
 	 * @param {string} seedName Seed artist name used in playlist naming.
 	 * @param {*} overwriteMode Mode label (Create/Overwrite/Do not create).
-	 * @returns {Promise<boolean>} True when OK to proceed.
+	 * @returns {Promise<object|null>} Selected/created playlist object, or null if cancelled.
 	 */
 	async function confirmPlaylist(seedName, overwriteMode) {
-		const baseName = stringSetting('Name').replace('%', seedName || '');
-		const action = overwriteMode === 1 ? 'overwrite' : 'create';
-		const res = await showToast(`SimilarArtists: Do you wish to ${action} playlist '${baseName}'?`, ['yes', 'no']);
-		return true;// res === 'yes';
+		return new Promise((resolve) => {
+			try {
+				if (typeof uitools === 'undefined' || !uitools.openDialog) {
+					log('confirmPlaylist: uitools.openDialog not available');
+					resolve(null);
+					return;
+				}
+
+				const dlg = uitools.openDialog('dlgSelectPlaylist', {
+					modal: true,
+					showNewPlaylist: true
+				});
+
+				dlg.whenClosed = function () {
+					try {
+						if (dlg.modalResult === 1) {
+							const playlist = dlg.getValue('getPlaylist')();
+							if (playlist) {
+								log(`confirmPlaylist: User selected/created playlist: ${playlist.name || playlist.title}`);
+								resolve(playlist);
+							} else {
+								log('confirmPlaylist: No playlist returned from dialog');
+								resolve(null);
+							}
+						} else {
+							log('confirmPlaylist: User cancelled dialog');
+							resolve(null);
+						}
+					} catch (e) {
+						log('confirmPlaylist: Error in dialog closure: ' + e.toString());
+						resolve(null);
+					}
+				};
+
+				app.listen(dlg, 'closed', dlg.whenClosed);
+			} catch (e) {
+				log('confirmPlaylist: Error opening dialog: ' + e.toString());
+				resolve(null);
+			}
+		});
 	}
 
 	/**
@@ -819,19 +860,20 @@
 	/**
 	 * Create or locate a playlist, optionally overwrite its content, then add tracks.
 	 * @param {object[]} tracks Tracks to add.
-	 * @param {string} title Playlist title.
-	 * @param {boolean} overwrite Whether to clear existing playlist content.
+	 * @param {string} seedName Seed artist name used for playlist naming.
+	 * @param {*} overwriteMode Playlist creation mode (Create/Overwrite/Do not create).
+	 * @param {object|null} selectedPlaylist Pre-selected playlist from dialog (if provided).
 	 * @returns {Promise<object|null>} Playlist object.
 	 */
-	async function createPlaylist(tracks, seedName, overwriteMode) {
+	async function createPlaylist(tracks, seedName, overwriteMode, selectedPlaylist) {
 		const titleTemplate = stringSetting('Name');
 		const baseName = titleTemplate.replace('%', seedName || '');
 		let name = baseName;
-		let playlist = findPlaylist(name);
+		let playlist = selectedPlaylist || findPlaylist(name);
 
 		const overwriteText = String(overwriteMode || '');
 
-		//-- create new
+		//-- create new if mode is "Create new playlist"
 		if (overwriteText.toLowerCase().indexOf('create') > -1) {
 			let idx = 1;
 			while (playlist) {
@@ -908,13 +950,31 @@
 		// navigation: 1 navigate to playlist, 2 navigate to now playing
 		const nav = getSetting('Navigate');
 		try {
-			if (nav.indexOf('new') > -1 && app.ui?.navigateToPlaylist && playlist.id) {
-				app.ui.navigateToPlaylist(playlist.id);
-			} else if (nav.indexOf('now') > -1 && app.ui?.navigateNowPlaying) {
-				app.ui.navigateNowPlaying();
+			if (typeof window !== 'undefined' && window.navigationHandlers) {
+				// Check nav setting and navigate accordingly
+				const navStr = String(nav || '').toLowerCase();
+				if (navStr.indexOf('new') > -1 && playlist.id) {
+					// Navigate to the newly created playlist
+					log(`SimilarArtists: Navigating to playlist ID: ${playlist.id}`);
+					if (window.navigationHandlers.playlist && window.navigationHandlers.playlist.navigate) {
+						window.navigationHandlers.playlist.navigate(playlist.id);
+					} else {
+						log('SimilarArtists: navigationHandlers.playlist not available');
+					}
+				} else if (navStr.indexOf('now') > -1) {
+					// Navigate to Now Playing
+					log('SimilarArtists: Navigating to Now Playing');
+					if (window.navigationHandlers.nowPlaying && window.navigationHandlers.nowPlaying.navigate) {
+						window.navigationHandlers.nowPlaying.navigate();
+					} else {
+						log('SimilarArtists: navigationHandlers.nowPlaying not available');
+					}
+				}
+			} else {
+				log('SimilarArtists: navigationHandlers not available in window context');
 			}
 		} catch (e) {
-			log(e.toString());
+			log('SimilarArtists: Navigation error: ' + e.toString());
 		}
 	}
 
