@@ -777,7 +777,7 @@
 				sql += ` LIMIT ${limit}`;
 			}
 
-			console.debug('SQL: ' + sql);
+			//console.debug('SQL: ' + sql);
 
 			// Execute
 			const tl = app.db.getTracklist(sql, -1);
