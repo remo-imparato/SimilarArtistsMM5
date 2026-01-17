@@ -81,7 +81,7 @@ function log(txt) {
 
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl, wndParams) {
     try {
-		this.config = app.getValue('SimilarArtist', defaults);
+		this.config = app.getValue('SimilarArtists', defaults);
 
 		var UI = getAllUIElements(pnl);
 		//UI.SAToolbar.controlClass.value = this.config.Toolbar;
@@ -146,7 +146,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		app.setValue('SimilarArtist', this.config);
+		app.setValue('SimilarArtists', this.config);
 
         //// Notify the addon's runtime to re-apply settings (attach auto, refresh toolbar, etc.)
         //try {

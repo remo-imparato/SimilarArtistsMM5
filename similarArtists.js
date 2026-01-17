@@ -89,7 +89,8 @@
 
 	function getSetting(key, fallback) {
 		if (typeof app === 'undefined' || !app.getValue) return fallback;
-		const val = app.getValue(SCRIPT_ID, key);
+		let val = app.getValue(SCRIPT_ID, {});
+		val = val[key];
 		switch (val) {
 			case undefined:
 			case null:
@@ -455,7 +456,7 @@
 			return;
 		}
 
-		var config = app.getValue('SimilarArtist', defaults);
+		var config = app.getValue(SCRIPT_ID, defaults);
 
 		const progress = app.ui?.createProgress?.('SimilarArtists', seeds.length) || null;
 		const artistLimit = config.Limit;// intSetting('Limit');

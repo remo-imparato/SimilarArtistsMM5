@@ -32,7 +32,7 @@ window.configInfo = {
 			Genre: '',
 		};
 
-		this.config = app.getValue('SimilarArtist', defaults);
+		this.config = app.getValue('SimilarArtists', defaults);
 
 		var UI = getAllUIElements(pnlDiv);
         //UI.SAToolbar.controlClass.value = this.config.Toolbar;
@@ -239,7 +239,7 @@ window.configInfo = {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		app.setValue('SimilarArtist', this.config);
+		app.setValue('SimilarArtists', this.config);
 
 		/*
 		const setValue = (k, v) => { try { app.setValue?.('SimilarArtists', k, v); } catch (e) { } };
