@@ -617,7 +617,7 @@
 
 		try {
 			// Try to use SQL-based search first (more accurate like the VBS version)
-			if (app.db?.getTracklistBySQLAsync) {
+			if (app.db?.getTracklist) {
 				const conds = [];
 				const params = [];
 
@@ -703,20 +703,20 @@
 				sql += where + ' GROUP BY Songs.SongTitle' + orderBy + ` LIMIT ${limit}`;
 
 				log('SQL: ' + sql);
-				const tl = await app.db.getTracklistBySQLAsync(sql, params);
+				const tl = await app.db.getTracklist(sql, params);
 				return tracklistToArray(tl, limit);
 			}
 
 			// Fallback to query-based search
-			if (app.db?.getTracklistByQueryAsync) {
-				const queryParts = [];
-				if (artistName) queryParts.push(`artist:"${artistName}"`);
-				if (title) queryParts.push(`title:"${title}"`);
-				excludeTitles.forEach((t) => queryParts.push(`NOT title:${t}`));
-				const query = queryParts.join(' AND ');
-				const tl = await app.db.getTracklistByQueryAsync(query, { limit });
-				return tracklistToArray(tl, limit);
-			}
+			//if (app.db?.getTracklistByQueryAsync) {
+			//	const queryParts = [];
+			//	if (artistName) queryParts.push(`artist:"${artistName}"`);
+			//	if (title) queryParts.push(`title:"${title}"`);
+			//	excludeTitles.forEach((t) => queryParts.push(`NOT title:${t}`));
+			//	const query = queryParts.join(' AND ');
+			//	const tl = await app.db.getTracklistByQueryAsync(query, { limit });
+			//	return tracklistToArray(tl, limit);
+			//}
 		} catch (e) {
 			log('findLibraryTracks error: ' + e.toString());
 		}
