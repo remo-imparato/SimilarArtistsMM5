@@ -449,9 +449,12 @@
 
 				// Build pool: seed artist (optional) + similar artists.
 				const artistPool = [];
-				if (includeSeedArtist) artistPool.push(seed.name);
+				if (includeSeedArtist) 
+					artistPool.push(seed.name);
+				
 				similar.slice(0, artistLimit).forEach((a) => {
-					if (a?.name) artistPool.push(a.name);
+					if (a?.name) 
+						artistPool.push(a.name);
 				});
 
 				for (const artName of artistPool) {
