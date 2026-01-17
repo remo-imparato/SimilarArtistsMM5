@@ -886,12 +886,13 @@
 						}
 					});
 				}
-				if (tracklist) {
+				var addTracks = false;
+				if (tracklist && addTracks) {
 					await playlist.addTracksAsync(tracklist);
-				} else if (playlist.addTrack) {
+				} else if (playlist.addTrackAsync) {
 					(tracks || []).forEach((t) => {
 						if (t) {
-							playlist.addTrack(t);
+							playlist.addTrackAsync(t);
 						}
 					});
 				}
