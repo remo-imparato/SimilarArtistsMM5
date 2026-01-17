@@ -26,7 +26,7 @@ window.configInfo = {
 			OnPlay: false,
 			ClearNP: false,
 			Ignore: false,
-			Parent: '',
+			Parent: 'Similar Artists Playlists',
 			Black: '',
 			Exclude: '',
 			Genre: '',
@@ -56,58 +56,55 @@ window.configInfo = {
 		UI.SAOnPlay.controlClass.checked = this.config.OnPlay;
 		UI.SAClearNP.controlClass.checked = this.config.ClearNP;
 		UI.SAIgnore.controlClass.checked = this.config.Ignore;
-		UI.SAParent.controlClass.value = this.config.Parent;
 		UI.SABlack.controlClass.value = this.config.Black;
 		UI.SAExclude.controlClass.value = this.config.Exclude;
 		UI.SAGenre.controlClass.value = this.config.Genre;
 
-		/*
-
-		// Parent playlist: populate options dynamically
-		// Prefer DOM select if present; fallback to framework control if it exposes items or setItems
-		const $dom = (id) => pnlDiv.querySelector('#' + id) || pnlDiv.querySelector('[data-id="' + id + '"]');
-		const parentEl = $dom('SAParent');
-		const storedParent = getSetting('Parent') || '';
+		// Populate parent playlist dropdown dynamically
 		try {
-			// try to populate a native <select>
-			let sel = null;
-			if (parentEl) {
-				if (parentEl.tagName === 'SELECT') sel = parentEl;
-				else sel = parentEl.querySelector('select');
-			}
-			if (sel) {
-				// clear existing dynamic options (keep first '[Playlists]' if present)
-				while (sel.options.length > 1) sel.remove(1);
-				const pls = app.playlists?.getAll ? app.playlists.getAll() : [];
-				if (Array.isArray(pls)) {
-					pls.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-					pls.forEach(p => { if (p && p.title) { const opt = document.createElement('option'); opt.text = p.title; sel.add(opt); } });
-				}
-				// select stored parent
-				if (!storedParent) sel.selectedIndex = 0;
-				else {
-					let found = false;
-					for (let i = 0; i < sel.options.length; i++) {
-						if (sel.options[i].text === storedParent) { sel.selectedIndex = i; found = true; break; }
+			const parentCtrl = UI.SAParent?.controlClass;
+			if (parentCtrl) {
+				const allPlaylists = [];
+				
+				// Get all available playlists
+				if (app.playlists?.getAll) {
+					const pls = app.playlists.getAll();
+					if (Array.isArray(pls)) {
+						pls.forEach(p => { 
+							if (p && p.title) {
+								allPlaylists.push(p.title);
+							}
+						});
 					}
-					if (!found) sel.selectedIndex = 0;
 				}
-			} else if (UI && UI['SAParent'] && UI['SAParent'].controlClass) {
-				// some frameworks expose setItems or items array - try to set items
-				const ctrl = UI['SAParent'].controlClass;
-				if (typeof ctrl.setItems === 'function') {
-					const pls = app.playlists?.getAll ? app.playlists.getAll() : [];
-					const items = ['[Playlists]'].concat((Array.isArray(pls) ? pls.map(p => p.title).filter(t => t) : []));
-					ctrl.setItems(items);
-					// set selection
-					const idx = items.indexOf(storedParent);
-					ctrl.selectedIndex = (idx >= 0) ? idx : 0;
+
+				allPlaylists.sort((a, b) => a.localeCompare(b));
+
+				// Build items: [None] + playlists
+				const items = ['[None]'].concat(allPlaylists);
+
+				// Set items on control
+				if (typeof parentCtrl.setItems === 'function') {
+					parentCtrl.setItems(items);
+				} else if (parentCtrl.items && Array.isArray(parentCtrl.items)) {
+					parentCtrl.items = items;
+				}
+
+				// Set selected value (default to 'Similar Artists Playlists' if it exists)
+				const defaultParent = this.config.Parent || 'Similar Artists Playlists';
+				let selectedIndex = 0;
+
+				if (items.indexOf(defaultParent) >= 0) {
+					selectedIndex = items.indexOf(defaultParent);
+				}
+
+				if (typeof parentCtrl.selectedIndex !== 'undefined') {
+					parentCtrl.selectedIndex = selectedIndex;
 				}
 			}
 		} catch (e) {
-			log('initSettingsPanel error: ' + e.toString());
+			// Silently fail if dropdown population doesn't work
 		}
-		//*/
 
 	},
 
@@ -135,99 +132,29 @@ window.configInfo = {
 		this.config.OnPlay = UI.SAOnPlay.controlClass.checked;
 		this.config.ClearNP = UI.SAClearNP.controlClass.checked;
 		this.config.Ignore = UI.SAIgnore.controlClass.checked;
-		this.config.Parent = UI.SAParent.controlClass.value;
 		this.config.Black = UI.SABlack.controlClass.value;
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
+		// Get selected parent playlist from dropdown
+		try {
+			const parentCtrl = UI.SAParent?.controlClass;
+			if (parentCtrl) {
+				if (parentCtrl.items && typeof parentCtrl.selectedIndex !== 'undefined') {
+					const selectedItem = parentCtrl.items[parentCtrl.selectedIndex];
+					// Store empty string if [None] is selected, otherwise store the playlist name
+					this.config.Parent = (selectedItem === '[None]') ? '' : (selectedItem || 'Similar Artists Playlists');
+				} else {
+					// Fallback
+					this.config.Parent = parentCtrl.value || 'Similar Artists Playlists';
+				}
+			}
+		} catch (e) {
+			// If something fails, use default
+			this.config.Parent = 'Similar Artists Playlists';
+		}
+
 		app.setValue('SimilarArtists', this.config);
 
-		/*
-		const setValue = (k, v) => { try { app.setValue?.('SimilarArtists', k, v); } catch (e) { } };
-
-		const read = (id) => {
-			if (UI && UI[id] && UI[id].controlClass) {
-				const ctrl = UI[id].controlClass;
-				if (typeof ctrl.selectedIndex !== 'undefined') return ctrl.selectedIndex;
-				if (typeof ctrl.checked !== 'undefined') return ctrl.checked;
-				if (typeof ctrl.value !== 'undefined') return ctrl.value;
-				if (typeof ctrl.text !== 'undefined') return ctrl.text;
-			}
-			const el = $dom(id);
-			if (!el) return null;
-			if (el.tagName === 'SELECT') return el.selectedIndex;
-			if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-				if (el.type === 'checkbox') return el.checked;
-				return el.value;
-			}
-			const innerSelect = el.querySelector('select'); if (innerSelect) return innerSelect.selectedIndex;
-			const innerInput = el.querySelector('input, textarea'); if (innerInput) return (innerInput.type === 'checkbox') ? innerInput.checked : innerInput.value;
-			return null;
-		};
-
-		// toolbar
-		const tb = read('SAToolbar'); if (tb !== null) setValue('Toolbar', parseInt(tb, 10) || 0);
-
-		// api key
-		const api = read('SAApiKey'); if (api !== null) { try { app.settings.setValue('SimilarArtists.ApiKey', api || ''); } catch (e) { } }
-
-		// checkboxes
-		const saveCheckbox = (id, key) => { const v = read(id); if (v !== null) setValue(key, Boolean(v)); };
-		saveCheckbox('SAConfirm', 'Confirm');
-		saveCheckbox('SASort', 'Sort');
-		saveCheckbox('SARandom', 'Random');
-		saveCheckbox('SASeed', 'Seed');
-		saveCheckbox('SASeed2', 'Seed2');
-		saveCheckbox('SABest', 'Best');
-		saveCheckbox('SARank', 'Rank');
-		saveCheckbox('SAUnknown', 'Unknown');
-		saveCheckbox('SAOnPlay', 'OnPlay');
-		saveCheckbox('SAEnqueue', 'Enqueue');
-		saveCheckbox('SAClearNP', 'ClearNP');
-		saveCheckbox('SAIgnore', 'Ignore');
-
-		// dropdowns/selects
-		const overwrite = read('SAOverwrite'); if (overwrite !== null) setValue('Overwrite', parseInt(overwrite, 10) || 0);
-		const rating = read('SARating'); if (rating !== null) setValue('Rating', (parseInt(rating, 10) || 0) * 10);
-		const nav = read('SANavigate'); if (nav !== null) setValue('Navigate', parseInt(nav, 10) || 0);
-
-		// text inputs
-		const name = read('SAName'); if (name !== null) setValue('Name', name || 'Artists similar to %');
-		const black = read('SABlack'); if (black !== null) setValue('Black', black || '');
-		const genre = read('SAGenre'); if (genre !== null) setValue('Genre', genre || '');
-		const exclude = read('SAExclude'); if (exclude !== null) setValue('Exclude', exclude || '');
-
-		// number inputs
-		const limit = read('SALimit'); if (limit !== null) setValue('Limit', parseInt(limit, 10) || 0);
-		const tpa = read('SATPA'); if (tpa !== null) setValue('TPA', parseInt(tpa, 10) || 0);
-		const tpl = read('SATPL'); if (tpl !== null) setValue('TPL', parseInt(tpl, 10) || 0);
-
-		// parent
-		let parentStored = '';
-		// read from select if present
-		const $dom = (id) => pnlDiv.querySelector('#' + id) || pnlDiv.querySelector('[data-id="' + id + '"]');
-		const parentEl = $dom('SAParent');
-		if (parentEl) {
-			let sel = null;
-			if (parentEl.tagName === 'SELECT') sel = parentEl;
-			else sel = parentEl.querySelector('select');
-			if (sel) parentStored = sel.options[sel.selectedIndex]?.text || '';
-		}
-		// try framework control
-		if (!parentStored && UI && UI['SAParent'] && UI['SAParent'].controlClass) {
-			const ctrl = UI['SAParent'].controlClass;
-			if (typeof ctrl.selectedIndex !== 'undefined' && Array.isArray(ctrl.items)) {
-				parentStored = ctrl.items[ctrl.selectedIndex] || '';
-			}
-		}
-		try { setValue('Parent', parentStored === '[Playlists]' ? '' : parentStored); } catch (e) { }
-
-		// After saving try to notify the addon's runtime if available
-		try {
-			if (window.SimilarArtists && typeof window.SimilarArtists.ensureDefaults === 'function') {
-				window.SimilarArtists.ensureDefaults();
-			}
-		} catch (e) { }
-		//*/
 	}
 };

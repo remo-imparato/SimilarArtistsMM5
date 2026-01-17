@@ -69,7 +69,7 @@ const defaults = {
 	//OnPlay: false,
 	//ClearNP: false,
 	//Ignore: false,
-	//Parent: '',
+	//Parent: 'Similar Artists Playlists',
 	//Black: '',
 	//Exclude: '',
 	//Genre: '',
@@ -77,6 +77,73 @@ const defaults = {
 
 function log(txt) {
     try { console.log('SimilarArtists: ' + txt); } catch (e) {}
+}
+
+/**
+ * Populate parent playlist dropdown with available playlists
+ * @param {HTMLElement} pnl - The panel element
+ * @param {string} storedParent - The currently stored parent playlist name
+ */
+function populateParentPlaylist(pnl, storedParent) {
+    try {
+        const parentCtrl = getAllUIElements(pnl)?.SAParent?.controlClass;
+        if (!parentCtrl) {
+            log('populateParentPlaylist: SAParent control not found');
+            return;
+        }
+
+        // Get all playlists and sort by name
+        const allPlaylists = [];
+        try {
+            if (app.playlists?.getAll) {
+                const pls = app.playlists.getAll();
+                if (Array.isArray(pls)) {
+                    pls.forEach(p => { 
+                        if (p && p.title) {
+                            allPlaylists.push(p.title);
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            log('populateParentPlaylist: Error getting playlists: ' + e.toString());
+        }
+
+        allPlaylists.sort((a, b) => a.localeCompare(b));
+
+        // Build items array: [None] + playlists
+        const items = ['[None]'].concat(allPlaylists);
+
+        // Set items on control if it supports setItems
+        if (typeof parentCtrl.setItems === 'function') {
+            parentCtrl.setItems(items);
+            log('populateParentPlaylist: Set items on SAParent control');
+        } else if (parentCtrl.items && Array.isArray(parentCtrl.items)) {
+            // Some dropdown controls expose items array directly
+            parentCtrl.items = items;
+            log('populateParentPlaylist: Set items array on SAParent control');
+        }
+
+        // Set selected value to stored parent or default
+        const defaultParent = storedParent || 'Similar Artists Playlists';
+        let selectedIndex = 0;
+
+        // Try to find the default parent in the list
+        if (items.indexOf(defaultParent) >= 0) {
+            selectedIndex = items.indexOf(defaultParent);
+        } else {
+            // If default doesn't exist, keep [None] selected
+            selectedIndex = 0;
+        }
+
+        if (typeof parentCtrl.selectedIndex !== 'undefined') {
+            parentCtrl.selectedIndex = selectedIndex;
+            log(`populateParentPlaylist: Selected index ${selectedIndex} (${items[selectedIndex]})`);
+        }
+
+    } catch (e) {
+        log('populateParentPlaylist error: ' + e.toString());
+    }
 }
 
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl, wndParams) {
@@ -105,11 +172,13 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		UI.SAOnPlay.controlClass.checked = this.config.OnPlay;
 		UI.SAClearNP.controlClass.checked = this.config.ClearNP;
 		UI.SAIgnore.controlClass.checked = this.config.Ignore;
-		UI.SAParent.controlClass.value = this.config.Parent;
 		UI.SABlack.controlClass.value = this.config.Black;
 		UI.SAExclude.controlClass.value = this.config.Exclude;
 		UI.SAGenre.controlClass.value = this.config.Genre;
 
+		// Populate parent playlist dropdown with available playlists
+		// Default to 'Similar Artists Playlists' if not yet set
+		populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists');
 
     } catch (e) {
         log('initSettingsPanel error: ' + e.toString());
@@ -141,10 +210,20 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.OnPlay = UI.SAOnPlay.controlClass.checked;
 		this.config.ClearNP = UI.SAClearNP.controlClass.checked;
 		this.config.Ignore = UI.SAIgnore.controlClass.checked;
-		this.config.Parent = UI.SAParent.controlClass.value;
 		this.config.Black = UI.SABlack.controlClass.value;
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
+
+		// Get selected parent playlist
+		const parentCtrl = UI.SAParent?.controlClass;
+		if (parentCtrl && parentCtrl.items && typeof parentCtrl.selectedIndex !== 'undefined') {
+			const selectedItem = parentCtrl.items[parentCtrl.selectedIndex];
+			// Store empty string if [None] is selected, otherwise store the playlist name
+			this.config.Parent = (selectedItem === '[None]') ? '' : (selectedItem || '');
+		} else {
+			// Fallback if control doesn't expose items/selectedIndex
+			this.config.Parent = UI.SAParent?.controlClass?.value || '';
+		}
 
 		app.setValue('SimilarArtists', this.config);
 
