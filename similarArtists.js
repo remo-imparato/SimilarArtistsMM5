@@ -351,7 +351,7 @@
 		if (typeof app === 'undefined') return [];
 
 		const seeds = [];
-		
+
 		// Try to get selected tracks from the UI
 		let selectedList = null;
 		if (uitools?.getSelectedTracklist) {
@@ -359,20 +359,30 @@
 		}
 
 		// Check if we have a valid selection with tracks
-		const selectedCount = typeof selectedList?.count === 'function' 
-			? selectedList.count() 
+		const selectedCount = typeof selectedList?.count === 'function'
+			? selectedList.count()
 			: (selectedList?.count || 0);
 
 		if (selectedList && selectedCount > 0) {
-			// Process all selected tracks
-			const selectedTracks = selectedList.toArray ? selectedList.toArray() : [selectedList];
+			// Process all selected tracks using forEach (not toArray)
 			log(`collectSeedTracks: Found ${selectedCount} selected track(s)`);
-			
-			(selectedTracks || []).forEach((t) => {
-				if (t && t.artist) {
-					seeds.push({ name: normalizeName(t.artist), track: t });
-				}
-			});
+
+			if (typeof selectedList.forEach === 'function') {
+				// Use forEach for iteration (MM5 standard pattern)
+				selectedList.forEach((t) => {
+					if (t && t.artist) {
+						seeds.push({ name: normalizeName(t.artist), track: t });
+					}
+				});
+			} else if (typeof selectedList.toArray === 'function') {
+				// Fallback to toArray if available
+				const selectedTracks = selectedList.toArray();
+				(selectedTracks || []).forEach((t) => {
+					if (t && t.artist) {
+						seeds.push({ name: normalizeName(t.artist), track: t });
+					}
+				});
+			}
 
 			if (seeds.length > 0) {
 				return seeds;
@@ -447,7 +457,7 @@
 	 */
 	async function runSimilarArtists(autoRun) {
 		state.cancelled = false;
-		
+
 		try {
 			const seedsRaw = collectSeedTracks();
 			const seeds = uniqueArtists(seedsRaw);
@@ -514,11 +524,11 @@
 
 				// Build pool: seed artist (optional) + similar artists.
 				const artistPool = [];
-				if (includeSeedArtist) 
+				if (includeSeedArtist)
 					artistPool.push(seed.name);
-				
+
 				similar.slice(0, artistLimit).forEach((a) => {
-					if (a?.name) 
+					if (a?.name)
 						artistPool.push(a.name);
 				});
 
@@ -636,7 +646,7 @@
 
 						// User clicked OK
 						const selectedPlaylist = dlg.getValue('getPlaylist')?.();
-						
+
 						if (selectedPlaylist) {
 							// User selected or created a playlist
 							log(`confirmPlaylist: User selected/created playlist: ${selectedPlaylist.name || selectedPlaylist.title}`);
@@ -647,7 +657,7 @@
 							log(`confirmPlaylist: No playlist selected, auto-creating playlist with name: ${seedName}`);
 							const templateName = stringSetting('Name');
 							const playlistName = templateName.replace('%', seedName || 'Similar Artists');
-							
+
 							// Create the playlist
 							let newPlaylist = null;
 							if (app.playlists?.createPlaylist) {
@@ -797,7 +807,7 @@
 		if (!arr || arr.length <= 1) return;
 		for (let i = arr.length - 1; i > 0; --i) {
 			const j = Math.floor(Math.random() * (i + 1));
-			[arr[i], arr[j]] = [arr[j], arr[i]];
+			[arr[i], arr[j]] = [arr[j], arr[i]);
 		}
 	}
 
@@ -955,11 +965,11 @@
 	 */
 	async function enqueueTracks(tracks, ignoreDupes, clearFirst) {
 		const player = app.player;
-		if (!player)
-			return;
+		if (!player) return;
+
 		const playlist = player.playlist || player.nowPlayingQueue || player.getPlaylist?.();
-		if (!playlist)
-			return;
+		if (!playlist) return;
+
 		if (clearFirst && playlist.clear)
 			playlist.clear();
 
@@ -967,12 +977,14 @@
 		if (ignoreDupes && playlist.toArray) {
 			playlist.toArray().forEach((t) => existing.add(t.id || t.ID));
 		}
+
+		// CORRECT: Multiple API fallbacks
 		tracks.forEach((t) => {
 			const id = t?.id || t?.ID;
 			if (ignoreDupes && id && existing.has(id)) return;
-			if (playlist.addTrack) playlist.addTrack(t);
-			else if (playlist.addTracks) playlist.addTracks([t]);
-			else if (player.appendTracks) player.appendTracks([t]);
+			if (playlist.addTrack) playlist.addTrack(t);           // Primary method
+			else if (playlist.addTracks) playlist.addTracks([t]); // Secondary method
+			else if (player.appendTracks) player.appendTracks([t]); // Tertiary fallback
 		});
 	}
 
