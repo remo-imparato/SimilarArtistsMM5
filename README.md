@@ -1,4 +1,4 @@
-# SimilarArtists for MediaMonkey 5
+﻿# SimilarArtists for MediaMonkey 5
 
 **Automatically generate playlists or queue tracks from similar artists using Last.fm's powerful music recommendation engine.**
 
@@ -7,41 +7,41 @@
 
 ---
 
-## ?? Overview
+## 📖 Overview
 
 SimilarArtists is a MediaMonkey 5 add-on that leverages the Last.fm API to discover and play music from artists similar to those in your library. Whether you're looking to explore new music or create dynamic playlists based on your favorite artists, SimilarArtists makes it effortless.
 
 ### Key Features
 
-- ?? **Smart Discovery**: Query Last.fm for similar artists based on selected tracks or currently playing music
-- ?? **Intelligent Matching**: Advanced multi-pass fuzzy matching finds tracks in your local library with high accuracy
-- ?? **Flexible Output**: Create new playlists, overwrite existing ones, or queue tracks directly to Now Playing
-- ?? **Auto-Queue Mode**: Automatically queue similar tracks when approaching the end of your playlist
-- ? **Ranking System**: Prioritize popular tracks using Last.fm's popularity rankings
-- ??? **Advanced Filtering**: Filter by genre, rating, artist blacklist, and title exclusions
-- ?? **Randomization**: Optionally shuffle results for varied listening experiences
-- ?? **Prefix Handling**: Intelligent handling of artist name prefixes (e.g., "The Beatles" vs "Beatles, The")
+- 🎵 **Smart Discovery**: Query Last.fm for similar artists based on selected tracks or currently playing music
+- 🎯 **Intelligent Matching**: Advanced multi-pass fuzzy matching finds tracks in your local library with high accuracy
+- 📋 **Flexible Output**: Create new playlists, overwrite existing ones, or queue tracks directly to Now Playing
+- 🤖 **Auto-Queue Mode**: Automatically queue similar tracks when approaching the end of your playlist
+- ⭐ **Ranking System**: Prioritize popular tracks using Last.fm's popularity rankings
+- 🎛️ **Advanced Filtering**: Filter by genre, rating, artist blacklist, and title exclusions
+- 🎲 **Randomization**: Optionally shuffle results for varied listening experiences
+- 🔄 **Prefix Handling**: Intelligent handling of artist name prefixes (e.g., "The Beatles" vs "Beatles, The")
 
 ---
 
-## ?? Installation
+## 🚀 Installation
 
 1. Download the latest release from the [Releases](https://github.com/remo-imparato/SimilarArtistsMM5/releases) page
-2. In MediaMonkey 5, go to **Tools ? Extensions**
+2. In MediaMonkey 5, go to **Tools → Extensions**
 3. Click **Install Extension** and select the downloaded `.mmip` file
 4. Restart MediaMonkey 5
-5. Configure the add-on via **Tools ? Options ? Similar Artists**
+5. Configure the add-on via **Tools → Options → Similar Artists**
 
 ---
 
-## ?? Usage
+## 🎮 Usage
 
 ### Basic Usage
 
 1. **Select one or more tracks** in your library (or start playing a track)
 2. Run the add-on via:
    - **Toolbar button** (if enabled)
-   - **Tools ? Similar Artists** menu
+   - **Tools → Similar Artists** menu
 3. The add-on will:
    - Query Last.fm for similar artists
    - Search your library for matching tracks
@@ -49,13 +49,13 @@ SimilarArtists is a MediaMonkey 5 add-on that leverages the Last.fm API to disco
 
 ### Auto-Queue Mode
 
-Enable **"Automatically run when playing the last track"** in settings to have SimilarArtists automatically queue new tracks when your playlist is about to end�perfect for continuous, seamless listening!
+Enable **"Automatically run when playing the last track"** in settings to have SimilarArtists automatically queue new tracks when your playlist is about to end—perfect for continuous, seamless listening!
 
 ---
 
-## ?? Configuration
+## ⚙️ Configuration
 
-Access settings via **Tools ? Options ? Similar Artists**
+Access settings via **Tools → Options → Similar Artists**
 
 ### General Options
 
@@ -77,8 +77,8 @@ Access settings via **Tools ? Options ? Similar Artists**
 | **Artist limit** | Max similar artists per seed | 10 |
 | **Tracks/artist** | Max tracks to fetch per artist | 5 |
 | **Tracks/playlist** | Total track limit | 100 |
-| **Select highest rated** | Prioritize higher-rated tracks in your library | ? |
-| **Select highest ranked** | Prioritize Last.fm's top tracks | ? |
+| **Select highest rated** | Prioritize higher-rated tracks in your library | ☐ |
+| **Select highest ranked** | Prioritize Last.fm's top tracks | ☐ |
 
 ### Filters
 
@@ -103,7 +103,7 @@ Access settings via **Tools ? Options ? Similar Artists**
 
 ---
 
-## ?? How It Works
+## 🎯 How It Works
 
 ### Track Matching Strategy
 
@@ -127,7 +127,7 @@ The add-on intelligently handles common artist name prefix patterns:
 
 ---
 
-## ??? Technical Details
+## 🛠️ Technical Details
 
 ### Requirements
 
@@ -152,7 +152,7 @@ The add-on intelligently handles common artist name prefix patterns:
 
 ---
 
-## ?? Credits
+## 🤝 Credits
 
 ### Authors
 
@@ -173,13 +173,13 @@ The add-on intelligently handles common artist name prefix patterns:
 
 ---
 
-## ?? License
+## 📝 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## ?? Bug Reports & Feature Requests
+## 🐛 Bug Reports & Feature Requests
 
 Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](https://github.com/remo-imparato/SimilarArtistsMM5/issues) page.
 
@@ -196,21 +196,21 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 ---
 
-## ?? Changelog
+## 🔄 Changelog
 
 ### Version 2.0.0 (Current)
 
-- ? Complete rewrite for MediaMonkey 5
-- ? Modern async/await patterns throughout
-- ? Multi-pass fuzzy track matching (75-90% accuracy)
-- ? Improved artist prefix handling
-- ? Real-time progress indicators
-- ? Enhanced playlist creation workflow
-- ? Auto-queue mode for continuous playback
-- ? Ranking system for popularity-based sorting
-- ?? Removed legacy MM4 fallback code
-- ?? Fixed playlist name uniqueness logic
-- ?? Comprehensive code documentation
+- ✨ Complete rewrite for MediaMonkey 5
+- ✨ Modern async/await patterns throughout
+- ✨ Multi-pass fuzzy track matching (75-90% accuracy)
+- ✨ Improved artist prefix handling
+- ✨ Real-time progress indicators
+- ✨ Enhanced playlist creation workflow
+- ✨ Auto-queue mode for continuous playback
+- ✨ Ranking system for popularity-based sorting
+- 🐛 Removed legacy MM4 fallback code
+- 🐛 Fixed playlist name uniqueness logic
+- 📚 Comprehensive code documentation
 
 ### Version 1.x (MediaMonkey 4)
 
@@ -220,7 +220,7 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 ---
 
-## ?? Resources
+## 📚 Resources
 
 - [MediaMonkey 5 Download](https://www.mediamonkey.com/)
 - [Last.fm API Documentation](https://www.last.fm/api)
@@ -229,7 +229,7 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 ---
 
-## ?? Tips & Tricks
+## 💡 Tips & Tricks
 
 1. **Use Auto-Queue Mode** - Enable it in settings for endless music discovery
 2. **Combine Filters** - Use genre exclusions + rating filters for curated results
@@ -240,5 +240,5 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 ---
 
 <p align="center">
-  <sub>Built with ?? for the MediaMonkey community</sub>
+  <sub>Built with ❤️ for the MediaMonkey community</sub>
 </p>
