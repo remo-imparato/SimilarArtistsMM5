@@ -1389,4 +1389,4 @@
 		toggleAuto,
 	};
 
-})(typeof window !== 'undefined' ? window : global);})(typeof window !== 'undefined' ? window : global);
+})(typeof window !== 'undefined' ? window : global);
