@@ -1165,6 +1165,7 @@
 	// Creates (or finds) a playlist then adds tracks. Matches APIs used in this repo.
 	/**
 	 * Create or locate a playlist, optionally overwrite its content, then add tracks.
+	 * Uses modern MM5 API patterns for playlist creation.
 	 * @param {object[]} tracks Tracks to add.
 	 * @param {string} seedName Seed artist name used for playlist naming.
 	 * @param {*} overwriteMode Playlist creation mode (Create/Overwrite/Do not create).
@@ -1189,58 +1190,52 @@
 			}
 		}
 
-		// Create new playlist if not found
+		// Create new playlist if not found (using modern MM5 pattern)
 		if (!playlist) {
 			try {
 				const parentName = stringSetting('Parent');
+				let parentPlaylist = null;
 				
-				// Try modern async API first
-				if (app.playlists?.createPlaylistAsync && typeof app.playlists.createPlaylistAsync === 'function') {
-					playlist = await app.playlists.createPlaylistAsync(name, parentName);
-					log(`SimilarArtists: Created playlist (async API): ${name}`);
+				// Find parent playlist if specified
+				if (parentName) {
+					parentPlaylist = findPlaylist(parentName);
 				}
-				// Try synchronous createPlaylist API
-				else if (app.playlists?.createPlaylist && typeof app.playlists.createPlaylist === 'function') {
-					playlist = app.playlists.createPlaylist(name, parentName);
-					log(`SimilarArtists: Created playlist (sync API): ${name}`);
-				}
-				// Fallback to legacy newPlaylist API
-				else if (app.playlists?.root?.newPlaylist && typeof app.playlists.root.newPlaylist === 'function') {
-					playlist = app.playlists.root.newPlaylist();
-					if (playlist) {
-						playlist.name = name;
-						// Set parent if available in legacy API
-						if (parentName && playlist.parent) {
-							const parentPL = findPlaylist(parentName);
-							if (parentPL) {
-								playlist.parent = parentPL;
-							}
-						}
-						// Persist the new playlist
-						if (playlist.commitAsync && typeof playlist.commitAsync === 'function') {
-							await playlist.commitAsync();
-							log(`SimilarArtists: Created playlist (legacy async API): ${name}`);
-						} else if (playlist.commit && typeof playlist.commit === 'function') {
-							playlist.commit();
-							log(`SimilarArtists: Created playlist (legacy sync API): ${name}`);
-						}
-					}
+				
+				// Use modern MM5 pattern: newPlaylist() on parent or root
+				if (parentPlaylist && parentPlaylist.newPlaylist) {
+					playlist = parentPlaylist.newPlaylist();
 				} else {
-					log('SimilarArtists: No playlist creation API available');
-					return;
+					playlist = app.playlists.root.newPlaylist();
 				}
+				
+				if (!playlist) {
+					log('SimilarArtists: Failed to create new playlist object');
+					return null;
+				}
+				
+				// Set temporary name to ensure it appears first in the list (#16261 pattern)
+				playlist.name = name;// ' - ' + name + ' - ';
+				
+				// Persist the playlist
+				await playlist.commitAsync();
+				
+				// Mark as new for potential UI handling
+				playlist.isNew = true;
+				
+				log(`SimilarArtists: Created playlist: ${name}`);
+				
 			} catch (e) {
 				log(`SimilarArtists: Error creating playlist: ${e.toString()}`);
-				return;
+				return null;
 			}
 		}
 
 		if (!playlist) {
 			log('SimilarArtists: Failed to create or find playlist');
-			return;
+			return null;
 		}
 
-		log(`SimilarArtists: Using playlist '${name}' (ID: ${playlist.id || playlist.ID})`);
+		log(`SimilarArtists: Using playlist '${playlist.name}' (ID: ${playlist.id || playlist.ID})`);
 
 		// If overwrite is selected, clear existing playlist content
 		if (overwriteText.toLowerCase().indexOf('overwrite') > -1) {
