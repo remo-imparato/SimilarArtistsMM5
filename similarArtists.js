@@ -646,7 +646,7 @@
 			if (confirm && !autoRun) {
 				const count = seedSlice.length;
 				if (count === 1) {
-					showToast('SimilarArtists: Artist has been processed.');
+				showToast('SimilarArtists: Artist has been processed.');
 				} else {
 					showToast(`SimilarArtists: All ${count} artists have been processed.`);
 				}
@@ -1367,4 +1367,4 @@
 		toggleAuto,
 	};
 
-})(typeof window !== 'undefined' ? window : global);})(typeof window !== 'undefined' ? window : global);
+})(typeof window !== 'undefined' ? window : global);
