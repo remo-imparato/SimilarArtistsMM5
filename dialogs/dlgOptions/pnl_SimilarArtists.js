@@ -328,20 +328,52 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		UI.SABest.controlClass.checked = this.config.Best;
 		UI.SARank.controlClass.checked = this.config.Rank;
 
-		// Rating control API: `value` is -1..100, where -1 is allowed only when `useUnknown=true`.
-		// Store config as a regular integer 0..100; allow/expose unknown via `Unknown` checkbox.
+		// Rating control API: `value` is -1..100; -1 is allowed only when `useUnknown=true`.
+		// Persist behavior:
+		// - `Unknown` == true means "include unknown" and the control is allowed to use -1.
+		// - `Rating` stores the minimum rating (0..100). When Unknown is true and Rating is 0,
+		//   we show -1 in the control to represent "no minimum, include unknown".
 		const allowUnknown = Boolean(this.config.Unknown);
 		const ratingValueRaw = (this.config.Rating === undefined || this.config.Rating === null)
 			? 0
 			: parseInt(this.config.Rating, 10);
 		const ratingValue = Number.isFinite(ratingValueRaw) ? Math.max(0, Math.min(100, ratingValueRaw)) : 0;
+
 		if (UI.SARating?.controlClass) {
 			UI.SARating.controlClass.useUnknown = allowUnknown;
-			UI.SARating.controlClass.value = ratingValue;
+			UI.SARating.controlClass.value = (allowUnknown && ratingValue === 0) ? -1 : ratingValue;
 		}
-		log(`load: Rating set to ${ratingValue} (allowUnknown=${allowUnknown})`);
 
-		UI.SAUnknown.controlClass.checked = this.config.Unknown;
+		UI.SAUnknown.controlClass.checked = allowUnknown;
+
+		// Keep rating control in sync when toggling "Include unknown rating?"
+		try {
+			const unknownCtrl = UI.SAUnknown?.controlClass;
+			const ratingCtrl = UI.SARating?.controlClass;
+			if (unknownCtrl && ratingCtrl) {
+				unknownCtrl.onChange = () => {
+					try {
+						const checked = Boolean(unknownCtrl.checked);
+						ratingCtrl.useUnknown = checked;
+						// If enabling "unknown", display -1 (Unknown) when minimum is 0.
+						if (checked && (parseInt(ratingCtrl.value, 10) || 0) <= 0) {
+							ratingCtrl.value = -1;
+						}
+						// If disabling "unknown" and the control is at -1, reset to 0.
+						if (!checked && parseInt(ratingCtrl.value, 10) < 0) {
+							ratingCtrl.value = 0;
+						}
+					} catch (e) {
+						// ignore
+					}
+				};
+			}
+		} catch (e) {
+			// ignore
+		}
+
+		log(`load: Rating set to ${UI.SARating?.controlClass?.value} (useUnknown=${allowUnknown})`);
+
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
 		UI.SAEnqueue.controlClass.checked = this.config.Enqueue;
 		UI.SANavigate.controlClass.value = this.config.Navigate;
@@ -408,14 +440,21 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.Best = UI.SABest.controlClass.checked;
 		this.config.Rank = UI.SARank.controlClass.checked;
 
-		// Persist unknown toggle first, then normalize rating value.
+		// Persist unknown toggle.
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;
+
 		// Rating control API: `value` is -1..100.
-		// We store a normalized 0..100 int, and keep the "allow unknown" behavior in `Unknown`.
+		// Mapping:
+		// - If Unknown is enabled and control is -1 => store Rating=0 (no minimum) and Unknown=true.
+		// - Otherwise store Rating clamped to 0..100.
 		const ratingValue = UI.SARating?.controlClass?.value;
-		const normalized = parseInt(ratingValue, 10);
-		this.config.Rating = Number.isFinite(normalized) ? Math.max(0, Math.min(100, normalized)) : 0;
-		log(`save: Rating = ${this.config.Rating} (control=${ratingValue}, allowUnknown=${this.config.Unknown})`);
+		const parsed = parseInt(ratingValue, 10);
+		if (this.config.Unknown && Number.isFinite(parsed) && parsed < 0) {
+			this.config.Rating = 0;
+		} else {
+			this.config.Rating = Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0;
+		}
+		log(`save: Rating = ${this.config.Rating} (control=${ratingValue}, Unknown=${this.config.Unknown})`);
 
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
 		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
