@@ -2,7 +2,7 @@
 	"title": "Similar Artists",
 	"id": "SimilarArtists",
 	"description": "Create/enqueue playlists of similar artists using Last.fm and your MediaMonkey library. This started from the Similar Artists add-on by trixmoto in MM4",
-	"version": "2.0.1",
+	"version": "2.0.0",
 	"type": "general",
 	"author": "rimparato",
 	"icon": "smiley_yellow_128.png",

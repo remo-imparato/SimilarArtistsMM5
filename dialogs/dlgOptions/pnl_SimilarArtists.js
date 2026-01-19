@@ -67,7 +67,8 @@ const defaults = {
 	// New, explicit settings (fallback to `Limit` if undefined).
 	SeedLimit: 5,
 	SimilarLimit: 5,
-	Name: 'Artists similar to %',
+	Name: 'Similar to %',
+	DefaultSeedName: 'Similar Artists',
 	TPA: 9999,
 	TPL: 9999,
 	Random: false,
@@ -320,6 +321,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		// Keep existing UI as-is: represent the effective value (seed and similar share the same control for now).
 		UI.SALimit.controlClass.value = seedLimit || similarLimit || legacyLimit;
 		UI.SAName.controlClass.value = this.config.Name;
+		UI.SASeedName.controlClass.value = this.config.DefaultSeedName;
 		UI.SATPA.controlClass.value = this.config.TPA;
 		UI.SATPL.controlClass.value = this.config.TPL;
 		UI.SARandom.controlClass.checked = this.config.Random;
@@ -437,6 +439,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		// Also persist legacy `Limit` for compatibility with older builds.
 		this.config.Limit = UI.SALimit.controlClass.value;
 		this.config.Name = UI.SAName.controlClass.value;
+		this.config.DefaultSeedName = UI.SASeedName.controlClass.value;
 		this.config.TPA = UI.SATPA.controlClass.value;
 		this.config.TPL = UI.SATPL.controlClass.value;
 		this.config.Random = UI.SARandom.controlClass.checked;
