@@ -111,11 +111,11 @@ window.configInfo = {
 		UI.SARank.controlClass.checked = this.config.Rank;
 		
 		// Rating control uses 'rating' property (0-100 scale)
-		const ratingValue = parseInt(this.config.Rating, 10) || 0;
+		const ratingValue = parseInt(this.config.Rating, 10);
 		if (UI.SARating?.controlClass) {
-			UI.SARating.controlClass.rating = ratingValue;
+			UI.SARating.controlClass.rating = Number.isFinite(ratingValue) ? Math.max(0, Math.min(100, ratingValue)) : 0;
 		}
-		this.log(`load: Rating set to ${ratingValue}`);
+		this.log(`load: Rating set to ${UI.SARating?.controlClass?.rating}`);
 		
 		UI.SAUnknown.controlClass.checked = this.config.Unknown;
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
@@ -333,9 +333,10 @@ window.configInfo = {
 		this.config.Best = UI.SABest.controlClass.checked;
 		this.config.Rank = UI.SARank.controlClass.checked;
 		
-		// Rating control uses 'rating' property (0-100 scale, or -1 for unset)
+		// Rating control uses 'rating' property (0-100 scale)
 		const ratingValue = UI.SARating?.controlClass?.rating;
-		this.config.Rating = (ratingValue !== undefined && ratingValue !== null && ratingValue >= 0) ? ratingValue : 0;
+		const normalizedRating = parseInt(ratingValue, 10);
+		this.config.Rating = Number.isFinite(normalizedRating) ? Math.max(0, Math.min(100, normalizedRating)) : 0;
 		this.log(`save: Rating = ${this.config.Rating}`);
 		
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;

@@ -172,8 +172,8 @@ function collectManualPlaylists(node, results, depth = 0) {
  */
 async function getManualPlaylistsViaDb() {
     try {
-        if (!app?.db?.getQuery) {
-            log('getManualPlaylistsViaDb: app.db.getQuery not available');
+        if (!app?.db?.getTracklist) {
+            log('getManualPlaylistsViaDb: app.db.getTracklist not available');
             return [];
         }
 
@@ -190,17 +190,31 @@ async function getManualPlaylistsViaDb() {
 
         for (const c of candidates) {
             try {
-                const q = app.db.getQuery(c.sql);
-                await q?.whenLoaded?.();
+                const tl = app.db.getTracklist(c.sql, -1);
+                if (!tl) continue;
+
+                tl.autoUpdateDisabled = true;
+                tl.dontNotify = true;
+
+                await tl?.whenLoaded?.();
 
                 const names = [];
-                if (q?.forEach) {
-                    q.forEach((row) => {
-                        const v = row?.getValue ? row.getValue(c.col) : row?.[c.col];
-                        const s = v != null ? String(v).trim() : '';
-                        if (s) names.push(s);
+                if (typeof tl.forEach === 'function') {
+                    tl.forEach((row) => {
+                        try {
+                            // Tracklist rows can be “row objects” or plain objects depending on query.
+                            const v = row?.getValue ? row.getValue(c.col) : row?.[c.col];
+                            const s = v != null ? String(v).trim() : '';
+                            if (s) names.push(s);
+                        } catch (e) {
+                            // ignore row
+                        }
                     });
                 }
+
+                // restore flags
+                tl.autoUpdateDisabled = false;
+                tl.dontNotify = false;
 
                 if (names.length) {
                     log(`getManualPlaylistsViaDb: loaded ${names.length} playlists using query: ${c.sql}`);
@@ -305,11 +319,15 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
         UI.SABest.controlClass.checked = this.config.Best;
         UI.SARank.controlClass.checked = this.config.Rank;
 
-        const ratingValue = parseInt(this.config.Rating, 10) || 0;
+        // Rating control uses 'value' property (-1..100). Enable unknown rating support.
+        const ratingValue = (this.config.Rating === undefined || this.config.Rating === null)
+            ? 0
+            : parseInt(this.config.Rating, 10);
         if (UI.SARating?.controlClass) {
-            UI.SARating.controlClass.rating = ratingValue;
+            UI.SARating.controlClass.useUnknown = true;
+            UI.SARating.controlClass.value = Number.isFinite(ratingValue) ? ratingValue : 0;
         }
-        log(`load: Rating set to ${ratingValue}`);
+        log(`load: Rating set to ${Number.isFinite(ratingValue) ? ratingValue : 0}`);
 
         UI.SAUnknown.controlClass.checked = this.config.Unknown;
         UI.SAOverwrite.controlClass.value = this.config.Overwrite;
@@ -359,7 +377,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
     try {
-		var UI = getAllUIElements();
+        var UI = getAllUIElements();
 
 		this.config.ApiKey = UI.SAApiKey.controlClass.value;
 		this.config.Confirm = UI.SAConfirm.controlClass.checked;
@@ -373,11 +391,15 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.Seed2 = UI.SASeed2.controlClass.checked;
 		this.config.Best = UI.SABest.controlClass.checked;
 		this.config.Rank = UI.SARank.controlClass.checked;
-		
-		// Rating control uses 'rating' property (0-100 scale, or -1 for unset)
-		const ratingValue = UI.SARating?.controlClass?.rating;
-		this.config.Rating = (ratingValue !== undefined && ratingValue !== null && ratingValue >= 0) ? ratingValue : 0;
-		log(`save: Rating = ${this.config.Rating}`);
+
+        // Rating control uses 'value' property (-1..100). -1 is "unknown" when useUnknown=true.
+        const ratingValue = UI.SARating?.controlClass?.value;
+        if (ratingValue === -1 || ratingValue === undefined || ratingValue === null || !Number.isFinite(Number(ratingValue))) {
+            this.config.Rating = 0;
+        } else {
+            this.config.Rating = Number(ratingValue);
+        }
+        log(`save: Rating = ${this.config.Rating}`);
 		
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;

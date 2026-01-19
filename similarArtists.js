@@ -22,8 +22,18 @@
  * - Last.fm API key (default provided, customizable in settings)
  * - Internet connection for Last.fm API queries
  */
-requirejs('helpers/debugTools');
-registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
+
+/*
+// Debug tooling is optional. Only register after the addon module exists.
+try {
+	requirejs('helpers/debugTools');
+	if (window.SimilarArtists && typeof registerDebuggerEntryPoint === 'function') {
+		registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
+	}
+} catch (e) {
+	// ignore
+}
+//*/
 
 (function (globalArg) {
 	'use strict';
@@ -300,7 +310,7 @@ registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
 	 */
 	async function handleAuto() {
 		try {
-			if (!getSetting('OnPlay', false)) {
+			if (!isAutoEnabled()) {
 				log('SimilarArtists: Auto-mode disabled, skipping handleAuto');
 				return;
 			}
@@ -1973,8 +1983,11 @@ registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
 			return;
 		}
 
-		if (getSetting('OnPlay', false))
+		// Ensure listener state matches setting
+		if (isAutoEnabled())
 			attachAuto();
+		else
+			detachAuto();
 
 		log('SimilarArtists addon started successfully.');
 	}
@@ -1985,7 +1998,7 @@ registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
 	 * @returns {boolean}
 	 */
 	function isAutoEnabled() {
-		return getSetting('OnPlay', false);
+		return !!getSetting('OnPlay', false);
 	}
 
 	// Export functions to the global scope
