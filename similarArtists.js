@@ -117,12 +117,20 @@
 
 	/**
 	 * Persist a setting under this script's namespace.
+	 * Note: MM5's app.setValue stores the entire config object, not individual keys.
 	 * @param {string} key Setting name.
 	 * @param {*} value Setting value.
 	 */
 	function setSetting(key, value) {
-		if (typeof app === 'undefined' || !app.setValue) return;
-		app.setValue(SCRIPT_ID, key, value);
+		if (typeof app === 'undefined' || !app.setValue || !app.getValue) return;
+		
+		// MM5 stores settings as complete objects, so we need to:
+		// 1. Get the current config object
+		// 2. Update the specific key
+		// 3. Save the entire object back
+		const config = app.getValue(SCRIPT_ID, {});
+		config[key] = value;
+		app.setValue(SCRIPT_ID, config);
 	}
 
 	/**
@@ -1273,7 +1281,7 @@
 					} else {
 						// "Beatles" -> also match "Beatles, The" and "The Beatles"
 						artistConds.push(`Artists.Artist = '${escapeSql(`${artistName}, ${prefix}`)}'`);
-						artistConds.push(`Artists.Artist = '${escapeSql(`${prefix} ${artistName}`)}'`);
+						artistConds.push(`Artists.Artist = '${escapeSql`${prefix} ${artistName}`}`);
 					}
 				}
 

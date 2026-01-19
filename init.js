@@ -1,9 +1,9 @@
 // init.js
 // Load your local module(s) first
 localRequirejs('similarArtists'); // -> window.SimilarArtists
-//requirejs('helpers/debugTools');
 
 // Register debugger entry point on the SimilarArtists module
+//requirejs('helpers/debugTools');
 //registerDebuggerEntryPoint.call(window.SimilarArtists, 'start');
 
 (function () {
@@ -11,7 +11,6 @@ localRequirejs('similarArtists'); // -> window.SimilarArtists
 	window.whenReady(() => {
 
 		// Initialize defaults
-		//window.SimilarArtists?.ensureDefaults?.();
 		window.SimilarArtists?.start();
 	});
 })();
