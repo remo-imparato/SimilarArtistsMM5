@@ -1,10 +1,21 @@
+/**
+ * SimilarArtists Configuration for MediaMonkey 5
+ * 
+ * @author Remo Imparato
+ * @description Configuration handler for SimilarArtists add-on
+ */
+
 window.configInfo = {
+
+	log: function(txt) {
+		try { console.log('SimilarArtists Config: ' + txt); } catch (e) {}
+	},
 
 	load: function (pnlDiv, addon) {
 
 		// defaults matching similarArtists.js
 		const defaults = {
-			ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932' || '6cfe51c9bf7e77d6449e63ac0db2ac24',
+			ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932',
 			Confirm: true,
 			Sort: false,
 			Limit: 5,
@@ -33,7 +44,6 @@ window.configInfo = {
 		this.config = app.getValue('SimilarArtists', defaults);
 
 		var UI = getAllUIElements(pnlDiv);
-		//UI.SAToolbar.controlClass.value = this.config.Toolbar;
 		UI.SAApiKey.controlClass.value = this.config.ApiKey;
 		UI.SAConfirm.controlClass.checked = this.config.Confirm;
 		UI.SASort.controlClass.checked = this.config.Sort;
@@ -59,8 +69,7 @@ window.configInfo = {
 		UI.SAGenre.controlClass.value = this.config.Genre;
 
 		// Populate parent playlist dropdown dynamically
-		this.populateParentPlaylistDropdown(UI);
-
+		this.populateParentPlaylistDropdown(UI, this.config.Parent || 'Similar Artists Playlists');
 	},
 
 	/**
@@ -68,46 +77,57 @@ window.configInfo = {
 	 * @param {object} node Playlist node to process
 	 * @param {string[]} results Array to collect playlist names
 	 * @param {string} prefix Path prefix for nested playlists (optional)
+	 * @param {number} depth Current recursion depth (to prevent infinite loops)
 	 */
-	collectManualPlaylists: function(node, results, prefix = '') {
-		if (!node) return;
+	collectManualPlaylists: function(node, results, prefix = '', depth = 0) {
+		if (!node || depth > 10) return; // Prevent infinite recursion
+
+		const _this = this;
 
 		try {
-			// Get child playlists - try different MM5 API patterns
-			let children = node.childPlaylists || node.playlists || node.children;
+			// Get child playlists using MM5 childPlaylists property
+			const children = node.childPlaylists;
 			
-			// If it's a function, call it
-			if (typeof children === 'function') {
-				children = children();
+			if (!children) {
+				this.log(`collectManualPlaylists: No childPlaylists at depth ${depth}`);
+				return;
 			}
 
-			// If children is not iterable, try to get count and iterate
-			if (children && typeof children.count !== 'undefined') {
-				const count = typeof children.count === 'function' ? children.count() : children.count;
-				for (let i = 0; i < count; i++) {
-					const child = typeof children.getValue === 'function' 
-						? children.getValue(i) 
-						: (children[i] || children.getItem?.(i));
-					
+			// Get count - it's a property in MM5, not a function
+			const count = typeof children.count === 'function' ? children.count() : children.count;
+			this.log(`collectManualPlaylists: Found ${count} children at depth ${depth}, prefix="${prefix}"`);
+
+			if (!count || count <= 0) return;
+
+			// Iterate using locked() pattern for thread safety (MM5 standard)
+			if (typeof children.locked === 'function') {
+				children.locked(() => {
+					let child;
+					for (let i = 0; i < count; i++) {
+						child = children.getFastObject ? children.getFastObject(i, child) : children.getValue(i);
+						if (child) {
+							_this.processPlaylistNode(child, results, prefix, depth);
+						}
+					}
+				});
+			} else if (typeof children.forEach === 'function') {
+				// Fallback to forEach if available
+				children.forEach((child) => {
 					if (child) {
-						this.processPlaylistNode(child, results, prefix);
+						_this.processPlaylistNode(child, results, prefix, depth);
+					}
+				});
+			} else {
+				// Manual iteration fallback
+				for (let i = 0; i < count; i++) {
+					const child = children.getValue ? children.getValue(i) : children[i];
+					if (child) {
+						_this.processPlaylistNode(child, results, prefix, depth);
 					}
 				}
-			} else if (Array.isArray(children)) {
-				children.forEach(child => {
-					if (child) {
-						this.processPlaylistNode(child, results, prefix);
-					}
-				});
-			} else if (children && typeof children.forEach === 'function') {
-				children.forEach(child => {
-					if (child) {
-						this.processPlaylistNode(child, results, prefix);
-					}
-				});
 			}
 		} catch (e) {
-			console.warn('SimilarArtists Config: Error collecting playlists:', e.toString());
+			this.log('Error collecting playlists: ' + e.toString());
 		}
 	},
 
@@ -116,8 +136,9 @@ window.configInfo = {
 	 * @param {object} playlist Playlist object
 	 * @param {string[]} results Array to collect playlist names
 	 * @param {string} prefix Path prefix for nested playlists
+	 * @param {number} depth Current recursion depth
 	 */
-	processPlaylistNode: function(playlist, results, prefix) {
+	processPlaylistNode: function(playlist, results, prefix, depth) {
 		if (!playlist) return;
 
 		try {
@@ -125,24 +146,22 @@ window.configInfo = {
 			if (!name) return;
 
 			// Check if this is a manual playlist (not auto-playlist)
-			// Auto playlists typically have isAutoPlaylist=true or isAuto=true or have a query/criteria
-			const isAuto = playlist.isAutoPlaylist || playlist.isAuto || 
-						   (playlist.query && playlist.query.length > 0) ||
-						   (playlist.criteria && playlist.criteria.length > 0);
+			// In MM5, auto playlists have isAutoPlaylist property
+			const isAuto = playlist.isAutoPlaylist === true;
 
 			if (!isAuto) {
-				// This is a manual playlist - add it
-				const fullName = prefix ? `${prefix}/${name}` : name;
-				results.push(fullName);
-				console.log(`SimilarArtists Config: Found manual playlist: "${fullName}"`);
+				// This is a manual playlist - add it with just the name (not nested path for simplicity)
+				results.push(name);
+				this.log(`Found manual playlist: "${name}" (isAuto=${isAuto})`);
+			} else {
+				this.log(`Skipping auto playlist: "${name}"`);
 			}
 
-			// Recurse into child playlists (even auto-playlists can have children)
-			const newPrefix = prefix ? `${prefix}/${name}` : name;
-			this.collectManualPlaylists(playlist, results, newPrefix);
+			// Recurse into child playlists
+			this.collectManualPlaylists(playlist, results, name, depth + 1);
 
 		} catch (e) {
-			console.warn('SimilarArtists Config: Error processing playlist node:', e.toString());
+			this.log('Error processing playlist node: ' + e.toString());
 		}
 	},
 
@@ -150,14 +169,15 @@ window.configInfo = {
 	 * Populate the parent playlist dropdown with all available manual playlists.
 	 * Uses MM5's dataSource pattern with app.utils.newStringList().
 	 * @param {object} UI UI elements object from getAllUIElements
+	 * @param {string} storedParent The currently stored parent playlist name
 	 */
-	populateParentPlaylistDropdown: function(UI) {
+	populateParentPlaylistDropdown: function(UI, storedParent) {
 		const _this = this;
 		
 		try {
 			const parentCtrl = UI.SAParent?.controlClass;
 			if (!parentCtrl) {
-				console.warn('SimilarArtists Config: SAParent control not found');
+				this.log('SAParent control not found');
 				return;
 			}
 
@@ -165,25 +185,29 @@ window.configInfo = {
 			const getPlaylistsList = () => {
 				const allPlaylists = [];
 				
-				console.log('SimilarArtists Config: Starting playlist enumeration...');
+				_this.log('Starting playlist enumeration...');
 
 				// Use app.playlists.root as the starting point (MM5 standard)
 				if (app.playlists?.root) {
-					console.log('SimilarArtists Config: Using app.playlists.root');
-					_this.collectManualPlaylists(app.playlists.root, allPlaylists, '');
+					_this.log('Using app.playlists.root');
+					_this.collectManualPlaylists(app.playlists.root, allPlaylists, '', 0);
 				} else {
-					console.warn('SimilarArtists Config: app.playlists.root not available');
+					_this.log('app.playlists.root not available');
 				}
 
-				console.log(`SimilarArtists Config: Found ${allPlaylists.length} manual playlist(s)`);
+				_this.log(`Found ${allPlaylists.length} manual playlist(s)`);
 				return allPlaylists;
 			};
 
 			// Helper function to populate dropdown using MM5's dataSource pattern
 			const populateDropdown = (playlists) => {
 				try {
-					playlists.sort((a, b) => a.localeCompare(b));
-					const items = ['[None]'].concat(playlists);
+					// Remove duplicates and sort
+					const uniquePlaylists = [...new Set(playlists)];
+					uniquePlaylists.sort((a, b) => a.localeCompare(b));
+					const items = ['[None]'].concat(uniquePlaylists);
+
+					_this.log('Populating dropdown with ' + items.length + ' items');
 
 					// Create StringList dataSource (MM5 standard pattern)
 					const stringListFactory = app.utils?.newStringList || window.newStringList;
@@ -193,24 +217,18 @@ window.configInfo = {
 						
 						// Set dataSource
 						parentCtrl.dataSource = stringList;
-						console.log(`SimilarArtists Config: Set dataSource with ${items.length} items`);
 
 						// Set focused index to match stored parent
-						const defaultParent = _this.config?.Parent || 'Similar Artists Playlists';
-						let selectedIndex = 0;
-
+						const defaultParent = storedParent || 'Similar Artists Playlists';
 						const foundIndex = items.indexOf(defaultParent);
-						if (foundIndex >= 0) {
-							selectedIndex = foundIndex;
-						}
+						parentCtrl.focusedIndex = foundIndex >= 0 ? foundIndex : 0;
 
-						parentCtrl.focusedIndex = selectedIndex;
-						console.log(`SimilarArtists Config: Set focusedIndex to ${selectedIndex} (${items[selectedIndex]})`);
+						_this.log(`Set focusedIndex to ${parentCtrl.focusedIndex} (${items[parentCtrl.focusedIndex]})`);
 					} else {
-						console.error('SimilarArtists Config: newStringList() not available');
+						_this.log('newStringList() not available');
 					}
 				} catch (e) {
-					console.error('SimilarArtists Config: Error populating dropdown:', e.toString());
+					_this.log('Error populating dropdown: ' + e.toString());
 				}
 			};
 
@@ -222,7 +240,7 @@ window.configInfo = {
 				populateDropdown(playlists);
 			} else {
 				// No playlists yet, try again after a short delay (playlists may not be loaded yet)
-				console.log('SimilarArtists Config: No playlists found immediately, retrying in 1s...');
+				this.log('No playlists found immediately, retrying in 1s...');
 				setTimeout(() => {
 					playlists = getPlaylistsList();
 					populateDropdown(playlists);
@@ -230,14 +248,13 @@ window.configInfo = {
 			}
 
 		} catch (e) {
-			console.error('SimilarArtists Config: Error populating parent playlist dropdown:', e.toString());
+			this.log('Error populating parent playlist dropdown: ' + e.toString());
 		}
 	},
 
 	save: function (pnlDiv, addon) {
 		var UI = getAllUIElements(pnlDiv);
 
-		//this.config.Toolbar = UI.SAToolbar.controlClass.value;
 		this.config.ApiKey = UI.SAApiKey.controlClass.value;
 		this.config.Confirm = UI.SAConfirm.controlClass.checked;
 		this.config.Sort = UI.SASort.controlClass.checked;
@@ -262,7 +279,7 @@ window.configInfo = {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		// Get selected parent playlist from dropdown using MM5 pattern
+		// Get selected parent playlist from dropdown using MM5 pattern (focusedIndex + dataSource)
 		try {
 			const parentCtrl = UI.SAParent?.controlClass;
 			if (parentCtrl && parentCtrl.dataSource && typeof parentCtrl.focusedIndex !== 'undefined') {
@@ -276,23 +293,21 @@ window.configInfo = {
 					
 					// Store empty string if [None] is selected, otherwise store the playlist name
 					this.config.Parent = (selectedValue === '[None]') ? '' : selectedValue;
-					console.log(`SimilarArtists Config save: Parent = "${this.config.Parent}" (index ${idx})`);
+					this.log(`save: Parent playlist = "${this.config.Parent}" (index ${idx})`);
 				} else {
 					this.config.Parent = '';
-					console.log('SimilarArtists Config save: No valid selection, Parent = ""');
+					this.log('save: No valid selection, Parent = ""');
 				}
 			} else {
 				// Fallback if dataSource not available
 				this.config.Parent = '';
-				console.log('SimilarArtists Config save: dataSource not available, Parent = ""');
+				this.log('save: dataSource not available, Parent = ""');
 			}
 		} catch (e) {
-			console.error('SimilarArtists Config save: Error reading Parent:', e.toString());
-			// If something fails, use default
-			this.config.Parent = 'Similar Artists Playlists';
+			this.log('save: Error reading Parent playlist: ' + e.toString());
+			this.config.Parent = '';
 		}
 
 		app.setValue('SimilarArtists', this.config);
-
 	}
 };
