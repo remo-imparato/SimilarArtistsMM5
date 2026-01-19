@@ -1,4 +1,9 @@
-/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+/**
+ * SimilarArtists Options Panel for MediaMonkey 5
+ * 
+ * @author Remo Imparato
+ * @description Configuration panel for SimilarArtists add-on in MM5 Tools > Options
+ */
 
 // Helper get/set that use the SimilarArtists namespace
 function setSetting(key, value) {
@@ -9,6 +14,7 @@ function setSetting(key, value) {
         try { app.setValue && app.setValue(key, value); } catch (e) {}
     }
 }
+
 function getSetting(key, defaultValue) {
     try {
         const v = app.getValue?.('SimilarArtists', key);
@@ -22,61 +28,47 @@ function intSetting(key) {
     const v = getSetting(key, defaults[key]);
     return parseInt(v, 10) || 0;
 }
+
 function boolSetting(key) {
     const v = getSetting(key, defaults[key]);
     return Boolean(v);
 }
+
 function stringSetting(key) {
     const v = getSetting(key, defaults[key]);
     return v == null ? '' : String(v);
 }
 
-function getPlaylistNames() {
-    const names = [];
-    try {
-        if (app.playlists?.getAll) {
-            const pls = app.playlists.getAll();
-            if (Array.isArray(pls)) {
-                pls.forEach(p => { if (p && p.title) names.push(p.title); });
-            }
-        }
-    } catch (e) {}
-    names.sort((a, b) => a.localeCompare(b));
-    return names;
-}
-
-
-// Defaults matching similarArtists.js / config.js
+// Defaults matching similarArtists.js
 const defaults = {
-	////Toolbar: 1,
-	//ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '6cfe51c9bf7e77d6449e63ac0db2ac24',
-	//Confirm: true,
-	//Sort: false,
-	//Limit: 5,
-	//Name: 'Artists similar to %',
-	//TPA: 9999,
-	//TPL: 9999,
-	//Random: false,
-	//Seed: false,
-	//Seed2: false,
-	//Best: false,
-	//Rank: false,
-	//Rating: 0,
-	//Unknown: true,
-	//Overwrite: 'Create new playlist',
-	//Enqueue: false,
-	//Navigate: 0,
-	//OnPlay: false,
-	//ClearNP: false,
-	//Ignore: false,
-	//Parent: 'Similar Artists Playlists',
-	//Black: '',
-	//Exclude: '',
-	//Genre: '',
+	ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932',
+	Confirm: true,
+	Sort: false,
+	Limit: 5,
+	Name: 'Artists similar to %',
+	TPA: 9999,
+	TPL: 9999,
+	Random: false,
+	Seed: false,
+	Seed2: false,
+	Best: false,
+	Rank: false,
+	Rating: 0,
+	Unknown: true,
+	Overwrite: 'Create new playlist',
+	Enqueue: false,
+	Navigate: 'None',
+	OnPlay: false,
+	ClearNP: false,
+	Ignore: false,
+	Parent: 'Similar Artists Playlists',
+	Black: '',
+	Exclude: '',
+	Genre: '',
 };
 
 function log(txt) {
-    try { console.log('SimilarArtists: ' + txt); } catch (e) {}
+    try { console.log('SimilarArtists Options: ' + txt); } catch (e) {}
 }
 
 /**
@@ -95,18 +87,30 @@ function populateParentPlaylist(pnl, storedParent) {
         // Get all playlists and sort by name
         const allPlaylists = [];
         try {
-            if (app.playlists?.getAll) {
+            if (app.playlists?.getAll && typeof app.playlists.getAll === 'function') {
                 const pls = app.playlists.getAll();
                 if (Array.isArray(pls)) {
                     pls.forEach(p => { 
-                        if (p && p.title) {
-                            allPlaylists.push(p.title);
+                        if (p && (p.title || p.name)) {
+                            allPlaylists.push(p.title || p.name);
                         }
                     });
+                    log(`Retrieved ${allPlaylists.length} playlists via getAll()`);
+                }
+            } else if (app.playlists?.root?.playlists) {
+                // Fallback to root playlists
+                const rootPls = app.playlists.root.playlists;
+                if (Array.isArray(rootPls)) {
+                    rootPls.forEach(p => {
+                        if (p && (p.title || p.name)) {
+                            allPlaylists.push(p.title || p.name);
+                        }
+                    });
+                    log(`Retrieved ${allPlaylists.length} playlists via root.playlists`);
                 }
             }
         } catch (e) {
-            log('populateParentPlaylist: Error getting playlists: ' + e.toString());
+            log('Error getting playlists: ' + e.toString());
         }
 
         allPlaylists.sort((a, b) => a.localeCompare(b));
@@ -114,31 +118,34 @@ function populateParentPlaylist(pnl, storedParent) {
         // Build items array: [None] + playlists
         const items = ['[None]'].concat(allPlaylists);
 
-        // Set items on control if it supports setItems
-        if (typeof parentCtrl.setItems === 'function') {
-            parentCtrl.setItems(items);
-            log('populateParentPlaylist: Set items on SAParent control');
-        } else if (parentCtrl.items && Array.isArray(parentCtrl.items)) {
-            // Some dropdown controls expose items array directly
-            parentCtrl.items = items;
-            log('populateParentPlaylist: Set items array on SAParent control');
-        }
+        // Create a StringList dataSource (MM5 pattern)
+        try {
+            if (typeof newStringList === 'function') {
+                const stringList = newStringList();
+                items.forEach(item => stringList.add(item));
+                
+                // Set dataSource on dropdown control (MM5 standard pattern)
+                parentCtrl.dataSource = stringList;
+                log('Set dataSource with ' + items.length + ' items');
 
-        // Set selected value to stored parent or default
-        const defaultParent = storedParent || 'Similar Artists Playlists';
-        let selectedIndex = 0;
+                // Set selected value to stored parent or default
+                const defaultParent = storedParent || 'Similar Artists Playlists';
+                let selectedIndex = 0;
 
-        // Try to find the default parent in the list
-        if (items.indexOf(defaultParent) >= 0) {
-            selectedIndex = items.indexOf(defaultParent);
-        } else {
-            // If default doesn't exist, keep [None] selected
-            selectedIndex = 0;
-        }
+                // Try to find the default parent in the list
+                const foundIndex = items.indexOf(defaultParent);
+                if (foundIndex >= 0) {
+                    selectedIndex = foundIndex;
+                }
 
-        if (typeof parentCtrl.selectedIndex !== 'undefined') {
-            parentCtrl.selectedIndex = selectedIndex;
-            log(`populateParentPlaylist: Selected index ${selectedIndex} (${items[selectedIndex]})`);
+                // Set focused index (MM5 pattern for dropdowns)
+                parentCtrl.focusedIndex = selectedIndex;
+                log(`Set focusedIndex to ${selectedIndex} (${items[selectedIndex]})`);
+            } else {
+                log('newStringList() not available');
+            }
+        } catch (e) {
+            log('Error setting dataSource: ' + e.toString());
         }
 
     } catch (e) {
@@ -151,7 +158,6 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		this.config = app.getValue('SimilarArtists', defaults);
 
 		var UI = getAllUIElements(pnl);
-		//UI.SAToolbar.controlClass.value = this.config.Toolbar;
 		UI.SAApiKey.controlClass.value = this.config.ApiKey;
 		UI.SAConfirm.controlClass.checked = this.config.Confirm;
 		UI.SASort.controlClass.checked = this.config.Sort;
@@ -181,9 +187,8 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists');
 
     } catch (e) {
-        log('initSettingsPanel error: ' + e.toString());
+        log('load error: ' + e.toString());
     }
-
 }
 
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
@@ -214,33 +219,42 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		// Get selected parent playlist
-		const parentCtrl = UI.SAParent?.controlClass;
-		if (parentCtrl && parentCtrl.items && typeof parentCtrl.selectedIndex !== 'undefined') {
-			const selectedItem = parentCtrl.items[parentCtrl.selectedIndex];
-			// Store empty string if [None] is selected, otherwise store the playlist name
-			this.config.Parent = (selectedItem === '[None]') ? '' : (selectedItem || '');
-		} else {
-			// Fallback if control doesn't expose items/selectedIndex
-			this.config.Parent = UI.SAParent?.controlClass?.value || '';
+		// Get selected parent playlist using MM5 pattern (focusedIndex + dataSource)
+		try {
+			const parentCtrl = UI.SAParent?.controlClass;
+			if (parentCtrl && parentCtrl.dataSource && typeof parentCtrl.focusedIndex !== 'undefined') {
+				const ds = parentCtrl.dataSource;
+				const idx = parentCtrl.focusedIndex;
+				
+				// Get the selected item from dataSource
+				if (idx >= 0 && idx < ds.count) {
+					const selectedItem = ds.getValue(idx);
+					const selectedValue = selectedItem ? selectedItem.toString() : '';
+					
+					// Store empty string if [None] is selected, otherwise store the playlist name
+					this.config.Parent = (selectedValue === '[None]') ? '' : selectedValue;
+					log(`save: Parent playlist = "${this.config.Parent}" (index ${idx})`);
+				} else {
+					this.config.Parent = '';
+					log('save: No valid selection, Parent = ""');
+				}
+			} else {
+				// Fallback if dataSource not available
+				this.config.Parent = '';
+				log('save: dataSource not available, Parent = ""');
+			}
+		} catch (e) {
+			log('save: Error reading Parent playlist: ' + e.toString());
+			this.config.Parent = '';
 		}
 
 		app.setValue('SimilarArtists', this.config);
 
-        //// Notify the addon's runtime to re-apply settings (attach auto, refresh toolbar, etc.)
-        //try {
-        //    if (window.SimilarArtists) {
-        //        try { window.SimilarArtists.ensureDefaults?.(); } catch (e) {}
-        //        try { if (typeof window.SimilarArtists.start === 'function') window.SimilarArtists.start(); } catch (e) {}
-        //    }
-        //} catch (e) {}
-
     } catch (e) {
-        log('saveSettingsPanel error: ' + e.toString());
+        log('save error: ' + e.toString());
     }
 }
 
-
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.beforeWindowCleanup = function () {
-
+	// Cleanup if needed
 }

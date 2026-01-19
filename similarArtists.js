@@ -470,6 +470,7 @@
 	 * @param {boolean} settings.includeSeedArtist Include seed artist in results.
 	 * @param {boolean} settings.includeSeedTrack Include seed track in results.
 	 * @param {boolean} settings.rankEnabled Enable ranking mode.
+	 * @param {boolean} settings.bestEnabled Enable best (highest rated) mode.
 	 * @param {Map<number, number>} [trackRankMap] Optional rank map to populate.
 	 * @returns {Promise<object[]>} Array of matched track objects.
 	 */
@@ -480,7 +481,8 @@
 			totalLimit,
 			includeSeedArtist,
 			includeSeedTrack,
-			rankEnabled
+			rankEnabled,
+			bestEnabled
 		} = settings;
 
 		const allTracks = [];
@@ -525,7 +527,7 @@
 						const title = titles[rankIdx];
 						// Score: higher rank for earlier positions (101 = 1st, 1 = 100th)
 						const rankScore = 101 - (rankIdx + 1);
-						const matches = await findLibraryTracks(artName, title, 5, { rank: false, best: false });
+						const matches = await findLibraryTracks(artName, title, 5, { rank: false, best: bestEnabled });
 						for (const m of matches) {
 							const trackId = m.id || m.ID;
 							// Keep highest score if track appears in multiple artists' top tracks
@@ -542,7 +544,7 @@
 				const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
 				updateProgress(`Searching library for ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
 				for (const title of titles) {
-					const matches = await findLibraryTracks(artName, title, 1, { rank: false, best: false });
+					const matches = await findLibraryTracks(artName, title, 1, { rank: false, best: bestEnabled });
 					matches.forEach((m) => allTracks.push(m));
 					if (allTracks.length >= totalLimit) break;
 				}
@@ -610,7 +612,7 @@
 			}
 
 			// Log settings for debugging
-			log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}`);
+			log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}, bestEnabled=${bestEnabled}`);
 
 			// In-memory rank map: track ID -> rank score (used if rankEnabled)
 			const trackRankMap = rankEnabled ? new Map() : null;
@@ -622,7 +624,8 @@
 				totalLimit,
 				includeSeedArtist,
 				includeSeedTrack,
-				rankEnabled
+				rankEnabled,
+				bestEnabled
 			}, trackRankMap);
 
 			if (!allTracks.length) {
@@ -904,11 +907,12 @@
 	 * - Pass 1: Exact title match (case-insensitive)
 	 * - Pass 2: Normalized fuzzy match (strip special characters)
 	 * - Pass 3: Partial match with wildcards (fallback for difficult cases)
+	 * - Optional: Sort by rating if "Best" mode is enabled
 	 * 
 	 * @param {string} artistName Artist to match.
 	 * @param {string} title Track title to match.
 	 * @param {number} limit Max matches to return.
-	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (not used; ranking handled in-memory).
+	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (best: sort by rating, rank: handled in-memory).
 	 * @returns {Promise<object[]>} Array of track objects.
 	 */
 	async function findLibraryTracks(artistName, title, limit, opts = {}) {
@@ -920,6 +924,7 @@
 			const excludeGenres = parseListSetting('Genre');
 			const ratingMin = intSetting('Rating');
 			const allowUnknown = boolSetting('Unknown');
+			const useBest = opts.best !== undefined ? opts.best : boolSetting('Best');
 
 			// Build common filter clauses (genre, rating, exclusions)
 			const buildCommonFilters = () => {
@@ -956,6 +961,16 @@
 				return filters;
 			};
 
+			// Build ORDER BY clause based on options
+			const buildOrderClause = () => {
+				if (useBest) {
+					// Sort by rating descending (highest first), then random for ties
+					return ' ORDER BY Songs.Rating DESC, Random()';
+				}
+				// Default: randomize
+				return ' ORDER BY Random()';
+			};
+
 			// Build artist matching clause
 			const buildArtistClause = () => {
 				if (!artistName) return '';
@@ -987,6 +1002,7 @@
 
 			const artistClause = buildArtistClause();
 			const commonFilters = buildCommonFilters();
+			const orderClause = buildOrderClause();
 			const baseJoins = `
 				FROM Songs
 				INNER JOIN ArtistsSongs 
@@ -1011,7 +1027,7 @@
 					SELECT Songs.*
 					${baseJoins}
 					WHERE ${whereParts.join(' AND ')}
-					ORDER BY Random()
+					${orderClause}
 					LIMIT ${limit}
 				`;
 
@@ -1035,7 +1051,7 @@
 				}
 
 				if (results.length > 0) {
-					log(`findLibraryTracks Pass 1: Found ${results.length} exact match(es)`);
+					log(`findLibraryTracks Pass 1: Found ${results.length} exact match(es)${useBest ? ' (sorted by rating)' : ''}`);
 				}
 			}
 
@@ -1065,7 +1081,7 @@
 						SELECT Songs.*
 						${baseJoins}
 						WHERE ${whereParts.join(' AND ')}
-						ORDER BY Random()
+						${orderClause}
 						LIMIT ${limit - results.length}
 					`;
 
@@ -1088,8 +1104,9 @@
 						tl.dontNotify = false;
 					}
 
-					if (results.length > foundIds.size) {
-						log(`findLibraryTracks Pass 2: Found ${results.length - foundIds.size + results.length} additional fuzzy match(es)`);
+					const newMatches = results.length - (foundIds.size - results.length);
+					if (newMatches > 0) {
+						log(`findLibraryTracks Pass 2: Found ${newMatches} additional fuzzy match(es)${useBest ? ' (sorted by rating)' : ''}`);
 					}
 				}
 			}
@@ -1123,7 +1140,7 @@
 						SELECT Songs.*
 						${baseJoins}
 						WHERE ${whereParts.join(' AND ')}
-						ORDER BY Random()
+						${orderClause}
 						LIMIT ${limit - results.length}
 					`;
 
@@ -1146,14 +1163,15 @@
 						tl.dontNotify = false;
 					}
 
-					if (results.length > foundIds.size) {
-						log(`findLibraryTracks Pass 3: Found ${results.length - foundIds.size + results.length} additional partial match(es)`);
+					const newMatches = results.length - (foundIds.size - results.length);
+					if (newMatches > 0) {
+						log(`findLibraryTracks Pass 3: Found ${newMatches} additional partial match(es)${useBest ? ' (sorted by rating)' : ''}`);
 					}
 				}
 			}
 
 			if (results.length > 0) {
-				log(`findLibraryTracks: Total ${results.length} match(es) for "${title}" by "${artistName}"`);
+				log(`findLibraryTracks: Total ${results.length} match(es) for "${title}" by "${artistName}"${useBest ? ' (highest rated prioritized)' : ''}`);
 			}
 
 			// Return up to limit

@@ -1,28 +1,20 @@
+<!--
+	SimilarArtists Options Panel for MediaMonkey 5
+	
+	@author Remo Imparato
+	@description Configuration UI for SimilarArtists add-on in Tools > Options > Library
+-->
+
 <div data-id="SimilarArtistsSettings" class="innerDlg">
 
-	<!--<fieldset>
-			<legend>Toolbar and Last.fm</legend>
-			<div class="uiRows">
-				<div class="uiRow">
-					<label class="inline">Toolbar buttons:</label>
-					<div data-id="SAToolbar"
-						 data-control-class="Dropdown">
-						<option>None</option>
-						<option>Run script</option>
-						<option>Auto on/off</option>
-						<option>Both</option>
-					</div>
-				</div>
-
-	</div>
-		</fieldset>-->
-
+	<!-- General Options -->
 	<fieldset>
 		<legend>General options</legend>
 		<div class="uiRow">
 			<label class="inline">Last.fm API key:</label>
 			<div data-id="SAApiKey"
-				 data-control-class="Edit" style="width:220px"
+				 data-control-class="Edit" 
+				 style="width:220px"
 				 data-init-params='{"hint":"Enter your Last.fm API key"}'></div>
 		</div>
 		<div class="uiRows">
@@ -44,12 +36,15 @@
 		</div>
 	</fieldset>
 
+	<!-- Playlist Creation Settings -->
 	<fieldset>
 		<legend>Playlist creation</legend>
 		<div class="uiRows">
 			<div class="left-indent uiRow">
 				<label class="inline">Playlist name:</label>
-				<div data-id="SAName" data-control-class="Edit" data-init-params='{"hint":"Use % to represent the artist name"}'></div>
+				<div data-id="SAName" 
+					 data-control-class="Edit" 
+					 data-init-params='{"hint":"Use % to represent the artist name"}'></div>
 			</div>
 
 			<div class="uiRow">
@@ -63,26 +58,33 @@
 
 			<div class="uiRow">
 				<label class="inline">Artist limit:</label>
-				<div data-id="SALimit" data-control-class="Edit" data-init-params="{type: 'number', min:1, max:9999}"></div>
+				<div data-id="SALimit" 
+					 data-control-class="Edit" 
+					 data-init-params="{type: 'number', min:1, max:9999}"></div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Tracks/artist:</label>
-				<div data-id="SATPA" data-control-class="Edit" data-init-params="{type: 'number', min:1, max:9999}"></div>
+				<div data-id="SATPA" 
+					 data-control-class="Edit" 
+					 data-init-params="{type: 'number', min:1, max:9999}"></div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Tracks/playlist:</label>
-				<div data-id="SATPL" data-control-class="Edit" data-init-params="{type: 'number', min:1, max:9999}"></div>
+				<div data-id="SATPL" 
+					 data-control-class="Edit" 
+					 data-init-params="{type: 'number', min:1, max:9999}"></div>
 			</div>
 
 			<div class="uiRow">
 				<div data-id="SABest" data-control-class="Checkbox">Select highest rated in library?</div>
-				<div data-id="SARank" data-control-class="Checkbox">Select highest ranked by Last.Fm?</div>
+				<div data-id="SARank" data-control-class="Checkbox">Select highest ranked by Last.fm?</div>
 			</div>
 		</div>
 	</fieldset>
 
+	<!-- Filters and Parent Playlist -->
 	<fieldset>
 		<legend>Filters and parent playlist</legend>
 		<div class="uiRows">
@@ -93,39 +95,34 @@
 
 			<div class="uiRow">
 				<label class="inline">Exclude artists:</label>
-				<div data-id="SABlack" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of artists names"}'></div>
+				<div data-id="SABlack" 
+					 data-control-class="Edit" 
+					 data-init-params='{"hint":"Comma separated list of artists names"}'></div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Exclude genres:</label>
-				<div data-id="SAGenre" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of genres"}'></div>
+				<div data-id="SAGenre" 
+					 data-control-class="Edit" 
+					 data-init-params='{"hint":"Comma separated list of genres"}'></div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Exclude titles:</label>
-				<div data-id="SAExclude" data-control-class="Edit" data-init-params='{"hint":"Comma separated list of words in titles"}'></div>
+				<div data-id="SAExclude" 
+					 data-control-class="Edit" 
+					 data-init-params='{"hint":"Comma separated list of words in titles"}'></div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Minimum rating:</label>
-				<div data-id="SARating" data-control-class="Rating">
-					<!--<option>0 stars</option>
-					<option>0.5 stars</option>
-					<option>1 star</option>
-					<option>1.5 stars</option>
-					<option>2 stars</option>
-					<option>2.5 stars</option>
-					<option>3 stars</option>
-					<option>3.5 stars</option>
-					<option>4 stars</option>
-					<option>4.5 stars</option>
-					<option>5 stars</option>-->
-				</div>
+				<div data-id="SARating" data-control-class="Rating"></div>
 				<div data-id="SAUnknown" data-control-class="Checkbox">Include unknown rating?</div>
 			</div>
 		</div>
 	</fieldset>
 
+	<!-- Behavior Settings -->
 	<fieldset>
 		<legend>Behaviour</legend>
 		<div class="uiRows">
@@ -139,7 +136,7 @@
 			</div>
 
 			<div class="uiRow">
-				<div data-id="SAOnPlay" data-control-class="Checkbox">Automatically run the script when playing the last track?</div>
+				<div data-id="SAOnPlay" data-control-class="Checkbox">Automatically run when approaching end of playlist?</div>
 			</div>
 
 			<div class="uiRow">

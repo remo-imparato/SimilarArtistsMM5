@@ -67,7 +67,7 @@ window.configInfo = {
 
 	/**
 	 * Populate the parent playlist dropdown with all available playlists.
-	 * Handles both immediate and deferred population depending on API availability.
+	 * Uses MM5's dataSource pattern with newStringList().
 	 * @param {object} UI UI elements object from getAllUIElements
 	 */
 	populateParentPlaylistDropdown: function(UI) {
@@ -78,44 +78,7 @@ window.configInfo = {
 				return;
 			}
 
-			// Helper function to set dropdown items
-			const setDropdownItems = (items) => {
-				try {
-					// Try setItems method first (newer MM5 builds)
-					if (typeof parentCtrl.setItems === 'function') {
-						parentCtrl.setItems(items);
-						console.log('SimilarArtists Config: Playlist dropdown populated via setItems');
-					} 
-					// Fallback: direct items array assignment
-					else if (parentCtrl.items && Array.isArray(parentCtrl.items)) {
-						parentCtrl.items = items;
-						console.log('SimilarArtists Config: Playlist dropdown populated via items property');
-					} 
-					// Last resort: try value property
-					else if (parentCtrl.value !== undefined) {
-						// For HTML select elements
-						parentCtrl.innerHTML = items.map(item => `<option>${item}</option>`).join('');
-						console.log('SimilarArtists Config: Playlist dropdown populated via innerHTML');
-					}
-
-					// Set selected value (default to 'Similar Artists Playlists' if it exists)
-					const defaultParent = this.config?.Parent || 'Similar Artists Playlists';
-					let selectedIndex = 0;
-
-					if (items.indexOf(defaultParent) >= 0) {
-						selectedIndex = items.indexOf(defaultParent);
-					}
-
-					if (typeof parentCtrl.selectedIndex !== 'undefined') {
-						parentCtrl.selectedIndex = selectedIndex;
-						console.log(`SimilarArtists Config: Selected index set to ${selectedIndex} (${items[selectedIndex]})`);
-					}
-				} catch (e) {
-					console.error('SimilarArtists Config: Error setting dropdown items:', e.toString());
-				}
-			};
-
-			// Helper function to get playlists
+			// Helper function to get all playlists
 			const getPlaylistsList = () => {
 				const allPlaylists = [];
 				
@@ -155,27 +118,57 @@ window.configInfo = {
 				return allPlaylists;
 			};
 
+			// Helper function to populate dropdown using MM5's dataSource pattern
+			const populateDropdown = (playlists) => {
+				try {
+					playlists.sort((a, b) => a.localeCompare(b));
+					const items = ['[None]'].concat(playlists);
+
+					// Create StringList dataSource (MM5 standard pattern)
+					if (typeof newStringList === 'function') {
+						const stringList = newStringList();
+						items.forEach(item => stringList.add(item));
+						
+						// Set dataSource
+						parentCtrl.dataSource = stringList;
+						console.log(`SimilarArtists Config: Set dataSource with ${items.length} items`);
+
+						// Set focused index to match stored parent
+						const defaultParent = this.config?.Parent || 'Similar Artists Playlists';
+						let selectedIndex = 0;
+
+						const foundIndex = items.indexOf(defaultParent);
+						if (foundIndex >= 0) {
+							selectedIndex = foundIndex;
+						}
+
+						parentCtrl.focusedIndex = selectedIndex;
+						console.log(`SimilarArtists Config: Set focusedIndex to ${selectedIndex} (${items[selectedIndex]})`);
+					} else {
+						console.error('SimilarArtists Config: newStringList() not available');
+					}
+				} catch (e) {
+					console.error('SimilarArtists Config: Error populating dropdown:', e.toString());
+				}
+			};
+
 			// Attempt to populate immediately
 			let playlists = getPlaylistsList();
 			
 			if (playlists.length > 0) {
 				// Got playlists immediately
-				playlists.sort((a, b) => a.localeCompare(b));
-				const items = ['[None]'].concat(playlists);
-				setDropdownItems.call(this, items);
+				populateDropdown.call(this, playlists);
 			} else {
 				// No playlists yet, try again after a short delay
 				console.log('SimilarArtists Config: No playlists found immediately, retrying...');
 				setTimeout(() => {
 					playlists = getPlaylistsList();
 					if (playlists.length > 0) {
-						playlists.sort((a, b) => a.localeCompare(b));
-						const items = ['[None]'].concat(playlists);
-						setDropdownItems.call(this, items);
+						populateDropdown.call(this, playlists);
 					} else {
 						console.warn('SimilarArtists Config: Still no playlists found after delay');
 						// Set default items at minimum
-						setDropdownItems.call(this, ['[None]']);
+						populateDropdown.call(this, []);
 					}
 				}, 500);
 			}
@@ -213,20 +206,32 @@ window.configInfo = {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		// Get selected parent playlist from dropdown
+		// Get selected parent playlist from dropdown using MM5 pattern
 		try {
 			const parentCtrl = UI.SAParent?.controlClass;
-			if (parentCtrl) {
-				if (parentCtrl.items && typeof parentCtrl.selectedIndex !== 'undefined') {
-					const selectedItem = parentCtrl.items[parentCtrl.selectedIndex];
+			if (parentCtrl && parentCtrl.dataSource && typeof parentCtrl.focusedIndex !== 'undefined') {
+				const ds = parentCtrl.dataSource;
+				const idx = parentCtrl.focusedIndex;
+				
+				// Get the selected item from dataSource
+				if (idx >= 0 && idx < ds.count) {
+					const selectedItem = ds.getValue(idx);
+					const selectedValue = selectedItem ? selectedItem.toString() : '';
+					
 					// Store empty string if [None] is selected, otherwise store the playlist name
-					this.config.Parent = (selectedItem === '[None]') ? '' : (selectedItem || 'Similar Artists Playlists');
+					this.config.Parent = (selectedValue === '[None]') ? '' : selectedValue;
+					console.log(`SimilarArtists Config save: Parent = "${this.config.Parent}" (index ${idx})`);
 				} else {
-					// Fallback
-					this.config.Parent = parentCtrl.value || 'Similar Artists Playlists';
+					this.config.Parent = '';
+					console.log('SimilarArtists Config save: No valid selection, Parent = ""');
 				}
+			} else {
+				// Fallback if dataSource not available
+				this.config.Parent = '';
+				console.log('SimilarArtists Config save: dataSource not available, Parent = ""');
 			}
 		} catch (e) {
+			console.error('SimilarArtists Config save: Error reading Parent:', e.toString());
 			// If something fails, use default
 			this.config.Parent = 'Similar Artists Playlists';
 		}
