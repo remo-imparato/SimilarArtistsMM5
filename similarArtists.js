@@ -290,21 +290,10 @@ try {
  	 * Toggle automatic mode (run addon when playback reaches end of playlist).
  	 */
  	function toggleAuto() {
--		const next = !getSetting('OnPlay', false);
--		setSetting('OnPlay', next);
--		// Update UI icon to reflect new state
--		refreshToggleUI();
--		if (next) {
--			attachAuto();
--			log('SimilarArtists: Auto-mode enabled');
--		} else {
--			detachAuto();
--			log('SimilarArtists: Auto-mode disabled');
--		}
-+		const next = !getSetting('OnPlay', false);
-+		setSetting('OnPlay', next);
-+		applyAutoModeFromSettings();
-+		log(`SimilarArtists: Auto-mode ${next ? 'enabled' : 'disabled'}`);
+		const next = !getSetting('OnPlay', false);
+		setSetting('OnPlay', next);
+		applyAutoModeFromSettings();
+		log(`SimilarArtists: Auto-mode ${next ? 'enabled' : 'disabled'}`);
  	}
 
 	/**
