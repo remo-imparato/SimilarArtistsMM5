@@ -517,37 +517,71 @@
 
 			updateProgress(`Found ${similar.length} similar artist(s) for "${seed.name}", querying tracks...`, seedProgress * 0.3);
 
+			// Process each artist in the pool
 			for (const artName of artistPool) {
-				// Populate rank map: fetch top tracks for this artist and score them
+				// RANKING MODE: Fetch top 100 tracks and score them
 				if (rankEnabled && trackRankMap) {
 					updateProgress(`Ranking: Fetching top 100 tracks for "${artName}"...`, seedProgress * 0.3);
-					const titles = await fetchTopTracksForRank(fixPrefixes(artName));
-					updateProgress(`Ranking: Scoring ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
-					for (let rankIdx = 0; rankIdx < titles.length; rankIdx++) {
-						const title = titles[rankIdx];
-						// Score: higher rank for earlier positions (101 = 1st, 1 = 100th)
-						const rankScore = 101 - (rankIdx + 1);
-						const matches = await findLibraryTracks(artName, title, 5, { rank: false, best: bestEnabled });
-						for (const m of matches) {
-							const trackId = m.id || m.ID;
-							// Keep highest score if track appears in multiple artists' top tracks
-							const currentScore = trackRankMap.get(trackId) || 0;
-							if (rankScore > currentScore) {
-								trackRankMap.set(trackId, rankScore);
-							}
-						}
+					const rankTitles = await fetchTopTracksForRank(fixPrefixes(artName));
+					
+					if (rankTitles.length > 0) {
+						updateProgress(`Ranking: Batch lookup of ${rankTitles.length} tracks from "${artName}"...`, seedProgress * 0.3);
+						
+						// Use batch lookup for ranking (up to 5 matches per title for better scoring)
+						const rankMatches = await findLibraryTracksBatch(artName, rankTitles, 5, { 
+							rank: false, 
+							best: bestEnabled 
+						});
+						
+						// Score all matched tracks
+						let scoredCount = 0;
+						rankTitles.forEach((title, rankIdx) => {
+							const matches = rankMatches.get(title) || [];
+							const rankScore = 101 - (rankIdx + 1); // Higher score for earlier positions
+							
+							matches.forEach(track => {
+								const trackId = track.id || track.ID;
+								const currentScore = trackRankMap.get(trackId) || 0;
+								if (rankScore > currentScore) {
+									trackRankMap.set(trackId, rankScore);
+									scoredCount++;
+								}
+							});
+						});
+						
+						log(`Ranking: Scored ${scoredCount} unique tracks from "${artName}"`);
 					}
 				}
 
-				// Fetch top track titles from Last.fm, then try to find local matches.
-				updateProgress(`Fetching top ${tracksPerArtist} tracks for "${artName}" from Last.fm...`, seedProgress * 0.3);
+				// COLLECTION MODE: Fetch top N tracks for playlist
+				updateProgress(`Collecting: Fetching top ${tracksPerArtist} tracks from "${artName}"...`, seedProgress * 0.3);
 				const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
-				updateProgress(`Searching library for ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
-				for (const title of titles) {
-					const matches = await findLibraryTracks(artName, title, 1, { rank: false, best: bestEnabled });
-					matches.forEach((m) => allTracks.push(m));
-					if (allTracks.length >= totalLimit) break;
+				
+				if (titles.length > 0) {
+					updateProgress(`Collecting: Batch lookup of ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
+					
+					// Use batch lookup (1 match per title for collection)
+					const matches = await findLibraryTracksBatch(artName, titles, 1, { 
+						rank: false, 
+						best: bestEnabled 
+					});
+					
+					// Add all matched tracks to results (in order of Last.fm ranking)
+					let addedFromArtist = 0;
+					titles.forEach(title => {
+						const trackMatches = matches.get(title) || [];
+						trackMatches.forEach(track => {
+							allTracks.push(track);
+							addedFromArtist++;
+						});
+						
+						// Stop if we've hit the total limit
+						if (allTracks.length >= totalLimit) return;
+					});
+					
+					log(`Collecting: Added ${addedFromArtist} tracks from "${artName}" to playlist`);
 				}
+				
 				if (allTracks.length >= totalLimit) break;
 			}
 			if (allTracks.length >= totalLimit) break;
@@ -838,8 +872,9 @@
 				params.set('limit', String(lim));
 
 			const url = API_BASE + '?' + params.toString();
-			updateProgress(`Querying Last.fm API: getTopTracks for "${artistName}" (limit: ${lim || 'default'})...`);
-			log('fetchTopTracks: querying ' + url);
+			const purpose = (lim >= 100) ? 'for ranking' : 'for collection';
+			updateProgress(`Querying Last.fm: getTopTracks ${purpose} for "${artistName}" (limit: ${lim || 'default'})...`);
+			log(`fetchTopTracks: querying ${url} (${purpose})`);
 
 			const res = await fetch(url);
 			if (!res || !res.ok) {
@@ -867,7 +902,7 @@
 				if (t && (t.name || t.title))
 					titles.push(t.name || t.title);
 			});
-			log(`fetchTopTracks: Retrieved ${titles.length} top tracks for "${artistName}"`);
+			log(`fetchTopTracks: Retrieved ${titles.length} top tracks for "${artistName}" (${purpose})`);
 			return typeof lim === 'number' ? titles.slice(0, lim) : titles;
 		} catch (e) {
 			log(e.toString());
@@ -898,6 +933,233 @@
 	 */
 	async function fetchTopTracksForRank(artistName) {
 		return fetchTopTracks(artistName, 100);
+	}
+
+	/**
+	 * Batch find matching tracks in the MediaMonkey library for multiple titles.
+	 * This is much more efficient than calling findLibraryTracks() for each title individually.
+	 * 
+	 * @param {string} artistName Artist to match.
+	 * @param {string[]} titles Array of track titles to search for.
+	 * @param {number} maxPerTitle Max matches to return per title.
+	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering.
+	 * @returns {Promise<Map<string, object[]>>} Map of title -> array of matched tracks.
+	 */
+	async function findLibraryTracksBatch(artistName, titles, maxPerTitle = 1, opts = {}) {
+		try {
+			if (!app?.db?.getTracklist || !titles || titles.length === 0)
+				return new Map();
+
+			const results = new Map();
+			const useBest = opts.best !== undefined ? opts.best : boolSetting('Best');
+			const excludeTitles = parseListSetting('Exclude');
+			const excludeGenres = parseListSetting('Genre');
+			const ratingMin = intSetting('Rating');
+			const allowUnknown = boolSetting('Unknown');
+
+			// Build artist matching clause
+			const buildArtistClause = () => {
+				if (!artistName) return '';
+
+				const artistConds = [];
+				artistConds.push(`Artists.Artist = '${escapeSql(artistName)}'`);
+
+				const prefixes = getIgnorePrefixes();
+				const nameLower = artistName.toLowerCase();
+
+				// Check if artist starts with a prefix
+				for (const prefix of prefixes) {
+					const prefixLower = prefix.toLowerCase();
+					if (nameLower.startsWith(prefixLower + ' ')) {
+						// "The Beatles" -> also match "Beatles, The"
+						const withoutPrefix = artistName.slice(prefix.length + 1);
+						artistConds.push(`Artists.Artist = '${escapeSql(`${withoutPrefix}, ${prefix}`)}'`);
+					} else {
+						// "Beatles" -> also match "Beatles, The" and "The Beatles"
+						artistConds.push(`Artists.Artist = '${escapeSql(`${artistName}, ${prefix}`)}'`);
+						artistConds.push(`Artists.Artist = '${escapeSql(`${prefix} ${artistName}`)}'`);
+					}
+				}
+
+				return `(${artistConds.join(' OR ')})`;
+			};
+
+			// Build common filters
+			const buildCommonFilters = () => {
+				const filters = [];
+
+				excludeTitles.forEach((t) => {
+					filters.push(`Songs.SongTitle NOT LIKE '%${escapeSql(t)}%'`);
+				});
+
+				if (excludeGenres.length > 0) {
+					const genreConditions = excludeGenres
+						.map((g) => `GenreName LIKE '%${escapeSql(g)}%'`)
+						.join(' OR ');
+					filters.push(`
+						GenresSongs.IDGenre NOT IN (
+							SELECT IDGenre FROM Genres WHERE ${genreConditions}
+						)
+					`);
+				}
+
+				if (ratingMin > 0) {
+					if (allowUnknown) {
+						filters.push(`(Songs.Rating < 0 OR Songs.Rating >= ${ratingMin})`);
+					} else {
+						filters.push(`(Songs.Rating >= ${ratingMin} AND Songs.Rating <= 100)`);
+					}
+				} else if (!allowUnknown) {
+					filters.push(`(Songs.Rating >= 0 AND Songs.Rating <= 100)`);
+				}
+
+				return filters;
+			};
+
+			const artistClause = buildArtistClause();
+			const commonFilters = buildCommonFilters();
+			const orderClause = useBest ? ' ORDER BY Songs.Rating DESC, Random()' : ' ORDER BY Random()';
+			const baseJoins = `
+				FROM Songs
+				INNER JOIN ArtistsSongs 
+					ON Songs.ID = ArtistsSongs.IDSong 
+					AND ArtistsSongs.PersonType = 1
+				INNER JOIN Artists 
+					ON ArtistsSongs.IDArtist = Artists.ID
+				${excludeGenres.length > 0 ? 'LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong' : ''}
+			`;
+
+			// Initialize result map
+			titles.forEach(t => results.set(t, []));
+
+			// PASS 1: Exact match (case-insensitive) for all titles in one query
+			{
+				const titleConditions = titles.map(t => 
+					`UPPER(Songs.SongTitle) = '${escapeSql(t.toUpperCase())}'`
+				);
+
+				const whereParts = [];
+				if (artistClause) whereParts.push(artistClause);
+				whereParts.push(`(${titleConditions.join(' OR ')})`);
+				whereParts.push(...commonFilters);
+
+				const sql = `
+					SELECT Songs.*, Songs.SongTitle as MatchedTitle
+					${baseJoins}
+					WHERE ${whereParts.join(' AND ')}
+					${orderClause}
+				`;
+
+				const tl = app?.db?.getTracklist(sql, -1);
+				if (tl) {
+					tl.autoUpdateDisabled = true;
+					tl.dontNotify = true;
+					await tl?.whenLoaded();
+
+					tl.forEach((track) => {
+						if (track) {
+							// Find which title this matches (case-insensitive)
+							const matchedTitle = titles.find(t => 
+								t.toUpperCase() === (track.title || track.SongTitle || '').toUpperCase()
+							);
+							if (matchedTitle) {
+								const arr = results.get(matchedTitle);
+								if (arr && arr.length < maxPerTitle) {
+									arr.push(track);
+								}
+							}
+						}
+					});
+
+					tl.autoUpdateDisabled = false;
+					tl.dontNotify = false;
+				}
+
+				const exactMatches = Array.from(results.values()).reduce((sum, arr) => sum + arr.length, 0);
+				if (exactMatches > 0) {
+					log(`findLibraryTracksBatch Pass 1: Found ${exactMatches} exact matches for ${titles.length} titles`);
+				}
+			}
+
+			// PASS 2: Fuzzy match for titles that didn't get enough matches
+			{
+				const needMoreMatches = titles.filter(t => {
+					const arr = results.get(t);
+					return arr && arr.length < maxPerTitle;
+				});
+
+				if (needMoreMatches.length > 0) {
+					const fuzzyConditions = needMoreMatches.map(t => {
+						const stripped = stripName(t);
+						if (!stripped) return null;
+
+						const stripExpr =
+							"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
+							"REPLACE(REPLACE(REPLACE(REPLACE(" +
+							"UPPER(Songs.SongTitle)," +
+							"'&','AND'),'+','AND'),' N ','AND'),'''N''','AND'),' ',''),'.','')," +
+							"',',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'\"','')";
+
+						return `${stripExpr} = '${escapeSql(stripped)}'`;
+					}).filter(c => c !== null);
+
+					if (fuzzyConditions.length > 0) {
+						const whereParts = [];
+						if (artistClause) whereParts.push(artistClause);
+						whereParts.push(`(${fuzzyConditions.join(' OR ')})`);
+						whereParts.push(...commonFilters);
+
+						const sql = `
+							SELECT Songs.*
+							${baseJoins}
+							WHERE ${whereParts.join(' AND ')}
+							${orderClause}
+						`;
+
+						const tl = app?.db?.getTracklist(sql, -1);
+						if (tl) {
+							tl.autoUpdateDisabled = true;
+							tl.dontNotify = true;
+							await tl?.whenLoaded();
+
+							tl.forEach((track) => {
+								if (track) {
+									const trackStripped = stripName(track.title || track.SongTitle || '');
+									// Find which title this matches
+									const matchedTitle = needMoreMatches.find(t => 
+										stripName(t) === trackStripped
+									);
+									if (matchedTitle) {
+										const arr = results.get(matchedTitle);
+										if (arr && arr.length < maxPerTitle) {
+											arr.push(track);
+										}
+									}
+								}
+							});
+
+							tl.autoUpdateDisabled = false;
+							tl.dontNotify = false;
+						}
+
+						const fuzzyMatches = Array.from(results.values()).reduce((sum, arr) => sum + arr.length, 0) - 
+							Array.from(results.values()).reduce((sum, arr) => sum + arr.length, 0);
+						if (fuzzyMatches > 0) {
+							log(`findLibraryTracksBatch Pass 2: Found ${fuzzyMatches} additional fuzzy matches`);
+						}
+					}
+				}
+			}
+
+			const totalMatches = Array.from(results.values()).reduce((sum, arr) => sum + arr.length, 0);
+			log(`findLibraryTracksBatch: Total ${totalMatches} matches for ${titles.length} titles from "${artistName}"${useBest ? ' (sorted by rating)' : ''}`);
+
+			return results;
+
+		} catch (e) {
+			log('findLibraryTracksBatch error: ' + e.toString());
+			return new Map();
+		}
 	}
 
 	/**
