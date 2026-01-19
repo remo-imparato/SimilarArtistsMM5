@@ -67,7 +67,7 @@ window.configInfo = {
 
 	/**
 	 * Populate the parent playlist dropdown with all available playlists.
-	 * Uses MM5's dataSource pattern with newStringList().
+	 * Uses MM5's dataSource pattern with app.utils.newStringList().
 	 * @param {object} UI UI elements object from getAllUIElements
 	 */
 	populateParentPlaylistDropdown: function(UI) {
@@ -124,9 +124,10 @@ window.configInfo = {
 					playlists.sort((a, b) => a.localeCompare(b));
 					const items = ['[None]'].concat(playlists);
 
-					// Create StringList dataSource (MM5 standard pattern)
-					if (typeof newStringList === 'function') {
-						const stringList = newStringList();
+					// Create StringList dataSource (MM5 standard pattern) - use app.utils.newStringList()
+					const stringListFactory = app.utils?.newStringList || window.newStringList;
+					if (typeof stringListFactory === 'function') {
+						const stringList = stringListFactory();
 						items.forEach(item => stringList.add(item));
 						
 						// Set dataSource
@@ -145,7 +146,7 @@ window.configInfo = {
 						parentCtrl.focusedIndex = selectedIndex;
 						console.log(`SimilarArtists Config: Set focusedIndex to ${selectedIndex} (${items[selectedIndex]})`);
 					} else {
-						console.error('SimilarArtists Config: newStringList() not available');
+						console.error('SimilarArtists Config: newStringList() not available (checked app.utils.newStringList and window.newStringList)');
 					}
 				} catch (e) {
 					console.error('SimilarArtists Config: Error populating dropdown:', e.toString());

@@ -1381,16 +1381,23 @@
 					const parentName = stringSetting('Parent');
 					let parentPlaylist = null;
 					
-					// Find parent playlist if specified
-					if (parentName) {
+					// Find parent playlist if specified (and not empty)
+					if (parentName && parentName.trim() !== '') {
 						parentPlaylist = findPlaylist(parentName);
+						if (parentPlaylist) {
+							log(`createPlaylist: Found parent playlist '${parentName}' (ID: ${parentPlaylist.id || parentPlaylist.ID})`);
+						} else {
+							log(`createPlaylist: Parent playlist '${parentName}' not found, will create at root`);
+						}
 					}
 					
-					// Use modern MM5 pattern: newPlaylist() on parent or root
-					if (parentPlaylist && parentPlaylist.newPlaylist) {
+					// Create new playlist as child of parent (or root if no parent)
+					if (parentPlaylist && typeof parentPlaylist.newPlaylist === 'function') {
 						playlist = parentPlaylist.newPlaylist();
+						log(`createPlaylist: Created new playlist under parent '${parentName}'`);
 					} else {
 						playlist = app.playlists.root.newPlaylist();
+						log('createPlaylist: Created new playlist at root level');
 					}
 					
 					if (!playlist) {
@@ -1398,16 +1405,16 @@
 						return null;
 					}
 					
-					// Set name (MM5 pattern from actions.js newPlaylist)
-					playlist.name = ' - ' + name + ' - '; // Temporary name to appear first in list
+					// Set name
+					playlist.name = name;
+					log(`createPlaylist: Set playlist name to '${name}'`);
 					
-					// Persist the playlist
+					// Persist the playlist (this commits it to the database with parent relationship intact)
 					await playlist.commitAsync();
+					log(`createPlaylist: Committed playlist to database (ID: ${playlist.id || playlist.ID})`);
 					
 					// Mark as new for potential UI handling
 					playlist.isNew = true;
-					
-					log(`createPlaylist: Created new playlist: ${name}`);
 					
 				} catch (e) {
 					log(`createPlaylist: Error creating playlist: ${e.toString()}`);

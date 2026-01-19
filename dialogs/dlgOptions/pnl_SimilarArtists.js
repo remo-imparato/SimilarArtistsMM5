@@ -118,10 +118,12 @@ function populateParentPlaylist(pnl, storedParent) {
         // Build items array: [None] + playlists
         const items = ['[None]'].concat(allPlaylists);
 
-        // Create a StringList dataSource (MM5 pattern)
+        // Create a StringList dataSource (MM5 pattern) - use app.utils.newStringList()
         try {
-            if (typeof newStringList === 'function') {
-                const stringList = newStringList();
+            // MM5 uses app.utils.newStringList() for dropdowns
+            const stringListFactory = app.utils?.newStringList || window.newStringList;
+            if (typeof stringListFactory === 'function') {
+                const stringList = stringListFactory();
                 items.forEach(item => stringList.add(item));
                 
                 // Set dataSource on dropdown control (MM5 standard pattern)
@@ -142,7 +144,7 @@ function populateParentPlaylist(pnl, storedParent) {
                 parentCtrl.focusedIndex = selectedIndex;
                 log(`Set focusedIndex to ${selectedIndex} (${items[selectedIndex]})`);
             } else {
-                log('newStringList() not available');
+                log('newStringList() not available (checked app.utils.newStringList and window.newStringList)');
             }
         } catch (e) {
             log('Error setting dataSource: ' + e.toString());
