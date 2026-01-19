@@ -166,11 +166,66 @@ function collectManualPlaylists(node, results, depth = 0) {
 }
 
 /**
+ * Get manual playlists list via database query.
+ * Fallback when playlist tree traversal isn't available (e.g., node.childPlaylists undefined).
+ * @returns {Promise<string[]>}
+ */
+async function getManualPlaylistsViaDb() {
+    try {
+        if (!app?.db?.getQuery) {
+            log('getManualPlaylistsViaDb: app.db.getQuery not available');
+            return [];
+        }
+
+        // Try common MM schema: Playlists table containing Title/PlaylistName and flags for auto-playlists.
+        // We keep it defensive because schema can vary across builds.
+        const candidates = [
+            { sql: "SELECT PlaylistName AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+            { sql: "SELECT Name AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+            { sql: "SELECT Title AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+            { sql: "SELECT PlaylistName AS name FROM Playlists", col: 'name' },
+            { sql: "SELECT Name AS name FROM Playlists", col: 'name' },
+            { sql: "SELECT Title AS name FROM Playlists", col: 'name' }
+        ];
+
+        for (const c of candidates) {
+            try {
+                const q = app.db.getQuery(c.sql);
+                await q?.whenLoaded?.();
+
+                const names = [];
+                if (q?.forEach) {
+                    q.forEach((row) => {
+                        const v = row?.getValue ? row.getValue(c.col) : row?.[c.col];
+                        const s = v != null ? String(v).trim() : '';
+                        if (s) names.push(s);
+                    });
+                }
+
+                if (names.length) {
+                    log(`getManualPlaylistsViaDb: loaded ${names.length} playlists using query: ${c.sql}`);
+                    return names;
+                }
+            } catch (e) {
+                // try next candidate
+            }
+        }
+
+        log('getManualPlaylistsViaDb: no results from any candidate query');
+        return [];
+
+    } catch (e) {
+        log('getManualPlaylistsViaDb error: ' + e.toString());
+        return [];
+    }
+}
+
+/**
  * Populate parent playlist dropdown with available manual playlists
  * @param {HTMLElement} pnl - The panel element
  * @param {string} storedParent - The currently stored parent playlist name
  */
-function populateParentPlaylist(pnl, storedParent) {
+async function populateParentPlaylist(pnl, storedParent) {
     try {
         const parentCtrl = getAllUIElements(pnl)?.SAParent?.controlClass;
         if (!parentCtrl) {
@@ -179,12 +234,23 @@ function populateParentPlaylist(pnl, storedParent) {
         }
 
         // Collect all manual playlists
-        const allPlaylists = [];
-        
+        let allPlaylists = [];
+
         log('Starting playlist enumeration...');
 
+        // First try: playlist tree traversal (if available)
         if (app.playlists?.root) {
-            collectManualPlaylists(app.playlists.root, allPlaylists, 0);
+            try {
+                collectManualPlaylists(app.playlists.root, allPlaylists, 0);
+            } catch (e) {
+                log('populateParentPlaylist: tree traversal failed: ' + e.toString());
+            }
+        }
+
+        // Fallback: DB query if tree traversal yields nothing (or childPlaylists undefined)
+        if (!allPlaylists.length) {
+            log('populateParentPlaylist: no playlists via tree traversal, trying DB fallback...');
+            allPlaylists = await getManualPlaylistsViaDb();
         }
 
         log(`Found ${allPlaylists.length} manual playlist(s)`);
@@ -205,7 +271,7 @@ function populateParentPlaylist(pnl, storedParent) {
 
         const stringList = stringListFactory();
         items.forEach(item => stringList.add(item));
-        
+
         // Set dataSource
         parentCtrl.dataSource = stringList;
 
@@ -223,47 +289,44 @@ function populateParentPlaylist(pnl, storedParent) {
 
 optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl, wndParams) {
     try {
-		this.config = app.getValue('SimilarArtists', defaults);
+        this.config = app.getValue('SimilarArtists', defaults);
 
-		var UI = getAllUIElements(pnl);
-		UI.SAApiKey.controlClass.value = this.config.ApiKey;
-		UI.SAConfirm.controlClass.checked = this.config.Confirm;
-		UI.SASort.controlClass.checked = this.config.Sort;
-		UI.SALimit.controlClass.value = this.config.Limit;
-		UI.SAName.controlClass.value = this.config.Name;
-		UI.SATPA.controlClass.value = this.config.TPA;
-		UI.SATPL.controlClass.value = this.config.TPL;
-		UI.SARandom.controlClass.checked = this.config.Random;
-		UI.SASeed.controlClass.checked = this.config.Seed;
-		UI.SASeed2.controlClass.checked = this.config.Seed2;
-		UI.SABest.controlClass.checked = this.config.Best;
-		UI.SARank.controlClass.checked = this.config.Rank;
-		
-		// Rating control uses 'rating' property (0-100 scale, or -1 for unset)
-		// Convert stored value (0-100) to rating control value
-		const ratingValue = parseInt(this.config.Rating, 10) || 0;
-		UI.SARating.controlClass.rating = ratingValue;
-		log(`load: Rating set to ${ratingValue}`);
-		
-		UI.SAUnknown.controlClass.checked = this.config.Unknown;
-		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
-		UI.SAEnqueue.controlClass.checked = this.config.Enqueue;
-		UI.SANavigate.controlClass.value = this.config.Navigate;
-		// Single source of truth for auto-mode state when add-on is loaded
-		try {
-			UI.SAOnPlay.controlClass.checked = Boolean(window.SimilarArtists?.isAutoEnabled?.());
-		} catch (e) {
-			UI.SAOnPlay.controlClass.checked = this.config.OnPlay;
-		}
-		UI.SAClearNP.controlClass.checked = this.config.ClearNP;
-		UI.SAIgnore.controlClass.checked = this.config.Ignore;
-		UI.SABlack.controlClass.value = this.config.Black;
-		UI.SAExclude.controlClass.value = this.config.Exclude;
-		UI.SAGenre.controlClass.value = this.config.Genre;
+        var UI = getAllUIElements(pnl);
+        UI.SAApiKey.controlClass.value = this.config.ApiKey;
+        UI.SAConfirm.controlClass.checked = this.config.Confirm;
+        UI.SASort.controlClass.checked = this.config.Sort;
+        UI.SALimit.controlClass.value = this.config.Limit;
+        UI.SAName.controlClass.value = this.config.Name;
+        UI.SATPA.controlClass.value = this.config.TPA;
+        UI.SATPL.controlClass.value = this.config.TPL;
+        UI.SARandom.controlClass.checked = this.config.Random;
+        UI.SASeed.controlClass.checked = this.config.Seed;
+        UI.SASeed2.controlClass.checked = this.config.Seed2;
+        UI.SABest.controlClass.checked = this.config.Best;
+        UI.SARank.controlClass.checked = this.config.Rank;
 
-		// Populate parent playlist dropdown with available manual playlists
-		// Default to 'Similar Artists Playlists' if not yet set
-		populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists');
+        const ratingValue = parseInt(this.config.Rating, 10) || 0;
+        UI.SARating.controlClass.rating = ratingValue;
+        log(`load: Rating set to ${ratingValue}`);
+
+        UI.SAUnknown.controlClass.checked = this.config.Unknown;
+        UI.SAOverwrite.controlClass.value = this.config.Overwrite;
+        UI.SAEnqueue.controlClass.checked = this.config.Enqueue;
+        UI.SANavigate.controlClass.value = this.config.Navigate;
+        try {
+            UI.SAOnPlay.controlClass.checked = Boolean(window.SimilarArtists?.isAutoEnabled?.());
+        } catch (e) {
+            UI.SAOnPlay.controlClass.checked = this.config.OnPlay;
+        }
+        UI.SAClearNP.controlClass.checked = this.config.ClearNP;
+        UI.SAIgnore.controlClass.checked = this.config.Ignore;
+        UI.SABlack.controlClass.value = this.config.Black;
+        UI.SAExclude.controlClass.value = this.config.Exclude;
+        UI.SAGenre.controlClass.value = this.config.Genre;
+
+        // Populate parent playlist dropdown with available manual playlists
+        // Default to 'Similar Artists Playlists' if not yet set
+        populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists');
 
     } catch (e) {
         log('load error: ' + e.toString());

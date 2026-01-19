@@ -11,6 +11,59 @@ window.configInfo = {
 		try { console.log('SimilarArtists Config: ' + txt); } catch (e) {}
 	},
 
+	/**
+	 * Get manual playlists list via database query.
+	 * Fallback when playlist tree traversal yields nothing.
+	 * @returns {Promise<string[]>}
+	 */
+	getManualPlaylistsViaDb: async function () {
+		try {
+			if (!app?.db?.getQuery) {
+				this.log('getManualPlaylistsViaDb: app.db.getQuery not available');
+				return [];
+			}
+
+			const candidates = [
+				{ sql: "SELECT PlaylistName AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+				{ sql: "SELECT Name AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+				{ sql: "SELECT Title AS name FROM Playlists WHERE (IsAutoPlaylist = 0 OR IsAutoPlaylist IS NULL)", col: 'name' },
+				{ sql: "SELECT PlaylistName AS name FROM Playlists", col: 'name' },
+				{ sql: "SELECT Name AS name FROM Playlists", col: 'name' },
+				{ sql: "SELECT Title AS name FROM Playlists", col: 'name' }
+			];
+
+			for (const c of candidates) {
+				try {
+					const q = app.db.getQuery(c.sql);
+					await q?.whenLoaded?.();
+
+					const names = [];
+					if (q?.forEach) {
+						q.forEach((row) => {
+							const v = row?.getValue ? row.getValue(c.col) : row?.[c.col];
+							const s = v != null ? String(v).trim() : '';
+							if (s) names.push(s);
+						});
+					}
+
+					if (names.length) {
+						this.log(`getManualPlaylistsViaDb: loaded ${names.length} playlists using query: ${c.sql}`);
+						return names;
+					}
+				} catch (e) {
+					// try next candidate
+				}
+			}
+
+			this.log('getManualPlaylistsViaDb: no results from any candidate query');
+			return [];
+
+		} catch (e) {
+			this.log('getManualPlaylistsViaDb error: ' + e.toString());
+			return [];
+		}
+	},
+
 	load: function (pnlDiv, addon) {
 
 		// defaults matching similarArtists.js
@@ -173,6 +226,7 @@ window.configInfo = {
 	/**
 	 * Populate the parent playlist dropdown with all available manual playlists.
 	 * Uses MM5's dataSource pattern with app.utils.newStringList().
+	 * Includes DB fallback when traversal yields nothing.
 	 * @param {object} UI UI elements object from getAllUIElements
 	 * @param {string} storedParent The currently stored parent playlist name
 	 */
@@ -185,24 +239,6 @@ window.configInfo = {
 				this.log('SAParent control not found');
 				return;
 			}
-
-			// Helper function to get all manual playlists using recursive traversal
-			const getPlaylistsList = () => {
-				const allPlaylists = [];
-				
-				_this.log('Starting playlist enumeration...');
-
-				// Use app.playlists.root as the starting point (MM5 standard)
-				if (app.playlists?.root) {
-					_this.log('Using app.playlists.root');
-					_this.collectManualPlaylists(app.playlists.root, allPlaylists, '', 0);
-				} else {
-					_this.log('app.playlists.root not available');
-				}
-
-				_this.log(`Found ${allPlaylists.length} manual playlist(s)`);
-				return allPlaylists;
-			};
 
 			// Helper function to populate dropdown using MM5's dataSource pattern
 			const populateDropdown = (playlists) => {
@@ -237,20 +273,43 @@ window.configInfo = {
 				}
 			};
 
-			// Attempt to populate immediately
-			let playlists = getPlaylistsList();
-			
-			if (playlists.length > 0) {
-				// Got playlists immediately
+			// Helper function to get all manual playlists using recursive traversal
+			const getPlaylistsList = () => {
+				const allPlaylists = [];
+				
+				_this.log('Starting playlist enumeration...');
+
+				// Use app.playlists.root as the starting point (MM5 standard)
+				if (app.playlists?.root) {
+					_this.log('Using app.playlists.root');
+					_this.collectManualPlaylists(app.playlists.root, allPlaylists, '', 0);
+				} else {
+					_this.log('app.playlists.root not available');
+				}
+
+				_this.log(`Found ${allPlaylists.length} manual playlist(s)`);
+				return allPlaylists;
+			};
+
+			const populateWithFallback = async () => {
+				let playlists = getPlaylistsList();
+
+				// DB fallback if traversal yields nothing
+				if (!playlists.length) {
+					_this.log('No playlists via tree traversal, trying DB fallback...');
+					playlists = await _this.getManualPlaylistsViaDb();
+				}
+
 				populateDropdown(playlists);
-			} else {
-				// No playlists yet, try again after a short delay (playlists may not be loaded yet)
-				this.log('No playlists found immediately, retrying in 1s...');
+			};
+
+			// Attempt to populate immediately, then retry after a short delay if empty
+			populateWithFallback().then(() => {
+				// if still empty, retry once in 1s (playlists may not be fully loaded)
 				setTimeout(() => {
-					playlists = getPlaylistsList();
-					populateDropdown(playlists);
+					populateWithFallback();
 				}, 1000);
-			}
+			});
 
 		} catch (e) {
 			this.log('Error populating parent playlist dropdown: ' + e.toString());
