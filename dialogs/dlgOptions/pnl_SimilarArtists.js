@@ -2,7 +2,25 @@
  * SimilarArtists Options Panel for MediaMonkey 5
  * 
  * @author Remo Imparato
- * @description Configuration panel for SimilarArtists add-on in MM5 Tools > Options
+ * @version 2.0.0
+ * @description Configuration panel for SimilarArtists add-on in MM5 Tools > Options.
+ *              Provides UI for configuring Last.fm API settings, playlist creation options,
+ *              filters, and automatic behavior.
+ * 
+ * @repository https://github.com/remo-imparato/SimilarArtistsMM5
+ * @license MIT
+ * 
+ * Features:
+ * - Last.fm API key configuration
+ * - Playlist naming and creation modes
+ * - Artist/track limits and filtering options
+ * - Rating-based filtering
+ * - Parent playlist selection
+ * - Auto-enqueue and navigation settings
+ * 
+ * Requirements:
+ * - MediaMonkey 5.0+
+ * - SimilarArtists add-on installed
  */
 
 // Helper get/set that use the SimilarArtists namespace

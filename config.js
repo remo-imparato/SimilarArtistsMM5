@@ -99,30 +99,24 @@ window.configInfo = {
 
 			if (!count || count <= 0) return;
 
-			// Iterate using locked() pattern for thread safety (MM5 standard)
-			if (typeof children.locked === 'function') {
-				children.locked(() => {
-					let child;
-					for (let i = 0; i < count; i++) {
-						child = children.getFastObject ? children.getFastObject(i, child) : children.getValue(i);
-						if (child) {
-							_this.processPlaylistNode(child, results, prefix, depth);
-						}
-					}
-				});
-			} else if (typeof children.forEach === 'function') {
-				// Fallback to forEach if available
+			// Use forEach which is the safest pattern for iteration in MM5
+			// Avoid locked() as it can cause "Read lock not acquired" errors
+			if (typeof children.forEach === 'function') {
 				children.forEach((child) => {
 					if (child) {
 						_this.processPlaylistNode(child, results, prefix, depth);
 					}
 				});
 			} else {
-				// Manual iteration fallback
+				// Manual iteration fallback using getValue
 				for (let i = 0; i < count; i++) {
-					const child = children.getValue ? children.getValue(i) : children[i];
-					if (child) {
-						_this.processPlaylistNode(child, results, prefix, depth);
+					try {
+						const child = children.getValue ? children.getValue(i) : children[i];
+						if (child) {
+							_this.processPlaylistNode(child, results, prefix, depth);
+						}
+					} catch (e) {
+						_this.log(`Error getting child at index ${i}: ${e.toString()}`);
 					}
 				}
 			}
@@ -279,29 +273,50 @@ window.configInfo = {
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 
-		// Get selected parent playlist from dropdown using MM5 pattern (focusedIndex + dataSource)
+		// Get selected parent playlist from dropdown
 		try {
 			const parentCtrl = UI.SAParent?.controlClass;
-			if (parentCtrl && parentCtrl.dataSource && typeof parentCtrl.focusedIndex !== 'undefined') {
-				const ds = parentCtrl.dataSource;
-				const idx = parentCtrl.focusedIndex;
+			if (parentCtrl) {
+				// Try to get value directly first (simplest approach)
+				let selectedValue = '';
 				
-				// Get the selected item from dataSource
-				if (idx >= 0 && idx < ds.count) {
-					const selectedItem = ds.getValue(idx);
-					const selectedValue = selectedItem ? selectedItem.toString() : '';
+				if (parentCtrl.value !== undefined && parentCtrl.value !== null) {
+					selectedValue = String(parentCtrl.value);
+				} else if (parentCtrl.dataSource && typeof parentCtrl.focusedIndex !== 'undefined') {
+					// Use dataSource + focusedIndex as fallback
+					const ds = parentCtrl.dataSource;
+					const idx = parentCtrl.focusedIndex;
+					const count = typeof ds.count === 'function' ? ds.count() : ds.count;
 					
-					// Store empty string if [None] is selected, otherwise store the playlist name
-					this.config.Parent = (selectedValue === '[None]') ? '' : selectedValue;
-					this.log(`save: Parent playlist = "${this.config.Parent}" (index ${idx})`);
-				} else {
-					this.config.Parent = '';
-					this.log('save: No valid selection, Parent = ""');
+					if (idx >= 0 && idx < count) {
+						// Use forEach to safely get the item at index
+						let found = false;
+						let currentIdx = 0;
+						if (typeof ds.forEach === 'function') {
+							ds.forEach((item) => {
+								if (currentIdx === idx && !found) {
+									selectedValue = item ? item.toString() : '';
+									found = true;
+								}
+								currentIdx++;
+							});
+						} else if (typeof ds.getValue === 'function') {
+							try {
+								const item = ds.getValue(idx);
+								selectedValue = item ? item.toString() : '';
+							} catch (e) {
+								this.log('save: Error getting value from dataSource: ' + e.toString());
+							}
+						}
+					}
 				}
+				
+				// Store empty string if [None] is selected, otherwise store the playlist name
+				this.config.Parent = (selectedValue === '[None]' || !selectedValue) ? '' : selectedValue;
+				this.log(`save: Parent playlist = "${this.config.Parent}"`);
 			} else {
-				// Fallback if dataSource not available
 				this.config.Parent = '';
-				this.log('save: dataSource not available, Parent = ""');
+				this.log('save: Parent control not found, Parent = ""');
 			}
 		} catch (e) {
 			this.log('save: Error reading Parent playlist: ' + e.toString());
