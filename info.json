@@ -9,5 +9,5 @@
 	"updateURL": "https://github.com/remo-imparato/SimilarArtistsMM5",
 	"homepage": "",
 	"minAppVersion": "5.0.0",
-	"config": "config.js"
+	"config": ""
 }

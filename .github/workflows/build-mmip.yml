@@ -33,8 +33,6 @@ jobs:
             similarArtists.js \
             init.js \
             actions_add.js \
-            config.html \
-            config.js \
             info.json \
             smiley_yellow_128.png \
             README.md \

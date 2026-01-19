@@ -62,7 +62,11 @@ const defaults = {
 	ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932',
 	Confirm: true,
 	Sort: false,
+	// Legacy setting. Kept for backward compatibility.
 	Limit: 5,
+	// New, explicit settings (fallback to `Limit` if undefined).
+	SeedLimit: 5,
+	SimilarLimit: 5,
 	Name: 'Artists similar to %',
 	TPA: 9999,
 	TPL: 9999,
@@ -309,7 +313,12 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
         UI.SAApiKey.controlClass.value = this.config.ApiKey;
         UI.SAConfirm.controlClass.checked = this.config.Confirm;
         UI.SASort.controlClass.checked = this.config.Sort;
-        UI.SALimit.controlClass.value = this.config.Limit;
+		// UI has a single field (`SALimit`). Prefer explicit values; fallback to legacy `Limit`.
+		const legacyLimit = this.config.Limit;
+		const seedLimit = (this.config.SeedLimit === undefined || this.config.SeedLimit === null) ? legacyLimit : this.config.SeedLimit;
+		const similarLimit = (this.config.SimilarLimit === undefined || this.config.SimilarLimit === null) ? legacyLimit : this.config.SimilarLimit;
+		// Keep existing UI as-is: represent the effective value (seed and similar share the same control for now).
+		UI.SALimit.controlClass.value = seedLimit || similarLimit || legacyLimit;
         UI.SAName.controlClass.value = this.config.Name;
         UI.SATPA.controlClass.value = this.config.TPA;
         UI.SATPL.controlClass.value = this.config.TPL;
@@ -382,6 +391,10 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.ApiKey = UI.SAApiKey.controlClass.value;
 		this.config.Confirm = UI.SAConfirm.controlClass.checked;
 		this.config.Sort = UI.SASort.controlClass.checked;
+		// Persist both explicit settings using the single UI value.
+		this.config.SeedLimit = UI.SALimit.controlClass.value;
+		this.config.SimilarLimit = UI.SALimit.controlClass.value;
+		// Also persist legacy `Limit` for compatibility with older builds.
 		this.config.Limit = UI.SALimit.controlClass.value;
 		this.config.Name = UI.SAName.controlClass.value;
 		this.config.TPA = UI.SATPA.controlClass.value;

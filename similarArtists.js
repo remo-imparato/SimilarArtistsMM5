@@ -57,6 +57,28 @@ try {
 	const defaults = {
 	};
 
+	// Per-run caches for Last.fm queries (cleared on each runSimilarArtists invocation).
+	let lastfmRunCache = null;
+
+	function initLastfmRunCache() {
+		lastfmRunCache = {
+			similarArtists: new Map(), // key: normalized artist name -> artists[]
+			topTracks: new Map(), // key: normalized artist name + '|' + limit -> titles[]
+		};
+	}
+
+	function clearLastfmRunCache() {
+		lastfmRunCache = null;
+	}
+
+	function cacheKeyArtist(name) {
+		return String(name || '').trim().toUpperCase();
+	}
+
+	function cacheKeyTopTracks(artistName, limit) {
+		return `${cacheKeyArtist(artistName)}|${Number(limit) || ''}`;
+	}
+
 	// Runtime state for the add-on (not persisted).
 	const state = {
 		// Holds the listener subscription for automatic mode so it can be detached.
@@ -545,7 +567,8 @@ try {
 	 */
 	async function processSeedArtists(seeds, settings, trackRankMap = null) {
 		const {
-			artistLimit,
+			seedLimit,
+			similarLimit,
 			tracksPerArtist,
 			totalLimit,
 			includeSeedArtist,
@@ -562,7 +585,7 @@ try {
 		}
 
 		// Process each seed artist up to configured limit.
-		const seedSlice = seeds.slice(0, artistLimit || seeds.length);
+		const seedSlice = seeds.slice(0, seedLimit || seeds.length);
 		for (let i = 0; i < seedSlice.length; i++) {
 			const seed = seedSlice[i];
 
@@ -572,14 +595,14 @@ try {
 
 			// Use fixPrefixes for the API call
 			const artistNameForApi = fixPrefixes(seed.name);
-			const similar = await fetchSimilarArtists(artistNameForApi);
+			const similar = await fetchSimilarArtists(artistNameForApi, similarLimit);
 
 			// Build pool: seed artist (optional) + similar artists.
 			const artistPool = [];
 			if (includeSeedArtist)
 				artistPool.push(seed.name);
 
-			similar.slice(0, artistLimit).forEach((a) => {
+			similar.slice(0, similarLimit || similar.length).forEach((a) => {
 				if (a?.name)
 					artistPool.push(a.name);
 			});
@@ -670,6 +693,7 @@ try {
 	 */
 	async function runSimilarArtists(autoRun) {
 		state.cancelled = false;
+		initLastfmRunCache();
 
 		try {
 			const seedsRaw = collectSeedTracks();
@@ -694,7 +718,9 @@ try {
 				log('SimilarArtists: Progress task created');
 			}
 
-			const artistLimit = intSetting('Limit');
+			const legacyLimit = intSetting('Limit');
+			const seedLimit = intSetting('SeedLimit') || legacyLimit;
+			const similarLimit = intSetting('SimilarLimit') || legacyLimit;
 			const tracksPerArtist = intSetting('TPA');
 			const totalLimit = intSetting('TPL');
 			const includeSeedArtist = boolSetting('Seed');
@@ -722,7 +748,8 @@ try {
 
 			// Process seed artists to find similar artists and tracks
 			const allTracks = await processSeedArtists(seeds, {
-				artistLimit,
+				seedLimit,
+				similarLimit,
 				tracksPerArtist,
 				totalLimit,
 				includeSeedArtist,
@@ -818,6 +845,7 @@ try {
 			updateProgress(`Error: ${e.toString()}`, 1.0);
 			showToast('SimilarArtists: An error occurred - see log for details.');
 		} finally {
+			clearLastfmRunCache();
 			// Cleanup progress task
 			if (globalProgressTask) {
 				// Keep progress visible for 2 seconds after completion
@@ -895,16 +923,21 @@ try {
 	 * @param {string} artistName Main artist.
 	 * @returns {Promise<any[]>} Last.fm similar-artist array.
 	 */
-	async function fetchSimilarArtists(artistName) {
+	async function fetchSimilarArtists(artistName, limit) {
 		try {
 			if (!artistName)
 				return [];
 
+			const cacheKey = cacheKeyArtist(artistName);
+			if (lastfmRunCache?.similarArtists?.has(cacheKey)) {
+				return lastfmRunCache.similarArtists.get(cacheKey) || [];
+			}
+
 			const apiKey = getApiKey();
-			const limitVal = parseInt(getSetting('Limit', defaults?.Limit || 0), 10) || undefined;
-			const params = new URLSearchParams({ method: 'artist.getSimilar', api_key: apiKey, format: 'json', artist: artistName });
-			if (limitVal)
-				params.set('limit', String(limitVal));
+			const lim = Number(limit) || undefined;
+			const params = new URLSearchParams({ method: 'artist.getSimilar', api_key: apiKey, format: 'json', artist: artistName, autocorrect: '1' });
+			if (lim)
+				params.set('limit', String(lim));
 
 			const url = API_BASE + '?' + params.toString();
 			updateProgress(`Querying Last.fm API: getSimilar for "${artistName}"...`);
@@ -915,6 +948,7 @@ try {
 			if (!res || !res.ok) {
 				log(`fetchSimilarArtists: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
 				updateProgress(`Failed to fetch similar artists for "${artistName}" (HTTP ${res?.status})`);
+				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
 			}
 			let data;
@@ -923,21 +957,29 @@ try {
 			} catch (e) {
 				console.warn('fetchSimilarArtists: invalid JSON response: ' + e.toString());
 				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
+				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
 			}
 			if (data?.error) {
 				console.warn('fetchSimilarArtists: API error: ' + (data.message || data.error));
 				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
+				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
 			}
 			const artists = data?.similarartists?.artist || [];
-			if (!Array.isArray(artists) && artists)
-				return [artists];
-			log(`fetchSimilarArtists: Retrieved ${artists.length} similar artists for "${artistName}"`);
-			return artists;
+			let asArr = artists;
+			if (!Array.isArray(asArr) && asArr) asArr = [asArr];
+			log(`fetchSimilarArtists: Retrieved ${asArr.length} similar artists for "${artistName}"`);
+			lastfmRunCache?.similarArtists?.set(cacheKey, asArr);
+			return asArr;
 		} catch (e) {
 			log(e.toString());
 			updateProgress(`Error fetching similar artists: ${e.toString()}`);
+			try {
+				lastfmRunCache?.similarArtists?.set(cacheKeyArtist(artistName), []);
+			} catch (_) {
+				// ignore
+			}
 			return [];
 		}
 	}
@@ -952,9 +994,14 @@ try {
 		try {
 			if (!artistName)
 				return [];
+
+			const cacheKey = cacheKeyTopTracks(artistName, limit);
+			if (lastfmRunCache?.topTracks?.has(cacheKey)) {
+				return lastfmRunCache.topTracks.get(cacheKey) || [];
+			}
 			const apiKey = getApiKey();
 			const lim = Number(limit) || undefined;
-			const params = new URLSearchParams({ method: 'artist.getTopTracks', api_key: apiKey, format: 'json', artist: artistName });
+			const params = new URLSearchParams({ method: 'artist.getTopTracks', api_key: apiKey, format: 'json', artist: artistName, autocorrect: '1' });
 			if (lim)
 				params.set('limit', String(lim));
 
@@ -967,6 +1014,7 @@ try {
 			if (!res || !res.ok) {
 				log(`fetchTopTracks: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
 				updateProgress(`Failed to fetch top tracks for "${artistName}" (HTTP ${res?.status})`);
+				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
 			}
 			let data;
@@ -975,11 +1023,13 @@ try {
 			} catch (e) {
 				console.warn('fetchTopTracks: invalid JSON response: ' + e.toString());
 				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
+				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
 			}
 			if (data?.error) {
 				console.warn('fetchTopTracks: API error: ' + (data.message || data.error));
 				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
+				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
 			}
 			let tracks = data?.toptracks?.track || [];
@@ -990,10 +1040,17 @@ try {
 					titles.push(t.name || t.title);
 			});
 			log(`fetchTopTracks: Retrieved ${titles.length} top tracks for "${artistName}" (${purpose})`);
-			return typeof lim === 'number' ? titles.slice(0, lim) : titles;
+			const out = typeof lim === 'number' ? titles.slice(0, lim) : titles;
+			lastfmRunCache?.topTracks?.set(cacheKey, out);
+			return out;
 		} catch (e) {
 			log(e.toString());
 			updateProgress(`Error fetching top tracks: ${e.toString()}`);
+			try {
+				lastfmRunCache?.topTracks?.set(cacheKeyTopTracks(artistName, limit), []);
+			} catch (_) {
+				// ignore
+			}
 			return [];
 		}
 	}
@@ -1199,7 +1256,7 @@ try {
 						whereParts.push(...commonFilters);
 
 						const sql = `
-							SELECT Songs.*
+							SELECT Songs.* 
 							${baseJoins}
 							WHERE ${whereParts.join(' AND ')}
 							${orderClause}
@@ -1240,229 +1297,7 @@ try {
 				}
 			}
 
-			const totalMatches = Array.from(results.values()).reduce((sum, arr) => sum + arr.length, 0);
-			log(`findLibraryTracksBatch: Total ${totalMatches} matches for ${titles.length} titles from "${artistName}"${useBest ? ' (sorted by rating)' : ''}`);
-
-			return results;
-
-		} catch (e) {
-			log('findLibraryTracksBatch error: ' + e.toString());
-			return new Map();
-		}
-	}
-
-	/**
-	 * Find matching tracks in the MediaMonkey library using multi-pass fuzzy matching.
-	 * 
-	 * Strategy:
-	 * - Pass 1: Exact title match (case-insensitive)
-	 * - Pass 2: Normalized fuzzy match (strip special characters)
-	 * - Pass 3: Partial match with wildcards (fallback for difficult cases)
-	 * - Optional: Sort by rating if "Best" mode is enabled
-	 * 
-	 * @param {string} artistName Artist to match.
-	 * @param {string} title Track title to match.
-	 * @param {number} limit Max matches to return.
-	 * @param {{rank?: boolean, best?: boolean}} opts Controls ordering (best: sort by rating, rank: handled in-memory).
-	 * @returns {Promise<object[]>} Array of track objects.
-	 */
-	async function findLibraryTracks(artistName, title, limit, opts = {}) {
-		try {
-			if (!app?.db?.getTracklist)
-				return [];
-
-			const excludeTitles = parseListSetting('Exclude');
-			const excludeGenres = parseListSetting('Genre');
-			const ratingMin = intSetting('Rating');
-			const allowUnknown = boolSetting('Unknown');
-			const useBest = opts.best !== undefined ? opts.best : boolSetting('Best');
-
-			// Build common filter clauses (genre, rating, exclusions)
-			const buildCommonFilters = () => {
-				const filters = [];
-
-				// Exclude titles
-				excludeTitles.forEach((t) => {
-					filters.push(`Songs.SongTitle NOT LIKE '%${escapeSql(t)}%'`);
-				});
-
-				// Exclude genres
-				if (excludeGenres.length > 0) {
-					const genreConditions = excludeGenres
-						.map((g) => `GenreName LIKE '%${escapeSql(g)}%'`)
-						.join(' OR ');
-					filters.push(`
-						GenresSongs.IDGenre NOT IN (
-							SELECT IDGenre FROM Genres WHERE ${genreConditions}
-						)
-					`);
-				}
-
-				// Rating logic
-				if (ratingMin > 0) {
-					if (allowUnknown) {
-						filters.push(`(Songs.Rating < 0 OR Songs.Rating >= ${ratingMin})`);
-					} else {
-						filters.push(`(Songs.Rating >= ${ratingMin} AND Songs.Rating <= 100)`);
-					}
-				} else if (!allowUnknown) {
-					filters.push(`(Songs.Rating >= 0 AND Songs.Rating <= 100)`);
-				}
-
-				return filters;
-			};
-
-			// Build ORDER BY clause based on options
-			const buildOrderClause = () => {
-				if (useBest) {
-					// Sort by rating descending (highest first), then random for ties
-					return ' ORDER BY Songs.Rating DESC, Random()';
-				}
-				// Default: randomize
-				return ' ORDER BY Random()';
-			};
-
-			// Build artist matching clause
-			const buildArtistClause = () => {
-				if (!artistName) return '';
-
-				const artistConds = [];
-				// Exact match
-				artistConds.push(`Artists.Artist = '${escapeSql(artistName)}'`);
-
-				// Handle prefix variations (e.g., "The Beatles" vs "Beatles, The")
-				const prefixes = getIgnorePrefixes();
-				const nameLower = artistName.toLowerCase();
-
-				// Check if artist starts with a prefix
-				for (const prefix of prefixes) {
-					const prefixLower = prefix.toLowerCase();
-					if (nameLower.startsWith(prefixLower + ' ')) {
-						// "The Beatles" -> also match "Beatles, The"
-						const withoutPrefix = artistName.slice(prefix.length + 1);
-						artistConds.push(`Artists.Artist = '${escapeSql(`${withoutPrefix}, ${prefix}`)}'`);
-					} else {
-						// "Beatles" -> also match "Beatles, The" and "The Beatles"
-						artistConds.push(`Artists.Artist = '${escapeSql(`${artistName}, ${prefix}`)}'`);
-						artistConds.push(`Artists.Artist = '${escapeSql(`${prefix} ${artistName}`)}'`);
-					}
-				}
-
-				return `(${artistConds.join(' OR ')})`;
-			};
-
-			const artistClause = buildArtistClause();
-			const commonFilters = buildCommonFilters();
-			const orderClause = buildOrderClause();
-			const baseJoins = `
-				FROM Songs
-				INNER JOIN ArtistsSongs 
-					ON Songs.ID = ArtistsSongs.IDSong 
-					AND ArtistsSongs.PersonType = 1
-				INNER JOIN Artists 
-					ON ArtistsSongs.IDArtist = Artists.ID
-				${excludeGenres.length > 0 ? 'LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong' : ''}
-			`;
-
-			let results = [];
-			const foundIds = new Set(); // Track IDs we've already found
-
-			// PASS 1: Exact title match (case-insensitive)
-			if (title && results.length < limit) {
-				const whereParts = [];
-				if (artistClause) whereParts.push(artistClause);
-				whereParts.push(`UPPER(Songs.SongTitle) = '${escapeSql(title.toUpperCase())}'`);
-				whereParts.push(...commonFilters);
-
-				const sql = `
-					SELECT Songs.*
-					${baseJoins}
-					WHERE ${whereParts.join(' AND ')}
-					${orderClause}
-					LIMIT ${limit}
-				`;
-
-				updateProgress(`Pass 1: Exact match for "${title}" by "${artistName}"...`);
-				const tl = app?.db?.getTracklist(sql, -1);
-				
-				if (tl) {
-					tl.autoUpdateDisabled = true;
-					tl.dontNotify = true;
-					await tl?.whenLoaded();
-
-					tl.forEach((t) => {
-						if (t && !foundIds.has(t.id || t.ID)) {
-							results.push(t);
-							foundIds.add(t.id || t.ID);
-						}
-					});
-
-					tl.autoUpdateDisabled = false;
-					tl.dontNotify = false;
-				}
-
-				if (results.length > 0) {
-					log(`findLibraryTracks Pass 1: Found ${results.length} exact match(es)${useBest ? ' (sorted by rating)' : ''}`);
-				}
-			}
-
-			// PASS 2: Normalized fuzzy match (strip special characters)
-			if (title && results.length < limit) {
-				const strippedTitle = stripName(title);
-				if (strippedTitle) {
-					const stripExpr =
-						"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(" +
-						"REPLACE(REPLACE(REPLACE(REPLACE(" +
-						"UPPER(Songs.SongTitle)," +
-						"'&','AND'),'+','AND'),' N ','AND'),'''N''','AND'),' ',''),'.','')," +
-						"',',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'\"','')";
-
-					const whereParts = [];
-					if (artistClause) whereParts.push(artistClause);
-					whereParts.push(`${stripExpr} = '${escapeSql(strippedTitle)}'`);
-					whereParts.push(...commonFilters);
-
-					// Exclude IDs we already found
-					if (foundIds.size > 0) {
-						const idList = Array.from(foundIds).join(',');
-						whereParts.push(`Songs.ID NOT IN (${idList})`);
-					}
-
-					const sql = `
-						SELECT Songs.*
-						${baseJoins}
-						WHERE ${whereParts.join(' AND ')}
-						${orderClause}
-						LIMIT ${limit - results.length}
-					`;
-
-					updateProgress(`Pass 2: Fuzzy match for "${title}" by "${artistName}"...`);
-					const tl = app?.db?.getTracklist(sql, -1);
-					
-					if (tl) {
-						tl.autoUpdateDisabled = true;
-						tl.dontNotify = true;
-						await tl?.whenLoaded();
-
-						tl.forEach((t) => {
-							if (t && !foundIds.has(t.id || t.ID)) {
-								results.push(t);
-								foundIds.add(t.id || t.ID);
-							}
-						});
-
-						tl.autoUpdateDisabled = false;
-						tl.dontNotify = false;
-					}
-
-					const newMatches = results.length - (foundIds.size - results.length);
-					if (newMatches > 0) {
-						log(`findLibraryTracks Pass 2: Found ${newMatches} additional fuzzy match(es)${useBest ? ' (sorted by rating)' : ''}`);
-					}
-				}
-			}
-
-			// PASS 3: Partial match with wildcards (last resort for difficult cases)
+			// PASS 3: Partial match with wildcards (fallback for difficult cases)
 			if (title && results.length < limit) {
 				// Extract significant words (3+ chars) from title
 				const words = title
