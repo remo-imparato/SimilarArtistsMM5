@@ -696,23 +696,41 @@
 				updateProgress(`Successfully added ${allTracks.length} tracks to Now Playing!`, 1.0);
 			} else {
 				const seedName = seeds[0]?.name || 'Similar Artists';
-				const selectedPlaylist = !confirm ? null : (await confirmPlaylist(seedName, overwriteMode));
 				
-				// Only proceed with playlist creation if we have a valid playlist or user confirmed
-				if (selectedPlaylist) {
-					// User selected/created a playlist in the dialog
-					updateProgress(`Creating playlist "${selectedPlaylist.name || seedName}" with ${allTracks.length} tracks...`, 0.85);
-					await createPlaylist(allTracks, seedName, overwriteMode, selectedPlaylist);
-					updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
-				} else if (!confirm) {
+				// If confirm is enabled, show dialog to select/create playlist
+				if (confirm) {
+					const dialogResult = await confirmPlaylist(seedName, overwriteMode);
+					
+					if (dialogResult === null) {
+						// User cancelled the dialog
+						log('SimilarArtists: User cancelled playlist dialog.');
+						updateProgress(`Playlist creation cancelled by user.`, 1.0);
+					} else if (dialogResult.autoCreate) {
+						// User clicked OK without selecting a playlist - auto-create one
+						updateProgress(`Creating new playlist "${seedName}" with ${allTracks.length} tracks...`, 0.85);
+						await createPlaylist(allTracks, seedName, overwriteMode, dialogResult);
+						updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
+					} else {
+						// User selected an existing playlist - add tracks to it
+						const selectedPlaylist = dialogResult;
+						const shouldClear = overwriteMode.toLowerCase().indexOf('overwrite') > -1;
+						
+						updateProgress(`Adding ${allTracks.length} tracks to "${selectedPlaylist.name}"...`, 0.85);
+						log(`SimilarArtists: Adding tracks to user-selected playlist '${selectedPlaylist.name}' (ID: ${selectedPlaylist.id || selectedPlaylist.ID}), shouldClear=${shouldClear}`);
+						
+						const added = await addTracksToTarget(selectedPlaylist, allTracks, { 
+							ignoreDupes: false,
+							clearFirst: shouldClear 
+						});
+						
+						log(`SimilarArtists: Added ${added} track(s) to playlist '${selectedPlaylist.name}'`);
+						updateProgress(`Successfully added ${added} tracks to "${selectedPlaylist.name}"!`, 1.0);
+					}
+				} else {
 					// confirm is disabled, so skip playlist dialog and create automatically
 					updateProgress(`Creating new playlist "${seedName}" with ${allTracks.length} tracks...`, 0.85);
 					await createPlaylist(allTracks, seedName, overwriteMode, null);
 					updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
-				} else {
-					// confirm is enabled and user cancelled the dialog
-					log('SimilarArtists: User cancelled playlist creation.');
-					updateProgress(`Playlist creation cancelled by user.`, 1.0);
 				}
 			}
 
