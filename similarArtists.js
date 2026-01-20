@@ -772,31 +772,37 @@ try {
 				log('SimilarArtists: Progress task created');
 			}
 
-			const legacyLimit = intSetting('Limit');
-			const seedLimit = intSetting('SeedLimit') || legacyLimit;
-			const similarLimit = intSetting('SimilarLimit') || legacyLimit;
+			let legacyLimit = intSetting('Limit');
+			let seedLimit = intSetting('SeedLimit') || legacyLimit;
+			let similarLimit = intSetting('SimilarLimit') || legacyLimit;
 			let tracksPerArtist = intSetting('TPA');
 			let totalLimit = intSetting('TPL');
 			let includeSeedArtist = boolSetting('Seed');
 			let includeSeedTrack = boolSetting('Seed2');
- 			const randomise = boolSetting('Random');
+ 			let randomise = boolSetting('Random');
  			let enqueue = boolSetting('Enqueue');
  			let ignoreDupes = boolSetting('Ignore');
- 			const clearNP = boolSetting('ClearNP');
- 			const overwriteMode = config.Overwrite;
- 			const confirm = boolSetting('Confirm');
- 			const rankEnabled = boolSetting('Rank');
- 			const bestEnabled = boolSetting('Best');
+			let clearNP = boolSetting('ClearNP');
+			let overwriteMode = config.Overwrite;
+			let confirm = boolSetting('Confirm');
+			let rankEnabled = boolSetting('Rank');
+			let bestEnabled = boolSetting('Best');
 
- 			// In auto-mode, force enqueue and suppress UI
+ 			// In auto-mode, force enqueue and set tighter/default limits
  			if (autoRun) {
  				enqueue = true;
- 				totalLimit = 5;
- 				includeSeedArtist = false;
- 				includeSeedTrack = false;
+ 				// Auto-mode defaults requested by user
+ 				similarLimit = 5; // artist limit
+ 				tracksPerArtist = 2; // tracks per artist
+ 				totalLimit = 10; // total tracks to add
+ 				// Include the seed artist in auto-mode
+ 				includeSeedArtist = true;
+ 				// Respect existing seed-track inclusion setting for now
+ 				// Randomize the final trackset in auto-mode
+ 				randomise = true;
  				// Always avoid duplicating tracks in Now Playing when auto-queueing
  				ignoreDupes = true;
- 				log('SimilarArtists: Auto-mode enabled - forcing enqueue to Now Playing');
+ 				log('SimilarArtists: Auto-mode enabled - forcing enqueue to Now Playing with settings: similarLimit=' + similarLimit + ', tracksPerArtist=' + tracksPerArtist + ', totalLimit=' + totalLimit + ', includeSeedArtist=' + includeSeedArtist + ', randomise=' + randomise);
  			}
 
 			// Log settings for debugging
