@@ -56,7 +56,6 @@ try {
 	// Default settings (kept commented-out here because this add-on reads defaults from the Options page).
 	const defaults = {
 		Name: '- Similar to %',
-		DefaultSeedName: '- Similar Artists',
 	};
 
 	// Per-run caches for Last.fm queries (cleared on each runSimilarArtists invocation).
@@ -1826,11 +1825,11 @@ try {
 	// Build a playlist title using all seed artist names up to a safe length.
 	function buildPlaylistTitle(seeds) {
 		const template = stringSetting('Name') || 'Similar - %';
-		const defaultSeed = stringSetting('DefaultSeedName') || 'Similar Artists';
 		const names = (seeds || []).map((s) => s?.name).filter((n) => n && n.trim().length);
 		if (!names.length) {
-			if (template.indexOf('%') >= 0) return template.replace('%', defaultSeed);
-			return `${template} ${defaultSeed}`.trim();
+			// No seeds: use the playlist name template as-is. If it contains '%', remove it.
+			if (template.indexOf('%') >= 0) return template.replace('%', '').trim();
+			return template.trim();
 		}
 
 		// Limit artist portion to keep playlist titles readable and within common limits.
@@ -1860,4 +1859,4 @@ try {
 		isAutoEnabled,
 	};
 
-})(typeof window !== 'undefined' ? window : global);
+})(typeof window !== 'undefined' ? window : global);})(typeof window !== 'undefined' ? window : global);
