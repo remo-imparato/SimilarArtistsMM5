@@ -926,7 +926,8 @@ try {
 				} else {
 					// confirm is disabled, so skip playlist dialog and create automatically
 					updateProgress(`Creating new playlist "${seedName}" with ${allTracks.length} tracks...`, 0.85);
-					await createPlaylist(allTracks, seedName, overwriteMode, null, ignoreDupes);
+					// Pass seedLabel so createPlaylist will construct the name from template
+					await createPlaylist(allTracks, seedLabel, overwriteMode, null, ignoreDupes);
 					updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
 				}
 			}
@@ -1851,15 +1852,11 @@ try {
 		return !!getSetting('OnPlay', false);
 	}
 
-	// Build a playlist title using all seed artist names up to a safe length.
+	// Build a comma-separated artist label from seed artists (used to plug into the Name template).
+	// This returns only the artist label portion (e.g. "Pink Floyd, Fuel") and does NOT apply the template.
 	function buildPlaylistTitle(seeds) {
-		const template = stringSetting('Name') || 'Similar - %';
 		const names = (seeds || []).map((s) => s?.name).filter((n) => n && n.trim().length);
-		if (!names.length) {
-			// No seeds: use the playlist name template as-is. If it contains '%', remove it.
-			if (template.indexOf('%') >= 0) return template.replace('%', '').trim();
-			return template.trim();
-		}
+		if (!names.length) return '';
 
 		// Limit artist portion to keep playlist titles readable and within common limits.
 		const maxLabelLen = 80; // conservative limit for artist portion
@@ -1872,11 +1869,7 @@ try {
 			}
 			label = candidate;
 		}
-
-		if (template.indexOf('%') >= 0) {
-			return template.replace('%', label);
-		}
-		return `${template} ${label}`;
+		return label;
 	}
 
 	// Export functions to the global scope
