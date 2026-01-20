@@ -92,18 +92,6 @@ try {
 		autoRunning: false,
 	};
 
-	/**
-	 * Write a prefixed line to console.
-	 * @param {string} txt Log message string.
-	 */
-	function log(txt) {
-		try {
-			console.log('SimilarArtists: ' + txt);
-		} catch (e) {
-			// ignore
-		}
-	}
-
 	// Normalize errors for logging
 	function formatError(err) {
 		try {
@@ -130,9 +118,9 @@ try {
 				return;
 			}
 			// Fallback to console log
-			log(text);
+			console.log('Similar Artists: ' + text);
 		} catch (e) {
-			log('showToast error: ' + e.toString());
+			console.error('Similar Artists: showToast error: ' + e.toString());
 		}
 	}
 
@@ -237,7 +225,7 @@ try {
 				}
 			}
 		} catch (e) {
-			log(e.toString());
+			console.error('Similar Artists: ' + e.toString());
 		}
 		return [];
 	}
@@ -284,7 +272,7 @@ try {
 				app.actions.updateActionIcon(ACTION_AUTO_ID, iconNum);
 			}
 		} catch (e) {
-			log(e.toString());
+			console.error('Similar Artists: ' + e.toString());
 		}
 	}
 
@@ -311,7 +299,7 @@ try {
 			// Best-effort menu refresh
 			window._menuItems?.tools?.action?.invalidate?.();
 		} catch (e) {
-			log('applyAutoModeFromSettings UI refresh failed: ' + e.toString());
+			console.error('Similar Artists: applyAutoModeFromSettings UI refresh failed: ' + e.toString());
 		}
 	}
  
@@ -322,7 +310,7 @@ try {
 		const next = !getSetting('OnPlay', false);
 		setSetting('OnPlay', next);
 		applyAutoModeFromSettings();
-		log(`SimilarArtists: Auto-mode ${next ? 'enabled' : 'disabled'}`);
+		console.log(`Similar Artists: Auto-mode ${next ? 'enabled' : 'disabled'}`);
  	}
 
 	/**
@@ -339,17 +327,17 @@ try {
 
 		// Use app.listen for MM5 event handling
 		if (!app.listen) {
-			log('SimilarArtists: app.listen not available');
+			console.log('Similar Artists: app.listen not available');
 			return;
 		}
 
 		state.autoListen = app.listen(player, 'playbackState', (newState) => {
-			log(`SimilarArtists: playbackState changed to '${newState}'`);
+			console.log(`Similar Artists: playbackState changed to '${newState}'`);
 			if (newState === 'trackChanged') {
 				handleAuto();
 			}
 		});
-		log('SimilarArtists: Auto-mode listener attached');
+		console.log('Similar Artists: Auto-mode listener attached');
 	}
 
 	/**
@@ -361,10 +349,10 @@ try {
 		try {
 			if (app.unlisten) {
 				app.unlisten(state.autoListen);
-				log('SimilarArtists: Auto-mode listener detached');
+				console.log('Similar Artists: Auto-mode listener detached');
 			}
 		} catch (e) {
-			log('SimilarArtists: Error detaching auto-mode listener: ' + e.toString());
+			console.error('Similar Artists: Error detaching auto-mode listener: ' + e.toString());
 		}
 		state.autoListen = null;
 	}
@@ -376,13 +364,13 @@ try {
 	async function handleAuto() {
 		try {
 			if (!isAutoEnabled()) {
-				log('SimilarArtists: Auto-mode disabled, skipping handleAuto');
+				console.log('Similar Artists: Auto-mode disabled, skipping handleAuto');
 				return;
 			}
 
 			const player = app.player;
 			if (!player) {
-				log('SimilarArtists: Player not available');
+				console.log('Similar Artists: Player not available');
 				return;
 			}
 
@@ -393,7 +381,7 @@ try {
 				const played = typeof player.getCountOfPlayedEntries === 'function' ? player.getCountOfPlayedEntries() : 0;
 				if (total > 0) remaining = total - played;
 			} catch (e) {
-				log('SimilarArtists: remaining calculation failed: ' + e.toString());
+				console.log('Similar Artists: remaining calculation failed: ' + e.toString());
 			}
 
 			// Fallback to playlist cursor/count if entriesCount unavailable
@@ -403,30 +391,30 @@ try {
 					const count = player.playlist.count();
 					remaining = count - cursor;
 				} catch (e) {
-					log('SimilarArtists: playlist remaining calculation failed: ' + e.toString());
+					console.log('Similar Artists: playlist remaining calculation failed: ' + e.toString());
 				}
 			}
 
-			log(`SimilarArtists: Auto check - remaining entries: ${remaining}`);
+			console.log(`Similar Artists: Auto check - remaining entries: ${remaining}`);
 
 			// Trigger when 2 or fewer entries remain (similar to AutoDJ behavior)
 			if (remaining > 0 && remaining <= 2) {
 				if (state.autoRunning) {
-					log('SimilarArtists: Auto-mode already running, skipping duplicate trigger');
+					console.log('Similar Artists: Auto-mode already running, skipping duplicate trigger');
 					return;
 				}
 				state.autoRunning = true;
 				try {
-					log('SimilarArtists: Near end of playlist, triggering auto-queue');
+					console.log('Similar Artists: Near end of playlist, triggering auto-queue');
 					await runSimilarArtists(true);
 				} finally {
 					state.autoRunning = false;
 				}
 			} else {
-				log('SimilarArtists: Not near end of playlist, skipping auto-queue');
+				console.log('Similar Artists: Not near end of playlist, skipping auto-queue');
 			}
 		} catch (e) {
-			log('SimilarArtists: Error in handleAuto: ' + formatError(e));
+			console.error('Similar Artists: Error in handleAuto: ' + formatError(e));
 		}
 	}
 
@@ -487,7 +475,7 @@ try {
 					if (tl) return tl;
 				}
 			} catch (e) {
-				log('collectSeedTracks: tryGetSelectedTracklist error: ' + e.toString());
+				console.error('Similar Artists: collectSeedTracks: tryGetSelectedTracklist error: ' + e.toString());
 			}
 			return null;
 		}
@@ -513,25 +501,25 @@ try {
 					}
 				}
 			} catch (e) {
-				log('collectSeedTracks: error iterating selection: ' + e.toString());
+				console.error('Similar Artists: collectSeedTracks: error iterating selection: ' + e.toString());
 			}
 
 			if (seeds.length > 0) {
-				log(`collectSeedTracks: Using ${seeds.length} selected track(s) as seed(s)`);
+				console.log(`collectSeedTracks: Using ${seeds.length} selected track(s) as seed(s)`);
 				return seeds;
 			}
 		}
 
 		// Fallback: use current playing track if no selection
-		log('collectSeedTracks: No selection found, falling back to currently playing track');
+		console.log('Similar Artists: collectSeedTracks: No selection found, falling back to currently playing track');
 		const currentTrack = app.player?.getCurrentTrack?.();
 		if (currentTrack && currentTrack.artist) {
-			log(`collectSeedTracks: Current playing track artist = ${currentTrack.artist}`);
+			console.log(`collectSeedTracks: Current playing track artist = ${currentTrack.artist}`);
 			seeds.push({ name: normalizeName(currentTrack.artist), track: currentTrack });
 			return seeds;
 		}
 
-		log('collectSeedTracks: No tracks found (no selection and no playing track)');
+		console.log('Similar Artists: collectSeedTracks: No tracks found (no selection and no playing track)');
 		return [];
 	}
 
@@ -554,7 +542,7 @@ try {
 		trackInfo.artist = artists[0];
 		artists = track.albumArtist.split(';', 1);
 		trackInfo.albumArtist = artists[0];
-		log('Similar Artists: prepared trackInfo: ' + JSON.stringify(trackInfo));
+		console.log('Similar Artists: prepared trackInfo: ' + JSON.stringify(trackInfo));
 		return trackInfo;
 	};
 
@@ -690,7 +678,7 @@ try {
 							});
 						});
 
-						log(`Ranking: Scored ${scoredCount} unique tracks from "${artName}"`);
+						console.log(`Ranking: Scored ${scoredCount} unique tracks from "${artName}"`);
 					}
 				}
 
@@ -720,7 +708,7 @@ try {
 						if (allTracks.length >= totalLimit) return;
 					});
 
-					log(`Collecting: Added ${addedFromArtist} tracks from "${artName}" to playlist`);
+					console.log(`Collecting: Added ${addedFromArtist} tracks from "${artName}" to playlist`);
 				}
 
 				if (allTracks.length >= totalLimit) break;
@@ -755,7 +743,7 @@ try {
  				showToast('SimilarArtists: Select at least one track to seed the playlist.');
  				return;
  			}
-			log(`SimilarArtists: Collected ${seeds.length} seed artist(s): ${seeds.map(s => s.name).join(', ')}`);
+			console.log(`SimilarArtists: Collected ${seeds.length} seed artist(s): ${seeds.map(s => s.name).join(', ')}`);
 
 			showToast('SimilarArtists: Running');
 
@@ -768,7 +756,7 @@ try {
 				progressTask = app.backgroundTasks.createNew();
 				progressTask.leadingText = 'SimilarArtists: Processing playlist...';
 				globalProgressTask = progressTask;
-				log('SimilarArtists: Progress task created');
+				console.log('Similar Artists: SimilarArtists: Progress task created');
 			}
 
 			let legacyLimit = intSetting('Limit');
@@ -801,11 +789,11 @@ try {
  				randomise = true;
  				// Always avoid duplicating tracks in Now Playing when auto-queueing
  				ignoreDupes = true;
- 				log('SimilarArtists: Auto-mode enabled - forcing enqueue to Now Playing with settings: similarLimit=' + similarLimit + ', tracksPerArtist=' + tracksPerArtist + ', totalLimit=' + totalLimit + ', includeSeedArtist=' + includeSeedArtist + ', randomise=' + randomise);
+ 				console.log('Similar Artists: Auto-mode enabled - forcing enqueue to Now Playing with settings: similarLimit=' + similarLimit + ', tracksPerArtist=' + tracksPerArtist + ', totalLimit=' + totalLimit + ', includeSeedArtist=' + includeSeedArtist + ', randomise=' + randomise);
  			}
 
 			// Log settings for debugging
-			log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}, bestEnabled=${bestEnabled}`);
+			console.log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}, bestEnabled=${bestEnabled}`);
 
 			// In-memory rank map: track ID -> rank score (used if rankEnabled)
 			const trackRankMap = rankEnabled ? new Map() : null;
@@ -852,16 +840,16 @@ try {
 			if (enqueue || autoRun || overwriteMode.toLowerCase().indexOf("do not") > -1) {
 				if (autoRun) {
 					updateProgress(`Auto-enqueue: Adding ${allTracks.length} tracks to Now Playing...`, 0.8);
-					log(`SimilarArtists: Auto-enqueue triggered - adding ${allTracks.length} track(s) to Now Playing (ignoreDupes=${ignoreDupes}, clearNP=${clearNP})`);
+					console.log(`SimilarArtists: Auto-enqueue triggered - adding ${allTracks.length} track(s) to Now Playing (ignoreDupes=${ignoreDupes}, clearNP=${clearNP})`);
 				} else {
 					updateProgress(`Adding ${allTracks.length} tracks to Now Playing...`, 0.8);
 				}
 
 				await enqueueTracks(allTracks, ignoreDupes, clearNP);
 				if (autoRun) {
-					log(`SimilarArtists: Auto-enqueue completed - added ${allTracks.length} track(s) to Now Playing`);
+					console.log(`SimilarArtists: Auto-enqueue completed - added ${allTracks.length} track(s) to Now Playing`);
 				} else {
-					log(`Enqueued ${allTracks.length} track(s) to Now Playing`);
+					console.log(`Enqueued ${allTracks.length} track(s) to Now Playing`);
 				}
 				updateProgress(`Successfully added ${allTracks.length} tracks to Now Playing!`, 1.0);
 			} else {
@@ -873,7 +861,7 @@ try {
 
 					if (dialogResult === null) {
 						// User cancelled the dialog
-						log('SimilarArtists: User cancelled playlist dialog.');
+						console.log('Similar Artists: SimilarArtists: User cancelled playlist dialog.');
 						updateProgress(`Playlist creation cancelled by user.`, 1.0);
 					} else if (dialogResult.autoCreate) {
 						// User clicked OK without selecting a playlist - auto-create one
@@ -886,14 +874,14 @@ try {
 						const shouldClear = overwriteMode.toLowerCase().indexOf('overwrite') > -1;
 
 						updateProgress(`Adding ${allTracks.length} tracks to "${selectedPlaylist.name}"...`, 0.85);
-						log(`SimilarArtists: Adding tracks to user-selected playlist '${selectedPlaylist.name}' (ID: ${selectedPlaylist.id || selectedPlaylist.ID}), shouldClear=${shouldClear}`);
+						console.log(`SimilarArtists: Adding tracks to user-selected playlist '${selectedPlaylist.name}' (ID: ${selectedPlaylist.id || selectedPlaylist.ID}), shouldClear=${shouldClear}`);
 
 						const added = await addTracksToTarget(selectedPlaylist, allTracks, {
 							ignoreDupes: ignoreDupes,
 							clearFirst: shouldClear
 						});
 
-						log(`SimilarArtists: Added ${added} track(s) to playlist '${selectedPlaylist.name}'`);
+						console.log(`SimilarArtists: Added ${added} track(s) to playlist '${selectedPlaylist.name}'`);
 						updateProgress(`Successfully added ${added} tracks to "${selectedPlaylist.name}"!`, 1.0);
 					}
 				} else {
@@ -915,9 +903,9 @@ try {
 			}
 
 		} catch (e) {
-			log(e.msg || e.toString());
+			console.warn(e.msg || e.toString());
 			const errText = formatError(e);
-			log('runSimilarArtists error: ' + errText);
+			console.error('Similar Artists: runSimilarArtists error: ' + errText);
 			updateProgress(`Error: ${errText}`, 1.0);
 			showToast('SimilarArtists: An error occurred - see log for details.');
 		} finally {
@@ -949,7 +937,7 @@ try {
 		return new Promise((resolve) => {
 			try {
 				if (typeof uitools === 'undefined' || !uitools.openDialog) {
-					log('confirmPlaylist: uitools.openDialog not available');
+					console.log('Similar Artists: confirmPlaylist: uitools.openDialog not available');
 					resolve({ autoCreate: true }); // Fallback to auto-create
 					return;
 				}
@@ -963,7 +951,7 @@ try {
 					try {
 						// User clicked Cancel (modalResult !== 1)
 						if (dlg.modalResult !== 1) {
-							log('confirmPlaylist: User cancelled dialog (modalResult=' + dlg.modalResult + ')');
+							console.log('Similar Artists: confirmPlaylist: User cancelled dialog (modalResult=' + dlg.modalResult + ')');
 							resolve(null);
 							return;
 						}
@@ -973,22 +961,22 @@ try {
 
 						if (selectedPlaylist) {
 							// User selected or created a playlist in the dialog
-							log(`confirmPlaylist: User selected/created playlist: ${selectedPlaylist.name || selectedPlaylist.title}`);
+							console.log(`confirmPlaylist: User selected/created playlist: ${selectedPlaylist.name || selectedPlaylist.title}`);
 							resolve(selectedPlaylist);
 						} else {
 							// User clicked OK without selecting a playlist - auto-create one
-							log('confirmPlaylist: User clicked OK without selecting playlist - will auto-create');
+							console.log('Similar Artists: confirmPlaylist: User clicked OK without selecting playlist - will auto-create');
 							resolve({ autoCreate: true });
 						}
 					} catch (e) {
-						log('confirmPlaylist: Error in dialog closure: ' + e.toString());
+						console.error('Similar Artists: confirmPlaylist: Error in dialog closure: ' + e.toString());
 						resolve({ autoCreate: true }); // Fallback to auto-create on error
 					}
 				};
 
 				app.listen(dlg, 'closed', dlg.whenClosed);
 			} catch (e) {
-				log('confirmPlaylist: Error opening dialog: ' + e.toString());
+				console.error('Similar Artists: confirmPlaylist: Error opening dialog: ' + e.toString());
 				resolve({ autoCreate: true }); // Fallback to auto-create
 			}
 		});
@@ -1017,12 +1005,12 @@ try {
 
 			const url = API_BASE + '?' + params.toString();
 			updateProgress(`Querying Last.fm API: getSimilar for "${artistName}"...`);
-			log('fetchSimilarArtists: querying ' + url);
+			console.log('Similar Artists: fetchSimilarArtists: querying ' + url);
 
 			const res = await fetch(url);
 
 			if (!res || !res.ok) {
-				log(`fetchSimilarArtists: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+				console.log(`fetchSimilarArtists: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
 				updateProgress(`Failed to fetch similar artists for "${artistName}" (HTTP ${res?.status})`);
 				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
@@ -1031,13 +1019,13 @@ try {
 			try {
 				data = await res.json();
 			} catch (e) {
-				console.warn('fetchSimilarArtists: invalid JSON response: ' + e.toString());
+				console.warn('Similar Artists: fetchSimilarArtists: invalid JSON response: ' + e.toString());
 				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
 			}
 			if (data?.error) {
-				console.warn('fetchSimilarArtists: API error: ' + (data.message || data.error));
+				console.warn('Similar Artists: fetchSimilarArtists: API error: ' + (data.message || data.error));
 				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 				lastfmRunCache?.similarArtists?.set(cacheKey, []);
 				return [];
@@ -1045,11 +1033,11 @@ try {
 			const artists = data?.similarartists?.artist || [];
 			let asArr = artists;
 			if (!Array.isArray(asArr) && asArr) asArr = [asArr];
-			log(`fetchSimilarArtists: Retrieved ${asArr.length} similar artists for "${artistName}"`);
+			console.log(`fetchSimilarArtists: Retrieved ${asArr.length} similar artists for "${artistName}"`);
 			lastfmRunCache?.similarArtists?.set(cacheKey, asArr);
 			return asArr;
 		} catch (e) {
-			log(e.toString());
+			console.error(e.toString());
 			updateProgress(`Error fetching similar artists: ${e.toString()}`);
 			try {
 				lastfmRunCache?.similarArtists?.set(cacheKeyArtist(artistName), []);
@@ -1084,11 +1072,11 @@ try {
 			const url = API_BASE + '?' + params.toString();
 			const purpose = (lim >= 100) ? 'for ranking' : 'for collection';
 			updateProgress(`Querying Last.fm: getTopTracks ${purpose} for "${artistName}" (limit: ${lim || 'default'})...`);
-			log(`fetchTopTracks: querying ${url} (${purpose})`);
+			console.log(`fetchTopTracks: querying ${url} (${purpose})`);
 
 			const res = await fetch(url);
 			if (!res || !res.ok) {
-				log(`fetchTopTracks: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+				console.log(`fetchTopTracks: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
 				updateProgress(`Failed to fetch top tracks for "${artistName}" (HTTP ${res?.status})`);
 				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
@@ -1097,13 +1085,13 @@ try {
 			try {
 				data = await res.json();
 			} catch (e) {
-				console.warn('fetchTopTracks: invalid JSON response: ' + e.toString());
+				console.warn('Similar Artists: fetchTopTracks: invalid JSON response: ' + e.toString());
 				updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
 			}
 			if (data?.error) {
-				console.warn('fetchTopTracks: API error: ' + (data.message || data.error));
+				console.warn('Similar Artists: fetchTopTracks: API error: ' + (data.message || data.error));
 				updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 				lastfmRunCache?.topTracks?.set(cacheKey, []);
 				return [];
@@ -1122,12 +1110,12 @@ try {
 					rows.push(title);
 				}
 			});
-			log(`fetchTopTracks: Retrieved ${rows.length} top tracks for "${artistName}" (${purpose})`);
+			console.log(`fetchTopTracks: Retrieved ${rows.length} top tracks for "${artistName}" (${purpose})`);
 			const out = typeof lim === 'number' ? rows.slice(0, lim) : rows;
 			lastfmRunCache?.topTracks?.set(cacheKey, out);
 			return out;
 		} catch (e) {
-			log(e.toString());
+			console.error(e.toString());
 			updateProgress(`Error fetching top tracks: ${e.toString()}`);
 			try {
 				lastfmRunCache?.topTracks?.set(cacheKeyTopTracks(artistName, limit, includePlaycount), []);
@@ -1340,7 +1328,7 @@ try {
 			return results;
 
 		} catch (e) {
-			log('findLibraryTracksBatch error: ' + e.toString());
+			console.error('Similar Artists: findLibraryTracksBatch error: ' + e.toString());
 			updateProgress(`Database lookup error: ${e.toString()}`);
 			return new Map();
 		}
@@ -1355,7 +1343,7 @@ try {
 			const map = await findLibraryTracksBatch(artistName, [t], max, opts);
 			return map.get(t) || [];
 		} catch (e) {
-			log('findLibraryTracks error: ' + e.toString());
+			console.error('Similar Artists: findLibraryTracks error: ' + e.toString());
 			return [];
 		}
 	}
@@ -1374,7 +1362,7 @@ try {
 		const { ignoreDupes = false, clearFirst = false } = options;
 
 		if (!target) {
-			log('addTracksToTarget: No target provided');
+			console.log('Similar Artists: addTracksToTarget: No target provided');
 			return 0;
 		}
 
@@ -1383,12 +1371,12 @@ try {
 			try {
 				if (target.clearTracksAsync && typeof target.clearTracksAsync === 'function') {
 					await target.clearTracksAsync();
-					log('addTracksToTarget: Cleared target');
+					console.log('Similar Artists: addTracksToTarget: Cleared target');
 				} else {
-					log('addTracksToTarget: clearTracksAsync not available');
+					console.log('Similar Artists: addTracksToTarget: clearTracksAsync not available');
 				}
 			} catch (e) {
-				log(`addTracksToTarget: Error clearing target: ${e.toString()}`);
+				console.error(`addTracksToTarget: Error clearing target: ${e.toString()}`);
 			}
 		}
 
@@ -1414,7 +1402,7 @@ try {
 					});
 				}
 			} catch (e) {
-				log(`addTracksToTarget: Error building existing track set: ${e.toString()}`);
+				console.error(`addTracksToTarget: Error building existing track set: ${e.toString()}`);
 			}
 		}
 
@@ -1427,19 +1415,19 @@ try {
 			: tracks;
 
 		if (!tracksToAdd || tracksToAdd.length === 0) {
-			log('addTracksToTarget: No tracks to add after filtering');
+			console.log('Similar Artists: addTracksToTarget: No tracks to add after filtering');
 			return 0;
 		}
 
 		// Add tracks using modern MM5 pattern (from actions.js)
 		try {
 			if (!app.utils?.createTracklist) {
-				log('addTracksToTarget: app.utils.createTracklist not available');
+				console.log('Similar Artists: addTracksToTarget: app.utils.createTracklist not available');
 				return 0;
 			}
 
 			if (!target.addTracksAsync || typeof target.addTracksAsync !== 'function') {
-				log('addTracksToTarget: target.addTracksAsync not available');
+				console.log('Similar Artists: addTracksToTarget: target.addTracksAsync not available');
 				return 0;
 			}
 
@@ -1447,7 +1435,7 @@ try {
 			const tracklist = app.utils.createTracklist(true);
 
 			if (!tracklist) {
-				log('addTracksToTarget: Failed to create tracklist');
+				console.log('Similar Artists: addTracksToTarget: Failed to create tracklist');
 				return 0;
 			}
 
@@ -1464,15 +1452,15 @@ try {
 			// Now we can safely call addTracksAsync
 			if (tracklist.count > 0) {
 				await target.addTracksAsync(tracklist);
-				log(`addTracksToTarget: Added ${tracklist.count} tracks (async batch)`);
+				console.log(`addTracksToTarget: Added ${tracklist.count} tracks (async batch)`);
 				return tracklist.count;
 			}
 
-			log('addTracksToTarget: No tracks in tracklist to add');
+			console.log('Similar Artists: addTracksToTarget: No tracks in tracklist to add');
 			return 0;
 
 		} catch (e) {
-			log(`addTracksToTarget: Error: ${e.toString()}`);
+			console.error(`addTracksToTarget: Error: ${e.toString()}`);
 			return 0;
 		}
 	}
@@ -1487,14 +1475,14 @@ try {
 	async function enqueueTracks(tracks, ignoreDupes, clearFirst) {
 		const player = app.player;
 		if (!player) {
-			log('enqueueTracks: Player not available');
+			console.log('Similar Artists: enqueueTracks: Player not available');
 			return;
 		}
 
 		// MM5 uses app.player.addTracksAsync() directly for Now Playing
 		// This is the pattern used by autoDJ and other MM5 components
 		if (!player.addTracksAsync || typeof player.addTracksAsync !== 'function') {
-			log('enqueueTracks: player.addTracksAsync not available');
+			console.log('Similar Artists: enqueueTracks: player.addTracksAsync not available');
 			return;
 		}
 
@@ -1504,14 +1492,14 @@ try {
 				// MM5 pattern: use player.clearPlaylistAsync() or similar
 				if (player.clearPlaylistAsync && typeof player.clearPlaylistAsync === 'function') {
 					await player.clearPlaylistAsync();
-					log('enqueueTracks: Cleared Now Playing');
+					console.log('Similar Artists: enqueueTracks: Cleared Now Playing');
 				} else if (player.stop && typeof player.stop === 'function') {
 					// Fallback: stop playback which effectively clears
 				 player.stop();
-					log('enqueueTracks: Stopped playback (clearPlaylistAsync not available)');
+					console.log('Similar Artists: enqueueTracks: Stopped playback (clearPlaylistAsync not available)');
 				}
 			} catch (e) {
-				log(`enqueueTracks: Error clearing Now Playing: ${e.toString()}`);
+				console.error(`enqueueTracks: Error clearing Now Playing: ${e.toString()}`);
 			}
 		}
 
@@ -1528,11 +1516,11 @@ try {
 						tracklist.forEach((t) => {
 							if (t) existing.add(t.id || t.ID);
 						});
-						log(`enqueueTracks: Found ${existing.size} existing tracks in Now Playing`);
+						console.log(`enqueueTracks: Found ${existing.size} existing tracks in Now Playing`);
 					}
 				}
 			} catch (e) {
-				log(`enqueueTracks: Error building existing track set: ${e.toString()}`);
+				console.error(`enqueueTracks: Error building existing track set: ${e.toString()}`);
 			}
 		}
 
@@ -1545,14 +1533,14 @@ try {
 			: tracks;
 
 		if (!tracksToAdd || tracksToAdd.length === 0) {
-			log('enqueueTracks: No tracks to add after filtering');
+			console.log('Similar Artists: enqueueTracks: No tracks to add after filtering');
 			return;
 		}
 
 		// Create a tracklist and add tracks to it
 		try {
 			if (!app.utils?.createTracklist) {
-				log('enqueueTracks: app.utils.createTracklist not available');
+				console.log('Similar Artists: enqueueTracks: app.utils.createTracklist not available');
 				return;
 			}
 
@@ -1560,7 +1548,7 @@ try {
 			const tracklist = app.utils.createTracklist(true);
 
 			if (!tracklist) {
-				log('enqueueTracks: Failed to create tracklist');
+				console.log('Similar Artists: enqueueTracks: Failed to create tracklist');
 				return;
 			}
 
@@ -1577,13 +1565,13 @@ try {
 			if (tracklist.count > 0) {
 				// Use app.player.addTracksAsync() - the correct MM5 API for Now Playing
 				await player.addTracksAsync(tracklist);
-				log(`enqueueTracks: Successfully added ${tracklist.count} track(s) to Now Playing`);
+				console.log(`enqueueTracks: Successfully added ${tracklist.count} track(s) to Now Playing`);
 			} else {
-				log('enqueueTracks: No tracks in tracklist to add');
+				console.log('Similar Artists: enqueueTracks: No tracks in tracklist to add');
 			}
 
 		} catch (e) {
-			log(`enqueueTracks: Error adding tracks: ${e.toString()}`);
+			console.error(`enqueueTracks: Error adding tracks: ${e.toString()}`);
 		}
 	}
 
@@ -1610,7 +1598,7 @@ try {
 			playlist = selectedPlaylist;
 			// Check if overwrite is enabled
 			shouldClear = overwriteText.toLowerCase().indexOf('overwrite') > -1;
-			log(`createPlaylist: Using user-selected playlist '${playlist.name}' (ID: ${playlist.id || playlist.ID}), shouldClear=${shouldClear}`);
+			console.log(`createPlaylist: Using user-selected playlist '${playlist.name}' (ID: ${playlist.id || playlist.ID}), shouldClear=${shouldClear}`);
 		}
 		// Scenario 2: Auto-create new playlist (OK clicked without selection, or confirm disabled)
 		else if (selectedPlaylist?.autoCreate || !selectedPlaylist) {
@@ -1627,14 +1615,14 @@ try {
 					name = `${baseName}_${idx}`;
 					testPlaylist = findPlaylist(name);
 				}
-				log(`createPlaylist: Create mode - using unique name: ${name}`);
+				console.log(`createPlaylist: Create mode - using unique name: ${name}`);
 			} else {
 				// Overwrite or default mode - try to find existing playlist with base name
 				playlist = findPlaylist(name);
 				if (playlist) {
 					// Found existing playlist - check if we should overwrite
 					shouldClear = overwriteText.toLowerCase().indexOf('overwrite') > -1;
-					log(`createPlaylist: Found existing playlist '${name}', shouldClear=${shouldClear}`);
+					console.log(`createPlaylist: Found existing playlist '${name}', shouldClear=${shouldClear}`);
 				}
 			}
 
@@ -1648,50 +1636,50 @@ try {
 					if (parentName && parentName.trim() !== '') {
 						parentPlaylist = findPlaylist(parentName);
 						if (parentPlaylist) {
-							log(`createPlaylist: Found parent playlist '${parentName}' (ID: ${parentPlaylist.id || parentPlaylist.ID})`);
+							console.log(`createPlaylist: Found parent playlist '${parentName}' (ID: ${parentPlaylist.id || parentPlaylist.ID})`);
 						} else {
-							log(`createPlaylist: Parent playlist '${parentName}' not found, will create at root`);
+							console.log(`createPlaylist: Parent playlist '${parentName}' not found, will create at root`);
 						}
 					}
 
 					// Create new playlist as child of parent (or root if no parent)
 					if (parentPlaylist && typeof parentPlaylist.newPlaylist === 'function') {
 						playlist = parentPlaylist.newPlaylist();
-						log(`createPlaylist: Created new playlist under parent '${parentName}'`);
+						console.log(`createPlaylist: Created new playlist under parent '${parentName}'`);
 					} else {
 						playlist = app.playlists.root.newPlaylist();
-						log('createPlaylist: Created new playlist at root level');
+						console.log('Similar Artists: createPlaylist: Created new playlist at root level');
 					}
 
 					if (!playlist) {
-						log('createPlaylist: Failed to create new playlist object');
+						console.log('Similar Artists: createPlaylist: Failed to create new playlist object');
 						return null;
 					}
 
 					// Set name
 					playlist.name = name;
-					log(`createPlaylist: Set playlist name to '${name}'`);
+					console.log(`createPlaylist: Set playlist name to '${name}'`);
 
 					// Persist the playlist (this commits it to the database with parent relationship intact)
 					await playlist.commitAsync();
-					log(`createPlaylist: Committed playlist to database (ID: ${playlist.id || playlist.ID})`);
+					console.log(`createPlaylist: Committed playlist to database (ID: ${playlist.id || playlist.ID})`);
 
 					// Mark as new for potential UI handling
 					playlist.isNew = true;
 
 				} catch (e) {
-					log(`createPlaylist: Error creating playlist: ${e.toString()}`);
+					console.error(`createPlaylist: Error creating playlist: ${e.toString()}`);
 					return null;
 				}
 			}
 		}
 
 		if (!playlist) {
-			log('createPlaylist: Failed to create or find playlist');
+			console.log('Similar Artists: createPlaylist: Failed to create or find playlist');
 			return null;
 		}
 
-		log(`createPlaylist: Using playlist '${playlist.name}' (ID: ${playlist.id || playlist.ID}), shouldClear=${shouldClear}`);
+		console.log(`createPlaylist: Using playlist '${playlist.name}' (ID: ${playlist.id || playlist.ID}), shouldClear=${shouldClear}`);
 
 		// Add tracks to playlist using unified helper
 		if (tracks && tracks.length > 0) {
@@ -1699,9 +1687,9 @@ try {
 				ignoreDupes: ignoreDupes,
 				clearFirst: shouldClear
 			});
-			log(`createPlaylist: Added ${added} track(s) to playlist`);
+			console.log(`createPlaylist: Added ${added} track(s) to playlist`);
 		} else {
-			log('createPlaylist: No tracks to add to playlist');
+			console.log('Similar Artists: createPlaylist: No tracks to add to playlist');
 		}
 
 		// Handle navigation based on user settings
@@ -1711,20 +1699,20 @@ try {
 				const navStr = String(nav || '').toLowerCase();
 				if (navStr.indexOf('new') > -1 && (playlist.id || playlist.ID)) {
 					// Navigate to the newly created playlist
-					log(`createPlaylist: Navigating to playlist ID: ${playlist.id || playlist.ID}`);
+					console.log(`createPlaylist: Navigating to playlist ID: ${playlist.id || playlist.ID}`);
 					if (window.navigationHandlers.playlist?.navigate) {
 						window.navigationHandlers.playlist.navigate(playlist);
 					}
 				} else if (navStr.indexOf('now') > -1) {
 					// Navigate to Now Playing
-					log('createPlaylist: Navigating to Now Playing');
+					console.log('Similar Artists: createPlaylist: Navigating to Now Playing');
 					if (window.navigationHandlers.nowPlaying?.navigate) {
 						window.navigationHandlers.nowPlaying.navigate();
 					}
 				}
 			}
 		} catch (e) {
-			log(`createPlaylist: Navigation error: ${e.toString()}`);
+			console.error(`createPlaylist: Navigation error: ${e.toString()}`);
 		}
 
 		return playlist;
@@ -1745,15 +1733,15 @@ try {
 			if (app.playlists?.findByTitle && typeof app.playlists.findByTitle === 'function') {
 				const playlist = app.playlists.findByTitle(name);
 				if (playlist) {
-					log(`findPlaylist: Found playlist by title: "${name}"`);
+					console.log(`findPlaylist: Found playlist by title: "${name}"`);
 					return playlist;
 				}
 			}
 		} catch (e) {
-			log(`findPlaylist: Error: ${e.toString()}`);
+			console.error(`findPlaylist: Error: ${e.toString()}`);
 		}
 
-		log(`findPlaylist: Playlist not found: "${name}"`);
+		console.log(`findPlaylist: Playlist not found: "${name}"`);
 		return null;
 	}
 
@@ -1800,17 +1788,17 @@ try {
 		if (state.started)
 			return;
 		state.started = true;
-		log('Starting SimilarArtists addon...');
+		console.log('Similar Artists: Starting SimilarArtists addon...');
 
 		// Check for MM5 environment
 		if (typeof app === 'undefined') {
-			log('MediaMonkey 5 app API not found.');
+			console.log('Similar Artists: MediaMonkey 5 app API not found.');
 			return;
 		}
 
 		// Ensure listener state matches setting
 		applyAutoModeFromSettings();
-		log('SimilarArtists addon started successfully.');
+		console.log('Similar Artists: addon started successfully.');
 	}
 
 	/**
@@ -1859,4 +1847,4 @@ try {
 		isAutoEnabled,
 	};
 
-})(typeof window !== 'undefined' ? window : global);})(typeof window !== 'undefined' ? window : global);
+})(typeof window !== 'undefined' ? window : global);

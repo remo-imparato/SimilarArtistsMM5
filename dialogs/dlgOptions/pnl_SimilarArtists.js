@@ -88,10 +88,6 @@ const defaults = {
 	Genre: '',
 };
 
-function log(txt) {
-	try { console.log('SimilarArtists Options: ' + txt); } catch (e) { }
-}
-
 /**
  * Recursively collect all manual (non-auto) playlists from the playlist tree.
  * Uses forEach pattern to avoid "Read lock not acquired" errors.
@@ -99,72 +95,97 @@ function log(txt) {
  * @param {string[]} results Array to collect playlist names
  * @param {number} depth Current recursion depth (to prevent infinite loops)
  */
-function collectManualPlaylists(node, results, depth = 0) {
+async function collectManualPlaylists(node, results, depth = 0) {
 	if (!node || depth > 10) return; // Prevent infinite recursion
 
 	try {
-		// Get child playlists using MM5 childPlaylists property
-		const children = node.childPlaylists;
+		// Try known child holders in order of preference
+		let children = node.childPlaylists || node.children || null;
+
+		// If no direct children, try handler-style getChildren() which may be sync or async
+		if (!children && typeof node.getChildren === 'function') {
+			try {
+				const maybe = node.getChildren();
+				// Await if it returns a promise
+				if (maybe && typeof maybe.then === 'function') {
+					await maybe;
+					children = node.childPlaylists || node.children || null;
+				} else {
+					// If it returned a collection directly, use it
+					children = maybe || node.childPlaylists || node.children || null;
+				}
+			} catch (e) {
+				console.error('Similar Artists: getChildren() failed: ' + e.toString());
+				children = node.childPlaylists || node.children || null;
+			}
+		}
 
 		if (!children) {
 			return;
 		}
 
-		// Get the count - must be done carefully
-		const count = typeof children.count === 'function' ? children.count() : (children.count || 0);
+		// Determine count safely
+		let count = 0;
+		if (typeof children.count === 'function') count = children.count();
+		else if (typeof children.length === 'number') count = children.length;
+		else if (Array.isArray(children)) count = children.length;
+		else if (typeof children.count === 'number') count = children.count;
 
 		if (!count || count <= 0) return;
 
-		log(`collectManualPlaylists: Found ${count} children at depth ${depth}`);
+		console.log(`Similar Artists: collectManualPlaylists: Found ${count} children at depth ${depth}`);
 
-		// Use forEach which is safe and doesn't require locks
+		// Iterate using whichever safe enumerator is available
 		if (typeof children.forEach === 'function') {
 			children.forEach((child) => {
 				if (!child) return;
 
-				const name = child.title || child.name;
+				const name = child.title || child.name || (child.dataSource && (child.dataSource.title || child.dataSource.name));
 				if (!name) return;
 
-				// Check if this is a manual playlist (not auto-playlist)
-				const isAuto = child.isAutoPlaylist === true;
+				const isAuto = child.isAutoPlaylist === true || (child.dataSource && child.dataSource.isAutoPlaylist === true);
 
 				if (!isAuto) {
 					results.push(name);
-					log(`Found manual playlist: "${name}"`);
+					console.log(`Similar Artists: Found manual playlist: "${name}"`);
 				}
 
-				// Recurse into child playlists
-				collectManualPlaylists(child, results, depth + 1);
+				// Recurse into child if it looks like a node (has childPlaylists/getChildren/children)
+				if (child.childPlaylists || child.children || typeof child.getChildren === 'function') {
+					// don't await here to keep recursion depth sane; collectManualPlaylists is async so we can await below if needed
+					collectManualPlaylists(child, results, depth + 1);
+				}
 			});
 		} else {
-			// Fallback: use getValue which is safer than getFastObject
+			// Fallback indexed access using getValue(i) pattern
 			for (let i = 0; i < count; i++) {
 				try {
-					const child = children.getValue(i);
+					const child = (typeof children.getValue === 'function') ? children.getValue(i) : children[i];
 
 					if (!child) continue;
 
-					const name = child.title || child.name;
+					const name = child.title || child.name || (child.dataSource && (child.dataSource.title || child.dataSource.name));
 					if (!name) continue;
 
-					const isAuto = child.isAutoPlaylist === true;
+					const isAuto = child.isAutoPlaylist === true || (child.dataSource && child.dataSource.isAutoPlaylist === true);
 
 					if (!isAuto) {
 						results.push(name);
-						log(`Found manual playlist: "${name}"`);
+						console.log(`Similar Artists: Found manual playlist: "${name}"`);
 					}
 
-					// Recurse into child playlists
-					collectManualPlaylists(child, results, depth + 1);
+					if (child.childPlaylists || child.children || typeof child.getChildren === 'function') {
+						await collectManualPlaylists(child, results, depth + 1);
+					}
 
 				} catch (itemErr) {
-					log(`Error processing item ${i}: ${itemErr.toString()}`);
+					console.error(`Similar Artists: Error processing item ${i}: ${itemErr.toString()}`);
 				}
 			}
 		}
 
 	} catch (e) {
-		log('Error collecting playlists: ' + e.toString());
+		console.error('Similar Artists: Error collecting playlists: ' + e.toString());
 	}
 }
 
@@ -176,7 +197,7 @@ function collectManualPlaylists(node, results, depth = 0) {
 async function getManualPlaylistsViaDb() {
 	try {
 		if (!app?.db?.getTracklist) {
-			log('getManualPlaylistsViaDb: app.db.getTracklist not available');
+			console.log('Similar Artists: getManualPlaylistsViaDb: app.db.getTracklist not available');
 			return [];
 		}
 
@@ -220,7 +241,7 @@ async function getManualPlaylistsViaDb() {
 				tl.dontNotify = false;
 
 				if (names.length) {
-					log(`getManualPlaylistsViaDb: loaded ${names.length} playlists using query: ${c.sql}`);
+					console.log(`Similar Artists: getManualPlaylistsViaDb: loaded ${names.length} playlists using query: ${c.sql}`);
 					return names;
 				}
 			} catch (e) {
@@ -228,11 +249,11 @@ async function getManualPlaylistsViaDb() {
 			}
 		}
 
-		log('getManualPlaylistsViaDb: no results from any candidate query');
+		console.log('Similar Artists: getManualPlaylistsViaDb: no results from any candidate query');
 		return [];
 
 	} catch (e) {
-		log('getManualPlaylistsViaDb error: ' + e.toString());
+		console.error('Similar Artists: getManualPlaylistsViaDb error: ' + e.toString());
 		return [];
 	}
 }
@@ -246,43 +267,43 @@ async function populateParentPlaylist(pnl, storedParent) {
 	try {
 		const parentCtrl = getAllUIElements(pnl)?.SAParent?.controlClass;
 		if (!parentCtrl) {
-			log('populateParentPlaylist: SAParent control not found');
+			console.log('Similar Artists: populateParentPlaylist: SAParent control not found');
 			return;
 		}
 
 		// Collect all manual playlists
 		let allPlaylists = [];
 
-		log('Starting playlist enumeration...');
+		console.log('Similar Artists: Starting playlist enumeration...');
 
 		// First try: playlist tree traversal (if available)
 		if (app.playlists?.root) {
 			try {
-				collectManualPlaylists(app.playlists.root, allPlaylists, 0);
+				await collectManualPlaylists(app.playlists.root, allPlaylists, 0);
 			} catch (e) {
-				log('populateParentPlaylist: tree traversal failed: ' + e.toString());
+				console.error('Similar Artists: populateParentPlaylist: tree traversal failed: ' + e.toString());
 			}
 		}
 
 		// Fallback: DB query if tree traversal yields nothing (or childPlaylists undefined)
 		if (!allPlaylists.length) {
-			log('populateParentPlaylist: no playlists via tree traversal, trying DB fallback...');
+			console.log('Similar Artists: populateParentPlaylist: no playlists via tree traversal, trying DB fallback...');
 			allPlaylists = await getManualPlaylistsViaDb();
 		}
 
-		log(`Found ${allPlaylists.length} manual playlist(s)`);
+		console.log(`Similar Artists: Found ${allPlaylists.length} manual playlist(s)`);
 
 		// Remove duplicates and sort
 		const uniquePlaylists = [...new Set(allPlaylists)];
 		uniquePlaylists.sort((a, b) => a.localeCompare(b));
 		const items = ['[None]'].concat(uniquePlaylists);
 
-		log('Populating dropdown with ' + items.length + ' items');
+		console.log('Similar Artists: Populating dropdown with ' + items.length + ' items');
 
 		// Create StringList dataSource (MM5 standard pattern)
 		const stringListFactory = app.utils?.newStringList || window.newStringList;
 		if (typeof stringListFactory !== 'function') {
-			log('newStringList() not available');
+			console.log('Similar Artists: newStringList() not available');
 			return;
 		}
 
@@ -297,10 +318,10 @@ async function populateParentPlaylist(pnl, storedParent) {
 		const foundIndex = items.indexOf(defaultParent);
 		parentCtrl.focusedIndex = foundIndex >= 0 ? foundIndex : 0;
 
-		log(`Set focusedIndex to ${parentCtrl.focusedIndex} (${items[parentCtrl.focusedIndex]})`);
+		console.log(`Similar Artists: Set focusedIndex to ${parentCtrl.focusedIndex} (${items[parentCtrl.focusedIndex]})`);
 
 	} catch (e) {
-		log('populateParentPlaylist error: ' + e.toString());
+		console.error('Similar Artists: populateParentPlaylist error: ' + e.toString());
 	}
 }
 
@@ -376,7 +397,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 			// ignore
 		}
 
-		log(`load: Rating set to ${UI.SARating?.controlClass?.value} (useUnknown=${allowUnknown})`);
+		console.log(`Similar Artists: load: Rating set to ${UI.SARating?.controlClass?.value} (useUnknown=${allowUnknown})`);
 
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
 		UI.SAEnqueue.controlClass.checked = this.config.Enqueue;
@@ -419,7 +440,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		setTimeout(() => populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists'), 1000);
 
 	} catch (e) {
-		log('load error: ' + e.toString());
+		console.error('Similar Artists: load error: ' + e.toString());
 	}
 }
 
@@ -457,7 +478,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		} else {
 			this.config.Rating = Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0;
 		}
-		log(`save: Rating = ${this.config.Rating} (control=${ratingValue}, Unknown=${this.config.Unknown})`);
+		console.log(`Similar Artists: save: Rating = ${this.config.Rating} (control=${ratingValue}, Unknown=${this.config.Unknown})`);
 
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
 		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
@@ -496,18 +517,18 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 
 					// Store empty string if [None] is selected, otherwise store the playlist name
 					this.config.Parent = (selectedValue === '[None]') ? '' : selectedValue;
-					log(`save: Parent playlist = "${this.config.Parent}" (index ${idx})`);
+					console.log(`Similar Artists: save: Parent playlist = "${this.config.Parent}" (index ${idx})`);
 				} else {
 					this.config.Parent = '';
-					log('save: No valid selection, Parent = ""');
+					console.log('Similar Artists: save: No valid selection, Parent = ""');
 				}
 			} else {
 				// Fallback if dataSource not available
 				this.config.Parent = '';
-				log('save: dataSource not available, Parent = ""');
+				console.log('Similar Artists: save: dataSource not available, Parent = ""');
 			}
 		} catch (e) {
-			log('save: Error reading Parent playlist: ' + e.toString());
+			console.error('Similar Artists: save: Error reading Parent playlist: ' + e.toString());
 			this.config.Parent = '';
 		}
 
@@ -519,11 +540,11 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 				window.SimilarArtists.applyAutoModeFromSettings();
 			}
 		} catch (e) {
-			log('save: applyAutoModeFromSettings failed: ' + e.toString());
+			console.error('Similar Artists: save: applyAutoModeFromSettings failed: ' + e.toString());
 		}
 
 	} catch (e) {
-		log('save error: ' + e.toString());
+		console.error('Similar Artists: save error: ' + e.toString());
 	}
 }
 

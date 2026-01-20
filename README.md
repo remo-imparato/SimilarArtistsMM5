@@ -1,4 +1,4 @@
-﻿# SimilarArtists for MediaMonkey 5
+﻿# SimilarArtists for MediaMonkey 5/2024
 
 **Automatically generate playlists or queue tracks from similar artists using Last.fm's powerful music recommendation engine.**
 
