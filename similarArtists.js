@@ -105,6 +105,19 @@ try {
 		}
 	}
 
+	// Normalize errors for logging
+	function formatError(err) {
+		try {
+			if (!err) return 'Unknown error';
+			if (err.stack) return String(err.stack);
+			if (err.message) return `${err.name ? err.name + ': ' : ''}${err.message}`;
+			if (typeof err === 'object') return JSON.stringify(err);
+			return String(err);
+		} catch (_) {
+			return String(err);
+		}
+	}
+
 	/**
 	 * Display a toast-like UI notification when possible, otherwise fallback to logging.
 	 * @param {string} text Toast message.
@@ -407,7 +420,7 @@ try {
 				log('SimilarArtists: Not near end of playlist, skipping auto-queue');
 			}
 		} catch (e) {
-			log('SimilarArtists: Error in handleAuto: ' + e.toString());
+			log('SimilarArtists: Error in handleAuto: ' + formatError(e));
 		}
 	}
 
@@ -725,12 +738,16 @@ try {
 		initLastfmRunCache();
 
 		try {
-			const seedsRaw = collectSeedTracks();
-			const seeds = uniqueArtists(seedsRaw);
-			if (!seeds.length) {
-				showToast('SimilarArtists: Select at least one track to seed the playlist.');
-				return;
+			let seedsRaw = collectSeedTracks();
+			if (autoRun && !seedsRaw.length) {
+				await sleep(300);
+				seedsRaw = collectSeedTracks();
 			}
+ 			const seeds = uniqueArtists(seedsRaw);
+ 			if (!seeds.length) {
+ 				showToast('SimilarArtists: Select at least one track to seed the playlist.');
+ 				return;
+ 			}
 			log(`SimilarArtists: Collected ${seeds.length} seed artist(s): ${seeds.map(s => s.name).join(', ')}`);
 
 			showToast('SimilarArtists: Running');
@@ -886,7 +903,9 @@ try {
 
 		} catch (e) {
 			log(e.msg || e.toString());
-			updateProgress(`Error: ${e.toString()}`, 1.0);
+			const errText = formatError(e);
+			log('runSimilarArtists error: ' + errText);
+			updateProgress(`Error: ${errText}`, 1.0);
 			showToast('SimilarArtists: An error occurred - see log for details.');
 		} finally {
 			clearLastfmRunCache();
