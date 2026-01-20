@@ -458,6 +458,16 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 					UI.SABlack.controlClass.dataSource = ds;
 					// wait for datasource to load then mark checked items from config.Black
 					await ds.whenLoaded();
+
+					// Ensure control initializes (some MM builds require Initialize() to render grids)
+					try {
+						if (typeof UI.SABlack.controlClass.Initialize === 'function') {
+							UI.SABlack.controlClass.Initialize();
+						}
+					} catch (ie) {
+						console.error('Similar Artists: SABlack Initialize() failed: ' + ie.toString());
+					}
+
 					const blacks = (this.config.Black || '').split(',').map(s => s.trim()).filter(Boolean);
 					if (blacks.length) {
 						if (typeof ds.forEach === 'function') {
@@ -570,6 +580,16 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 				if (gds) {
 					UI.SAGenre.controlClass.dataSource = gds;
 					await gds.whenLoaded?.();
+
+					// Ensure control initializes (some MM builds require Initialize() to render grids)
+					try {
+						if (typeof UI.SAGenre.controlClass.Initialize === 'function') {
+							UI.SAGenre.controlClass.Initialize();
+						}
+					} catch (ie) {
+						console.error('Similar Artists: SAGenre Initialize() failed: ' + ie.toString());
+					}
+
 					const blacks = (this.config.Genre || '').split(',').map(s => s.trim()).filter(Boolean);
 					if (blacks.length) {
 						if (typeof gds.forEach === 'function') {
@@ -621,8 +641,28 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		// Populate parent playlist dropdown with available manual playlists
 		// Wait for playlists tree to be available instead of using a fixed timeout
 		await waitFor(() => app.playlists && app.playlists.root, 2000, 100);
-		// call populate (best-effort)
-		populateParentPlaylist(pnl, this.config.Parent);
+
+		// Robustly wait for playlists to be initialized (different MM builds expose different hooks)
+		try {
+			if (app.playlists && app.playlists.root) {
+				if (typeof app.playlists.root.whenLoaded === 'function') {
+					await app.playlists.root.whenLoaded();
+				} else if (typeof app.playlists.root.whenReady === 'function') {
+					await app.playlists.root.whenReady();
+				} else if (typeof app.playlists.whenLoaded === 'function') {
+					await app.playlists.whenLoaded();
+				} else if (typeof app.playlists.whenReady === 'function') {
+					await app.playlists.whenReady();
+				} else {
+					// Fallback: wait until child collections appear
+					await waitFor(() => (app.playlists.root.childPlaylists || app.playlists.root.children || (typeof app.playlists.root.getChildren === 'function')), 2000, 100);
+				}
+			}
+		} catch (e) {
+			console.error('Similar Artists: waiting for playlists readiness failed: ' + e.toString());
+		}
+		// call populate and await it so UI is ready when load completes
+		await populateParentPlaylist(pnl, this.config.Parent);
 	} catch (e) {
 		console.error('Similar Artists: load error: ' + e.toString());
 	}
