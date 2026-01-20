@@ -89,7 +89,7 @@
 		<div class="uiRows">
 			<div class="uiRow">
 				<label class="inline">Parent playlist:</label>
-				<div data-id="SAParent" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+				<div data-id="SAParent" data-control-class="Dropdown" data-init-params='{"dbFunc":"getStringList","dbFuncParams":{"category":"playlist"},readOnly: true}'></div>
 			</div>
 
 			<div class="uiRow">
@@ -100,7 +100,7 @@
                         <div data-id="btnBlackSelectAll" data-control-class="Button" class="inline" data-add-dots>Select all</div>
                         <div data-id="btnBlackClear" data-control-class="Button" class="inline" data-add-dots>Clear</div>
                     </div>
-                    <div data-id="SABlack" class="showInline" data-control-class="ArtistGrid" data-init-params="{isHorizontal: false, dynamicSize: true, noItemButtons: true}"></div>
+                    <div data-id="SABlack" class="showInline" data-control-class="Dropdown" data-init-params='{"dbFunc":"getPeople","dbFuncParams":{"category":"artist"},"multi":true,"autoWidth":false}'></div>
                 </div>
 			</div>
 
@@ -112,7 +112,7 @@
                         <div data-id="btnGenreSelectAll" data-control-class="Button" class="inline" data-add-dots>Select all</div>
                         <div data-id="btnGenreClear" data-control-class="Button" class="inline" data-add-dots>Clear</div>
                     </div>
-                    <div data-id="SAGenre" class="showInline" data-control-class="GenreGrid" data-init-params="{isHorizontal: false, dynamicSize: true, icon: 'genre', noItemButtons: true}"></div>
+                    <div data-id="SAGenre" class="showInline" data-control-class="Dropdown" data-init-params='{"dbFunc":"getStringList","dbFuncParams":{"category":"genre"},"multi":true,"autoWidth":false}'></div>
                 </div>
 			</div>
 
