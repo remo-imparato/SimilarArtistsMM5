@@ -73,7 +73,6 @@ const defaults = {
 	TPL: 9999,
 	Random: false,
 	Seed: false,
-	Seed2: false,
 	Best: false,
 	Rank: false,
 	Rating: 0,
@@ -326,7 +325,7 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		UI.SATPL.controlClass.value = this.config.TPL;
 		UI.SARandom.controlClass.checked = this.config.Random;
 		UI.SASeed.controlClass.checked = this.config.Seed;
-		UI.SASeed2.controlClass.checked = this.config.Seed2;
+		// Removed: UI.SASeed2
 		UI.SABest.controlClass.checked = this.config.Best;
 		UI.SARank.controlClass.checked = this.config.Rank;
 
@@ -444,7 +443,6 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.TPL = UI.SATPL.controlClass.value;
 		this.config.Random = UI.SARandom.controlClass.checked;
 		this.config.Seed = UI.SASeed.controlClass.checked;
-		this.config.Seed2 = UI.SASeed2.controlClass.checked;
 		this.config.Best = UI.SABest.controlClass.checked;
 		this.config.Rank = UI.SARank.controlClass.checked;
 
