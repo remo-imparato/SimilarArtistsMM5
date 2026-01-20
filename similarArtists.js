@@ -214,6 +214,13 @@ try {
 	 */
 	function boolSetting(key) {
 		const val = getSetting(key, defaults[key]);
+		if (val === true || val === false) return val;
+		if (typeof val === 'string') {
+			const v = val.trim().toLowerCase();
+			if (['true', '1', 'yes', 'on'].includes(v)) return true;
+			if (['false', '0', 'no', 'off', ''].includes(v)) return false;
+		}
+		if (typeof val === 'number') return val !== 0;
 		return Boolean(val);
 	}
 
