@@ -94,16 +94,26 @@
 
 			<div class="uiRow">
 				<label class="inline">Exclude artists:</label>
-				<div data-id="SABlack"
-					 data-control-class="Edit"
-					 data-init-params='{"hint":"Comma separated list of artists names"}'></div>
+				<div class="inline" style="display:flex;flex-direction:column;align-items:flex-start;">
+                    <div class="smallHint" style="font-size:0.85em;margin-bottom:4px;color:var(--hint-color, #666);">Select artists to exclude from results (multiple selection supported)</div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                        <div data-id="btnBlackSelectAll" data-control-class="Button" class="inline" data-add-dots>Select all</div>
+                        <div data-id="btnBlackClear" data-control-class="Button" class="inline" data-add-dots>Clear</div>
+                    </div>
+                    <div data-id="SABlack" class="showInline" data-control-class="ArtistGrid" data-init-params="{isHorizontal: false, dynamicSize: true, noItemButtons: true}"></div>
+                </div>
 			</div>
 
 			<div class="uiRow">
 				<label class="inline">Exclude genres:</label>
-				<div data-id="SAGenre"
-					 data-control-class="Edit"
-					 data-init-params='{"hint":"Comma separated list of genres"}'></div>
+				<div class="inline" style="display:flex;flex-direction:column;align-items:flex-start;">
+                    <div class="smallHint" style="font-size:0.85em;margin-bottom:4px;color:var(--hint-color, #666);">Select genres to exclude from results (multiple selection supported)</div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                        <div data-id="btnGenreSelectAll" data-control-class="Button" class="inline" data-add-dots>Select all</div>
+                        <div data-id="btnGenreClear" data-control-class="Button" class="inline" data-add-dots>Clear</div>
+                    </div>
+                    <div data-id="SAGenre" class="showInline" data-control-class="ImageGrid" data-init-params="{isHorizontal: false, dynamicSize: true, icon: 'genre', noItemButtons: true}"></div>
+                </div>
 			</div>
 
 			<div class="uiRow">
@@ -135,13 +145,13 @@
 					<option>Navigate to now playing</option>
 				</div>
 			</div>
-			<div class="uiRow">
+			<!--<div class="uiRow">
 				<label class="inline">Minimum rating:</label>
 			</div>
 			<div class="uiRow left-indent">
 				<div data-id="SARating" data-control-class="Rating"></div>
 				<div data-id="SAUnknown" data-control-class="Checkbox">Include unknown rating?</div>
-			</div>
+			</div>-->
 
 			<div class="uiRow">
 				<div data-id="SAOnPlay" data-control-class="Checkbox">Automatically run when approaching end of playlist?</div>

@@ -325,7 +325,21 @@ async function populateParentPlaylist(pnl, storedParent) {
 	}
 }
 
-optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl, wndParams) {
+// Small helper to wait for a condition with timeout
+async function waitFor(conditionFn, timeout = 2000, interval = 50) {
+	const start = Date.now();
+	while (true) {
+		try {
+			if (conditionFn()) return true;
+		} catch (e) {
+			// ignore errors from condition
+		}
+		if (Date.now() - start >= timeout) return false;
+		await new Promise(r => setTimeout(r, interval));
+	}
+}
+
+optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (sett, pnl, wndParams) {
 	try {
 		this.config = app.getValue('SimilarArtists', defaults);
 
@@ -365,9 +379,13 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 			UI.SARating.controlClass.value = (allowUnknown && ratingValue === 0) ? -1 : ratingValue;
 		};
 
+		// Apply immediately if available, otherwise wait for control to initialize
 		applyRatingUI();
-		// Some rating controls refresh on interaction; reapply after render to ensure correct display.
-		setTimeout(applyRatingUI, 0);
+		if (!(UI.SARating && UI.SARating.controlClass)) {
+			await waitFor(() => UI.SARating && UI.SARating.controlClass, 1000, 50);
+		}
+		// Reapply after control is ready to ensure correct display
+		applyRatingUI();
 
 		UI.SAUnknown.controlClass.checked = allowUnknown;
 
@@ -420,25 +438,191 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = function (sett, pnl
 		try {
 			if (!window.SimilarArtists && typeof window.localRequirejs === 'function') {
 				window.localRequirejs('similarArtists');
+				// wait for the module to initialize if possible
+				await waitFor(() => window.SimilarArtists && typeof window.SimilarArtists.isAutoEnabled === 'function', 2000, 100);
 			}
 		} catch (e) {
 			// ignore, handled by fallback
 		}
 
-		setTimeout(setOnPlayCheckbox, 0);
-		setTimeout(setOnPlayCheckbox, 300);
+		// Set checkbox now that we've attempted to ensure module is loaded
+		setOnPlayCheckbox();
 
 		UI.SAClearNP.controlClass.checked = this.config.ClearNP;
 		UI.SAIgnore.controlClass.checked = this.config.Ignore;
-		UI.SABlack.controlClass.value = this.config.Black;
+		// Populate Exclude Artists control (ArtistGrid) with existing artists and mark checked ones
+		try {
+			if (UI.SABlack && UI.SABlack.controlClass && app.db && typeof app.db.getExistingArtistList === 'function') {
+				const ds = app.db.getExistingArtistList([]);
+				if (ds) {
+					UI.SABlack.controlClass.dataSource = ds;
+					// wait for datasource to load then mark checked items from config.Black
+					await ds.whenLoaded();
+					const blacks = (this.config.Black || '').split(',').map(s => s.trim()).filter(Boolean);
+					if (blacks.length) {
+						if (typeof ds.forEach === 'function') {
+							ds.forEach((item, idx) => {
+								const name = item.name || item.title || item.toString();
+								if (blacks.indexOf(name) >= 0) {
+									if (typeof ds.setChecked === 'function')
+										ds.setChecked(idx, true);
+									else
+										item.checked = true;
+								}
+							});
+						} else if (typeof ds.getValue === 'function') {
+							for (let i = 0; i < ds.count; i++) {
+								const item = ds.getValue(i);
+								const name = item.name || item.title || item.toString();
+								if (blacks.indexOf(name) >= 0)
+									item.checked = true;
+							}
+						}
+					}
+				}
+			}
+		} catch (e) {
+			console.error('Similar Artists: load: error populating SABlack ArtistGrid: ' + e.toString());
+		}
+
+		// Wire up Select All / Clear buttons for SABlack
+		try {
+			const btnAll = qid('btnBlackSelectAll');
+			const btnClear = qid('btnBlackClear');
+			const setupButtons = () => {
+				if (!btnAll || !btnClear) return;
+				btnAll.controlClass.disabled = false;
+				btnClear.controlClass.disabled = false;
+				btnAll.controlClass.onexecute = async () => {
+					try {
+						const ds2 = UI.SABlack.controlClass.dataSource;
+						if (!ds2) return;
+						if (typeof ds2.forEach === 'function') {
+							ds2.forEach((item, idx) => {
+								if (typeof ds2.setChecked === 'function') ds2.setChecked(idx, true);
+								else item.checked = true;
+							});
+						} else if (typeof ds2.getValue === 'function') {
+							for (let i = 0; i < ds2.count; i++) {
+								const it = ds2.getValue(i);
+								if (it) it.checked = true;
+							}
+						}
+						if (ds2.notifyLoaded) ds2.callEvent && ds2.callEvent('change');
+					} catch (e) { }
+				};
+
+				btnClear.controlClass.onexecute = async () => {
+					try {
+						const ds2 = UI.SABlack.controlClass.dataSource;
+						if (!ds2) return;
+						if (typeof ds2.forEach === 'function') {
+							ds2.forEach((item, idx) => {
+								if (typeof ds2.setChecked === 'function') ds2.setChecked(idx, false);
+								else item.checked = false;
+							});
+						} else if (typeof ds2.getValue === 'function') {
+							for (let i = 0; i < ds2.count; i++) {
+								const it = ds2.getValue(i);
+								if (it) it.checked = false;
+							}
+						}
+						if (ds2.notifyLoaded) ds2.callEvent && ds2.callEvent('change');
+					} catch (e) { }
+				};
+			};
+
+			// Buttons may exist before control initialization, so call setup now and again shortly after
+			setupButtons();
+			requestAnimationFrame(setupButtons);
+		} catch (e) {
+			console.error('Similar Artists: load: error wiring SABlack buttons: ' + e.toString());
+		}
+
 		UI.SAExclude.controlClass.value = this.config.Exclude;
-		UI.SAGenre.controlClass.value = this.config.Genre;
+		// Populate Exclude Genres control (ImageGrid) with existing genres and mark checked ones
+		try {
+			if (UI.SAGenre && UI.SAGenre.controlClass) {
+				// try to get a genre list datasource; prefer app.utils.createGenrelist or similar APIs
+				let gds;
+				if (app.utils && typeof app.utils.createGenrelist === 'function') {
+					gds = app.utils.createGenrelist();
+				} else if (app.db && typeof app.db.getGenreList === 'function') {
+					// fallback hypothetical API
+					gds = app.db.getGenreList();
+				}
+				if (!gds) {
+					// As a last resort, try to construct list from existing tracks' genres (simple DB query)
+					try {
+						const tl = app.db.getTracklist("SELECT DISTINCT Genre AS name FROM Tracks", -1);
+						if (tl) {
+							await tl.whenLoaded();
+							let arr = [];
+							if (typeof tl.forEach === 'function') {
+								tl.forEach((row) => {
+								try { const v = row.getValue ? row.getValue('name') : row['name']; if (v) arr.push({ title: String(v) }); } catch(e){}
+							});
+							}
+							gds = new ArrayDataSource(arr, { isLoaded: true });
+						}
+					} catch (e) { /* ignore */ }
+				}
+				if (gds) {
+					UI.SAGenre.controlClass.dataSource = gds;
+					await gds.whenLoaded?.();
+					const blacks = (this.config.Genre || '').split(',').map(s => s.trim()).filter(Boolean);
+					if (blacks.length) {
+						if (typeof gds.forEach === 'function') {
+							gds.forEach((item, idx) => {
+								const name = item.title || item.name || item.toString();
+								if (blacks.indexOf(name) >= 0) { if (typeof gds.setChecked === 'function') gds.setChecked(idx, true); else item.checked = true; }
+							});
+						} else if (typeof gds.getValue === 'function') {
+							for (let i = 0; i < gds.count; i++) { const it = gds.getValue(i); const name = it.title || it.name || it.toString(); if (blacks.indexOf(name) >= 0) it.checked = true; }
+						}
+					}
+				}
+			}
+		} catch (e) {
+			console.error('Similar Artists: load: error populating SAGenre ImageGrid: ' + e.toString());
+		}
+
+		// Wire up Select All / Clear buttons for SAGenre
+		try {
+			const btnAllG = qid('btnGenreSelectAll');
+			const btnClearG = qid('btnGenreClear');
+			const setupGenreButtons = () => {
+				if (!btnAllG || !btnClearG) return;
+				btnAllG.controlClass.disabled = false;
+				btnClearG.controlClass.disabled = false;
+				btnAllG.controlClass.onexecute = () => {
+					try {
+						const ds2 = UI.SAGenre.controlClass.dataSource;
+						if (!ds2) return;
+						if (typeof ds2.forEach === 'function') { ds2.forEach((item, idx) => { if (typeof ds2.setChecked === 'function') ds2.setChecked(idx, true); else item.checked = true; }); }
+						else if (typeof ds2.getValue === 'function') { for (let i=0;i<ds2.count;i++){ const it=ds2.getValue(i); if(it) it.checked = true; } }
+					} catch (e) {}
+				};
+				btnClearG.controlClass.onexecute = () => {
+					try {
+						const ds2 = UI.SAGenre.controlClass.dataSource;
+						if (!ds2) return;
+						if (typeof ds2.forEach === 'function') { ds2.forEach((item, idx) => { if (typeof ds2.setChecked === 'function') ds2.setChecked(idx, false); else item.checked = false; }); }
+						else if (typeof ds2.getValue === 'function') { for (let i=0;i<ds2.count;i++){ const it=ds2.getValue(i); if(it) it.checked = false; } }
+					} catch (e) {}
+				};
+			};
+			setupGenreButtons();
+			requestAnimationFrame(setupGenreButtons);
+		} catch (e) {
+			console.error('Similar Artists: load: error wiring SAGenre buttons: ' + e.toString());
+		}
 
 		// Populate parent playlist dropdown with available manual playlists
-		// playlists may not be fully loaded when options panel is created
-		populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists');
-		//setTimeout(() => populateParentPlaylist(pnl, this.config.Parent || 'Similar Artists Playlists'), 1000);
-
+		// Wait for playlists tree to be available instead of using a fixed timeout
+		await waitFor(() => app.playlists && app.playlists.root, 2000, 100);
+		// call populate (best-effort)
+		populateParentPlaylist(pnl, this.config.Parent);
 	} catch (e) {
 		console.error('Similar Artists: load error: ' + e.toString());
 	}
@@ -486,7 +670,32 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.OnPlay = UI.SAOnPlay.controlClass.checked;
 		this.config.ClearNP = UI.SAClearNP.controlClass.checked;
 		this.config.Ignore = UI.SAIgnore.controlClass.checked;
-		this.config.Black = UI.SABlack.controlClass.value;
+		// Read selected excluded artists from ArtistGrid datasource
+		try {
+			const blackNames = [];
+			if (UI.SABlack && UI.SABlack.controlClass && UI.SABlack.controlClass.dataSource) {
+				const ds = UI.SABlack.controlClass.dataSource;
+				if (typeof ds.forEach === 'function') {
+					ds.forEach((item) => {
+						if (item && item.checked) {
+							const name = item.name || item.title || item.toString();
+							blackNames.push(name);
+						}
+					});
+				} else if (typeof ds.getValue === 'function') {
+					for (let i = 0; i < ds.count; i++) {
+						const item = ds.getValue(i);
+						if (item && item.checked) {
+							blackNames.push(item.name || item.title || item.toString());
+						}
+					}
+				}
+			}
+			this.config.Black = blackNames.join(', ');
+		} catch (e) {
+			console.error('Similar Artists: save: error reading SABlack selections: ' + e.toString());
+			this.config.Black = UI.SABlack?.controlClass?.value || '';
+		}
 		this.config.Exclude = UI.SAExclude.controlClass.value;
 		this.config.Genre = UI.SAGenre.controlClass.value;
 

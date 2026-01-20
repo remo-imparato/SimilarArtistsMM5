@@ -420,14 +420,37 @@ try {
 
 	/**
 	 * Parse a comma-separated string setting into an array.
+	 * Accepts either a string (CSV) or an array stored in settings.
 	 * @param {string} key Setting key.
 	 * @returns {string[]}
 	 */
 	function parseListSetting(key) {
-		return stringSetting(key)
-			.split(',')
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
+		try {
+			const raw = getSetting(key, defaults[key]);
+			if (!raw && raw !== 0) return [];
+			// If already an array, normalize elements to trimmed strings
+			if (Array.isArray(raw)) {
+				return raw.map(s => String(s || '').trim()).filter(s => s.length > 0);
+			}
+			// If it's a string, split on commas
+			if (typeof raw === 'string') {
+				return raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+			}
+			// If it's a number or other primitive, convert to string
+			if (typeof raw === 'number' || typeof raw === 'boolean') {
+				return [String(raw)];
+			}
+			// If it's an object with a toString producing CSV, try that
+			try {
+				const s = String(raw);
+				if (s.indexOf(',') >= 0) return s.split(',').map(x => x.trim()).filter(x => x.length > 0);
+				if (s.length) return [s.trim()];
+			} catch (e) { }
+			return [];
+		} catch (e) {
+			console.error('Similar Artists: parseListSetting error: ' + e.toString());
+			return [];
+		}
 	}
 
 	/**
@@ -613,12 +636,16 @@ try {
 
 		const allTracks = [];
 
-		// Removed: Optional inclusion of seed track logic
+		// Build blacklist set for this run (case-insensitive)
+		const blacklist = new Set(parseListSetting('Black').map(s => String(s || '').toUpperCase()));
 
 		// Process each seed artist up to configured limit.
 		const seedSlice = seeds.slice(0, seedLimit || seeds.length);
 		for (let i = 0; i < seedSlice.length; i++) {
 			const seed = seedSlice[i];
+
+			// Early exit if we've already reached the total limit
+			if (allTracks.length >= totalLimit) break;
 
 			// Update progress: Fetching similar artists
 			const seedProgress = (i + 1) / seedSlice.length;
@@ -628,91 +655,105 @@ try {
 			const artistNameForApi = fixPrefixes(seed.name);
 			const similar = await fetchSimilarArtists(artistNameForApi, similarLimit);
 
-			// Build pool: seed artist (optional) + similar artists.
+			// Build deduplicated pool: optional seed + similar artists
+			const seen = new Set();
 			const artistPool = [];
-			if (includeSeedArtist)
-				artistPool.push(seed.name);
 
-			similar.slice(0, similarLimit || similar.length).forEach((a) => {
-				if (a?.name)
-					artistPool.push(a.name);
-			});
+			const pushIfNew = (name) => {
+				if (!name) return;
+				const key = String(name || '').trim().toUpperCase();
+				if (!key) return;
+				if (seen.has(key)) return;
+				seen.add(key);
+				// exclude blacklist immediately
+				if (blacklist.has(key)) {
+					console.log(`Similar Artists: Excluding blacklisted artist from pool: "${name}"`);
+					return;
+				}
+				artistPool.push(name);
+			};
+
+			if (includeSeedArtist) pushIfNew(seed.name);
+			if (Array.isArray(similar)) {
+				for (let j = 0; j < (similarLimit || similar.length) && j < similar.length; j++) {
+					const a = similar[j];
+					if (a && a.name) pushIfNew(a.name);
+				}
+			}
 
 			updateProgress(`Found ${similar.length} similar artist(s) for "${seed.name}", querying tracks...`, seedProgress * 0.3);
 
-			// Process each artist in the pool
+			// Process each artist in the deduped pool using for..of for proper early breaks
 			for (const artName of artistPool) {
-				// RANKING MODE: Fetch top 100 tracks and score them
-				if (rankEnabled && trackRankMap) {
-					updateProgress(`Ranking: Fetching top 100 tracks for "${artName}"...`, seedProgress * 0.3);
-					const rankTitles = await fetchTopTracksForRank(fixPrefixes(artName));
-
-					if (rankTitles.length > 0) {
-						updateProgress(`Ranking: Batch lookup of ${rankTitles.length} tracks from "${artName}"...`, seedProgress * 0.3);
-
-						// Use batch lookup for ranking (up to 5 matches per title for better scoring)
-						const titlesOnly = rankTitles.map(rt => rt.title || rt.name || rt);
-
-						// Use batch lookup for ranking (up to 5 matches per title for better scoring)
-						const rankMatches = await findLibraryTracksBatch(artName, titlesOnly, 5, {
-							rank: false,
-							best: bestEnabled
-						});
-
-						// Score all matched tracks
-						let scoredCount = 0;
-						rankTitles.forEach((rt, rankIdx) => {
-							const title = rt.title || rt.name || rt;
-							const matches = rankMatches.get(title) || [];
-							const playcountScore = Number(rt.playcount) || 0;
-							const fallbackScore = 101 - (rankIdx + 1);
-							const rankScore = playcountScore > 0 ? playcountScore : fallbackScore; // higher playcount wins; fallback to position
-
-							matches.forEach(track => {
-								const trackId = track.id || track.ID;
-								const currentScore = trackRankMap.get(trackId) || 0;
-								if (rankScore > currentScore) {
-									trackRankMap.set(trackId, rankScore);
-									scoredCount++;
-								}
-							});
-						});
-
-						console.log(`Ranking: Scored ${scoredCount} unique tracks from "${artName}"`);
-					}
-				}
-
-				// COLLECTION MODE: Fetch top N tracks for playlist
-				updateProgress(`Collecting: Fetching top ${tracksPerArtist} tracks from "${artName}"...`, seedProgress * 0.3);
-				const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
-
-				if (titles.length > 0) {
-					updateProgress(`Collecting: Batch lookup of ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
-
-					// Use batch lookup (1 match per title for collection)
-					const matches = await findLibraryTracksBatch(artName, titles, 1, {
-						rank: false,
-						best: bestEnabled
-					});
-
-					// Add all matched tracks to results (in order of Last.fm ranking)
-					let addedFromArtist = 0;
-					titles.forEach(title => {
-						const trackMatches = matches.get(title) || [];
-						trackMatches.forEach(track => {
-							allTracks.push(track);
-							addedFromArtist++;
-						});
-
-						// Stop if we've hit the total limit
-						if (allTracks.length >= totalLimit) return;
-					});
-
-					console.log(`Collecting: Added ${addedFromArtist} tracks from "${artName}" to playlist`);
-				}
-
+				// Early exit check
 				if (allTracks.length >= totalLimit) break;
+
+				try {
+					// RANKING MODE: Fetch top 100 tracks and score them
+					if (rankEnabled && trackRankMap) {
+						updateProgress(`Ranking: Fetching top 100 tracks for "${artName}"...`, seedProgress * 0.3);
+						const rankTitles = await fetchTopTracksForRank(fixPrefixes(artName));
+
+						if (rankTitles && rankTitles.length > 0) {
+							updateProgress(`Ranking: Batch lookup of ${rankTitles.length} tracks from "${artName}"...`, seedProgress * 0.3);
+
+							const titlesOnly = rankTitles.map(rt => rt.title || rt.name || rt);
+							const rankMatches = await findLibraryTracksBatch(artName, titlesOnly, 5, { rank: false, best: bestEnabled });
+
+							let scoredCount = 0;
+							for (let rankIdx = 0; rankIdx < rankTitles.length; rankIdx++) {
+								const rt = rankTitles[rankIdx];
+								const title = rt.title || rt.name || rt;
+								const matches = rankMatches.get(title) || [];
+								const playcountScore = Number(rt.playcount) || 0;
+								const fallbackScore = 101 - (rankIdx + 1);
+								const rankScore = playcountScore > 0 ? playcountScore : fallbackScore;
+
+								for (const track of matches) {
+									const trackId = track.id || track.ID;
+									const currentScore = trackRankMap.get(trackId) || 0;
+									if (rankScore > currentScore) {
+										trackRankMap.set(trackId, rankScore);
+										scoredCount++;
+									}
+								}
+							}
+
+							console.log(`Ranking: Scored ${scoredCount} unique tracks from "${artName}"`);
+						}
+					}
+
+					// COLLECTION MODE: Fetch top N tracks for playlist
+					updateProgress(`Collecting: Fetching top ${tracksPerArtist} tracks from "${artName}"...`, seedProgress * 0.3);
+					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
+
+					if (titles && titles.length > 0) {
+						updateProgress(`Collecting: Batch lookup of ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
+
+						const matches = await findLibraryTracksBatch(artName, titles, 1, { rank: false, best: bestEnabled });
+
+						let addedFromArtist = 0;
+						for (const title of titles) {
+							if (allTracks.length >= totalLimit) break;
+							const trackMatches = matches.get(title) || [];
+							for (const track of trackMatches) {
+								allTracks.push(track);
+								addedFromArtist++;
+								if (allTracks.length >= totalLimit) break;
+							}
+						}
+
+						console.log(`Collecting: Added ${addedFromArtist} tracks from "${artName}" to playlist`);
+					}
+
+				} catch (e) {
+					console.error(`Similar Artists: Error processing artist "${artName}": ${e.toString()}`);
+				}
+
+				// continue to next artist (for..of handles it)
 			}
+
+			// If reached desired total, stop processing further seeds
 			if (allTracks.length >= totalLimit) break;
 		}
 
@@ -1206,7 +1247,9 @@ try {
 			const buildCommonFilters = () => {
 				const filters = [];
 				excludeTitles.forEach((t) => {
-					filters.push(`Songs.SongTitle NOT LIKE '%${escapeSql(t)}%'`);
+					// case-insensitive exclude: compare uppercased title
+					const titleExclude = escapeSql(String(t || '').toUpperCase());
+					filters.push(`UPPER(Songs.SongTitle) NOT LIKE '%${titleExclude}%'`);
 				});
 
 				if (excludeGenres.length > 0) {
