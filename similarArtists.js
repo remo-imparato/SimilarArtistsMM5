@@ -608,7 +608,6 @@ try {
 	 * @param {number} settings.tracksPerArtist Tracks to fetch per artist.
 	 * @param {number} settings.totalLimit Total track limit.
 	 * @param {boolean} settings.includeSeedArtist Include seed artist in results.
-	 * @param {boolean} settings.includeSeedTrack Include seed track in results.
 	 * @param {boolean} settings.rankEnabled Enable ranking mode.
 	 * @param {boolean} settings.bestEnabled Enable best (highest rated) mode.
 	 * @param {Map<number, number>} [trackRankMap] Optional rank map to populate.
@@ -621,17 +620,13 @@ try {
 			tracksPerArtist,
 			totalLimit,
 			includeSeedArtist,
-			includeSeedTrack,
 			rankEnabled,
 			bestEnabled
-		} = settings;
+		} = settings; // Removed includeSeedTrack from destructuring
 
 		const allTracks = [];
 
-		// Optional: include currently selected/playing seed track (only for single seed).
-		if (includeSeedTrack && seeds.length === 1 && seeds[0].track) {
-			allTracks.push(seeds[0].track);
-		}
+		// Removed: Optional inclusion of seed track logic
 
 		// Process each seed artist up to configured limit.
 		const seedSlice = seeds.slice(0, seedLimit || seeds.length);
@@ -685,7 +680,7 @@ try {
 							const playcountScore = Number(rt.playcount) || 0;
 							const fallbackScore = 101 - (rankIdx + 1);
 							const rankScore = playcountScore > 0 ? playcountScore : fallbackScore; // higher playcount wins; fallback to position
- 
+
 							matches.forEach(track => {
 								const trackId = track.id || track.ID;
 								const currentScore = trackRankMap.get(trackId) || 0;
