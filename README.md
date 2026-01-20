@@ -197,7 +197,7 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 ## 🔄 Changelog
 
-### Version 2.0.0 (Current)
+### Version 1.0.0 (Current)
 
 - ✨ Complete rewrite for MediaMonkey 5
 - ✨ Modern async/await patterns throughout

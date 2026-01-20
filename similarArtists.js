@@ -2,7 +2,7 @@
  * SimilarArtists Add-on for MediaMonkey 5
  * 
  * @author Remo Imparato
- * @version 2.0.0
+ * @version 1.0.0
  * @description Generates playlists or queues tracks from similar artists using Last.fm API.
  *              Supports automatic mode to queue similar tracks when approaching end of playlist.
  * 

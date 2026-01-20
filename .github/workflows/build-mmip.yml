@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'  # Trigger on version tags like v2.0.0
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0
   pull_request:
     branches:
       - main
@@ -47,13 +47,13 @@ jobs:
           # MMIP files are just ZIP archives with .mmip extension
           # Include all necessary addon files (no icons folder - doesn't exist)
           zip -r SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip \
-            similarArtists.js \
-            init.js \
+            dialogs/ \
             actions_add.js \
             info.json \
-            smiley_yellow_128.png \
+            init.js \
             README.md \
-            dialogs/ \
+            similarArtists.js \
+            smiley_yellow_128.png \
             -x "*.git*" \
             -x "node_modules/*" \
             -x ".github/*" \
