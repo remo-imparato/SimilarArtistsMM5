@@ -609,7 +609,7 @@ try {
 			includeSeedArtist,
 			rankEnabled,
 			bestEnabled
-		} = settings; // Removed includeSeedTrack from destructuring
+		} = settings; 
 
 		const allTracks = [];
 
@@ -765,7 +765,6 @@ try {
 			let tracksPerArtist = intSetting('TPA');
 			let totalLimit = intSetting('TPL');
 			let includeSeedArtist = boolSetting('Seed');
-			let includeSeedTrack = boolSetting('Seed2');
  			let randomise = boolSetting('Random');
  			let enqueue = boolSetting('Enqueue');
  			let ignoreDupes = boolSetting('Ignore');
@@ -779,6 +778,7 @@ try {
  			if (autoRun) {
  				enqueue = true;
  				// Auto-mode defaults requested by user
+ 				seedLimit = 5; // use 5 seed artist in auto-mode
  				similarLimit = 5; // artist limit
  				tracksPerArtist = 2; // tracks per artist
  				totalLimit = 10; // total tracks to add
@@ -789,11 +789,11 @@ try {
  				randomise = true;
  				// Always avoid duplicating tracks in Now Playing when auto-queueing
  				ignoreDupes = true;
- 				console.log('Similar Artists: Auto-mode enabled - forcing enqueue to Now Playing with settings: similarLimit=' + similarLimit + ', tracksPerArtist=' + tracksPerArtist + ', totalLimit=' + totalLimit + ', includeSeedArtist=' + includeSeedArtist + ', randomise=' + randomise);
+ 				console.log('Similar Artists: Auto-mode enabled - forcing enqueue to Now Playing with settings: seedLimit=' + seedLimit + ', similarLimit=' + similarLimit + ', tracksPerArtist=' + tracksPerArtist + ', totalLimit=' + totalLimit + ', includeSeedArtist=' + includeSeedArtist + ', randomise=' + randomise);
  			}
 
 			// Log settings for debugging
-			console.log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, includeSeedTrack=${includeSeedTrack}, randomise=${randomise}, rankEnabled=${rankEnabled}, bestEnabled=${bestEnabled}`);
+			console.log(`Settings loaded: includeSeedArtist=${includeSeedArtist}, randomise=${randomise}, rankEnabled=${rankEnabled}, bestEnabled=${bestEnabled}`);
 
 			// In-memory rank map: track ID -> rank score (used if rankEnabled)
 			const trackRankMap = rankEnabled ? new Map() : null;
@@ -805,7 +805,6 @@ try {
 				tracksPerArtist,
 				totalLimit,
 				includeSeedArtist,
-				includeSeedTrack,
 				rankEnabled,
 				bestEnabled
 			}, trackRankMap);
@@ -1812,6 +1811,7 @@ try {
 
 	// Build a playlist title using all seed artist names up to a safe length.
 	function buildPlaylistTitle(seeds) {
+	 {
 		const template = stringSetting('Name') || 'Similar - %';
 		const names = (seeds || []).map((s) => s?.name).filter((n) => n && n.trim().length);
 		if (!names.length) {
