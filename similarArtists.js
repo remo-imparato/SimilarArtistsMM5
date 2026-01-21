@@ -997,8 +997,8 @@ try {
 				} else {
 					// confirm is disabled, so skip playlist dialog and create automatically
 					updateProgress(`Creating new playlist "${seedName}" with ${allTracks.length} tracks...`, 0.85);
-					// Pass seedLabel so createPlaylist will construct the name from template
-					await createPlaylist(allTracks, seedLabel, overwriteMode, null, ignoreDupes);
+					// Pass seedName so createPlaylist will construct the name from template
+					await createPlaylist(allTracks, seedName, overwriteMode, null, ignoreDupes);
 					updateProgress(`Playlist created successfully with ${allTracks.length} tracks!`, 1.0);
 				}
 			}
