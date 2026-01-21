@@ -61,9 +61,7 @@ function stringSetting(key) {
 const defaults = {
 	ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932',
 	Confirm: false,
-	// Legacy setting. Kept for backward compatibility.
 	Limit: 5,
-	// New, explicit settings (fallback to `Limit` if undefined).
 	SeedLimit: 5,
 	SimilarLimit: 5,
 	Name: '- Similar to %',
@@ -182,7 +180,6 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 
 		this.config.ApiKey = UI.SAApiKey.controlClass.value;
 		this.config.Confirm = UI.SAConfirm.controlClass.checked;
-		this.config.Sort = UI.SASort.controlClass.checked;
 		// Persist both explicit settings using the single UI value.
 		this.config.SeedLimit = UI.SALimit.controlClass.value;
 		this.config.SimilarLimit = UI.SALimit.controlClass.value;
