@@ -428,65 +428,82 @@ try {
 					console.log('Similar Artists: Auto-mode already running, skipping duplicate trigger');
 					return;
 				}
+
+				// Mark running immediately to avoid duplicate scheduling
 				state.autoRunning = true;
-				try {
-					console.log('Similar Artists: Near end of playlist, triggering auto-queue');
 
-					// Build seeds from currently playing track and remaining tracks in the playback list
-					const seeds = [];
+				// Defer heavy work to allow MM to release any internal read locks held during the event.
+				setTimeout(async () => {
 					try {
-						// Current playing track
-						const currentTrack = player.getCurrentTrack?.();
-						if (currentTrack && currentTrack.artist) {
-							seeds.push({ name: normalizeName(currentTrack.artist), track: currentTrack });
-						}
+						console.log('Similar Artists: Deferred auto-queue task started');
 
-						// Try to obtain the remaining tracklist
-						let tracklist = null;
-						let cursor = -1;
-						if (player.playlist && typeof player.playlist.getTracklist === 'function') {
-							tracklist = player.playlist.getTracklist();
-							try { cursor = typeof player.playlist.getCursor === 'function' ? player.playlist.getCursor() : -1; } catch (e) { cursor = -1; }
-						}
-						// Fallback: try player.getSongList()
-						if (!tracklist && typeof player.getSongList === 'function') {
-							const sl = player.getSongList();
-							if (sl && typeof sl.getTracklist === 'function') {
-								tracklist = sl.getTracklist();
+						const seeds = [];
+						try {
+							// Current playing track
+							const currentTrack = player.getCurrentTrack?.();
+							if (currentTrack && currentTrack.artist) {
+								seeds.push({ name: normalizeName(currentTrack.artist), track: currentTrack });
 							}
-						}
 
-						if (tracklist) {
-							await tracklist.whenLoaded();
-							const totalCount = typeof tracklist.count === 'number' ? tracklist.count : (tracklist.count && typeof tracklist.count === 'function' ? tracklist.count() : 0);
-							// If cursor wasn't obtained from playlist, try tracklist.getCursor
-							if (cursor < 0 && typeof tracklist.getCursor === 'function') {
-								try { cursor = tracklist.getCursor(); } catch (e) { cursor = -1; }
+							// Try to obtain the remaining tracklist
+							let tracklist = null;
+							let cursor = -1;
+							try {
+								if (player.playlist && typeof player.playlist.getTracklist === 'function') {
+									tracklist = player.playlist.getTracklist();
+									cursor = typeof player.playlist.getCursor === 'function' ? player.playlist.getCursor() : -1;
+								}
+								// Fallback: try player.getSongList()
+								if (!tracklist && typeof player.getSongList === 'function') {
+									const sl = player.getSongList();
+									if (sl && typeof sl.getTracklist === 'function') tracklist = sl.getTracklist();
+								}
+							} catch (e) {
+								console.log('Similar Artists: handleAuto deferred: could not obtain tracklist: ' + e.toString());
 							}
-							let tmp = undefined;
-							for (let i = (cursor >= 0 ? cursor + 1 : 0); i < totalCount; i++) {
+
+							if (tracklist) {
 								try {
-									const t = tracklist.getFastObject ? tracklist.getFastObject(i, tmp) : (tracklist.getFastObject ? tracklist.getFastObject(i) : null);
-									if (t && t.artist) {
-										seeds.push({ name: normalizeName(t.artist), track: t });
-										tmp = t;
+									await tracklist.whenLoaded();
+									const totalCount = typeof tracklist.count === 'number' ? tracklist.count : (typeof tracklist.count === 'function' ? tracklist.count() : 0);
+									if (cursor < 0 && typeof tracklist.getCursor === 'function') {
+										try { cursor = tracklist.getCursor(); } catch (e) { cursor = -1; }
+									}
+									let tmp = undefined;
+									for (let i = (cursor >= 0 ? cursor + 1 : 0); i < totalCount; i++) {
+										try {
+											const t = typeof tracklist.getFastObject === 'function' ? tracklist.getFastObject(i, tmp) : (typeof tracklist.getFastObject === 'function' ? tracklist.getFastObject(i) : null);
+											if (t && t.artist) {
+												seeds.push({ name: normalizeName(t.artist), track: t });
+												tmp = t;
+											}
+										} catch (e) {
+											// ignore per-track errors
+										}
 									}
 								} catch (e) {
-									// ignore per-track errors
+									console.log('Similar Artists: handleAuto deferred: tracklist iteration failed: ' + e.toString());
 								}
 							}
+						} catch (e) {
+							console.error('Similar Artists: handleAuto deferred seed collection error: ' + e.toString());
 						}
+
+						const seedsUnique = uniqueArtists(seeds);
+						if (!seedsUnique.length) {
+							console.log('Similar Artists: handleAuto deferred: no seeds available, aborting');
+							return;
+						}
+
+						console.log(`Similar Artists: handleAuto deferred - running with ${seedsUnique.length} seed(s): ${seedsUnique.map(s => s.name).join(', ')}`);
+						await runSimilarArtists(true, seedsUnique);
 					} catch (e) {
-						console.error('Similar Artists: handleAuto seed collection error: ' + e.toString());
+						console.error('Similar Artists: Error in deferred auto task: ' + formatError(e));
+					} finally {
+						state.autoRunning = false;
+						console.log('Similar Artists: Deferred auto-queue task finished');
 					}
-
-					// Deduplicate seeds and respect blacklist via uniqueArtists
-					const seedsUnique = uniqueArtists(seeds);
-
-					await runSimilarArtists(true, seedsUnique);
-				} finally {
-					state.autoRunning = false;
-				}
+				}, 0);
 			} else {
 				console.log('Similar Artists: Not near end of playlist, skipping auto-queue');
 			}
