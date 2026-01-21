@@ -1058,7 +1058,11 @@ try {
 
 				const dlg = uitools.openDialog('dlgSelectPlaylist', {
 					modal: true,
-					showNewPlaylist: true
+					showNewPlaylist: true,
+					onNewPlaylist: function (createdPlaylist) {
+						console.log('Caller: new playlist created:', createdPlaylist.name || createdPlaylist.id);
+						// perform any extra handling here (optional)
+					}
 				});
 
 				// Set dialog info message (tip to click OK without selecting)
@@ -1066,12 +1070,13 @@ try {
 				dlg.whenReady(() => {
 					try {
 						if (dlg) {
-							dlg.title = infoMsg;         // common MM dialog property
+							dlg.title = infoMsg;
 						}
 					} catch (err) {
 						console.log('Similar Artists: could not set dialog info message: ' + err.toString());
 					}
 				});
+
 
 
 				dlg.whenClosed = function () {
