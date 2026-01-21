@@ -1058,11 +1058,7 @@ try {
 
 				const dlg = uitools.openDialog('dlgSelectPlaylist', {
 					modal: true,
-					showNewPlaylist: true,
-					onNewPlaylist: function (createdPlaylist) {
-						console.log('Caller: new playlist created:', createdPlaylist.name || createdPlaylist.id);
-						// perform any extra handling here (optional)
-					}
+					showNewPlaylist: true
 				});
 
 				// Set dialog info message (tip to click OK without selecting)
