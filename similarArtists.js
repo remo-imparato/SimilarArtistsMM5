@@ -995,20 +995,9 @@ try {
 				// Set dialog info message (tip to click OK without selecting)
 				const infoMsg = 'Tip: Click OK without selecting a playlist to auto-create one.';
 				try {
-					// Try passing via options (some builds accept it)
-					if (dlg && typeof dlg.setValue === 'function') {
-						dlg.setValue('leadingText', infoMsg);
-						dlg.setValue('message', infoMsg);
-					}
-					// Try direct properties (mmstub shows dialogs/windows expose addHeader / leadingText)
 					if (dlg) {
-						dlg.addHeader = true;               // show header area if supported
-						dlg.leadingText = infoMsg;         // common MM dialog property
-						if (dlg.headerClass === undefined) dlg.headerClass = 'info'; // optional styling hook
+						dlg.title = infoMsg;         // common MM dialog property
 					}
-					// Try to set a known control label if available
-					const ctrl = dlg?.getControl?.('lblMessage') || dlg?.getControl?.('lblInfo');
-					if (ctrl) ctrl.text = infoMsg;
 				} catch (err) {
 					console.log('Similar Artists: could not set dialog info message: ' + err.toString());
 				}
