@@ -992,6 +992,27 @@ try {
 					showNewPlaylist: true
 				});
 
+				// Set dialog info message (tip to click OK without selecting)
+				const infoMsg = 'Tip: Click OK without selecting a playlist to auto-create one.';
+				try {
+					// Try passing in options (some dialog implementations accept custom options)
+					// (already opened above) set visible text in multiple ways for compatibility:
+					if (dlg && typeof dlg.setValue === 'function') {
+						// common pattern: set a named field/value exposed by the dialog
+						dlg.setValue('message', infoMsg);
+						dlg.setValue('leadingText', infoMsg);
+					}
+					if (dlg && 'title' in dlg) {
+						dlg.title = infoMsg;
+					}
+					// Try to access a known label/control if present
+					const ctrl = dlg?.getControl?.('lblMessage') || dlg?.getControl?.('lblInfo');
+					if (ctrl) ctrl.text = infoMsg;
+				} catch (e) {
+					console.log('Similar Artists: could not set dialog info message: ' + e.toString());
+				}
+
+
 				dlg.whenClosed = function () {
 					try {
 						// User clicked Cancel (modalResult !== 1)
@@ -1020,6 +1041,7 @@ try {
 				};
 
 				app.listen(dlg, 'closed', dlg.whenClosed);
+
 			} catch (e) {
 				console.error('Similar Artists: confirmPlaylist: Error opening dialog: ' + e.toString());
 				resolve({ autoCreate: true }); // Fallback to auto-create
