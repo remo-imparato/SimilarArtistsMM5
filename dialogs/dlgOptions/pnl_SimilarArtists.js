@@ -121,17 +121,29 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		const ratingValue = Number.isFinite(ratingValueRaw) ? Math.max(0, Math.min(100, ratingValueRaw)) : 0;
 
 		// Ensure rating controls render correctly on load by forcing the rating update
-		try {
-			if (ratingValue > 0) {
-				if (UI.SARating && UI.SARating.controlClass && typeof UI.SARating.controlClass.setRating === 'function') {
-					UI.SARating.controlClass.setRating(ratingValue, { force: true, disableChangeEvent: true });
-				} else if (UI.SARating && UI.SARating.controlClass) {
-					UI.SARating.controlClass.value = ratingValue;
-				}
+		const setRatingWhenReady = (uiRatingControl, val) => {
+			if (!uiRatingControl || !uiRatingControl.controlClass) return;
+			const ctrl = uiRatingControl.controlClass;
+			const apply = () => {
+				try { ctrl.setRating(val, { force: true, disableChangeEvent: true }); }
+				catch (e) { ctrl.value = val; }
+			};
+
+			// If already initialized and stars exist, apply now
+			if (ctrl._initialized && Array.isArray(ctrl.stars) && ctrl.stars.length) {
+				apply();
+				return;
 			}
-		} catch (e) {
-			console.error('Similar Artists: error setting rating controls: ' + e.toString());
-		}
+
+			// Otherwise listen for the rating control's 'load' event
+			const onLoad = () => {
+				try { apply(); } finally { app.unlisten(ctrl.container, 'load', onLoad); }
+			};
+			app.listen(ctrl.container, 'load', onLoad);
+		};
+
+		// Usage
+		setRatingWhenReady(UI.SARating, ratingValue);
 
 		UI.SAUnknown.controlClass.checked = allowUnknown;
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
