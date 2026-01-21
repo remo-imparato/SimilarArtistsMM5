@@ -615,9 +615,6 @@ try {
 				res.push(s);
 			}
 		});
-		if (boolSetting('Sort')) {
-			res.sort((a, b) => a.name.localeCompare(b.name));
-		}
 		return res;
 	}
 

@@ -60,8 +60,7 @@ function stringSetting(key) {
 // Defaults matching similarArtists.js
 const defaults = {
 	ApiKey: app?.utils?.web?.getAPIKey('lastfmApiKey') || '7fd988db0c4e9d8b12aed27d0a91a932',
-	Confirm: true,
-	Sort: false,
+	Confirm: false,
 	// Legacy setting. Kept for backward compatibility.
 	Limit: 5,
 	// New, explicit settings (fallback to `Limit` if undefined).
@@ -72,8 +71,8 @@ const defaults = {
 	TPL: 9999,
 	Random: false,
 	Seed: false,
-	Best: false,
-	Rank: false,
+	Best: true,
+	Rank: true,
 	Rating: 0,
 	Unknown: true,
 	Overwrite: 'Create new playlist',
@@ -95,7 +94,6 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		var UI = getAllUIElements(pnl);
 		UI.SAApiKey.controlClass.value = this.config.ApiKey;
 		UI.SAConfirm.controlClass.checked = this.config.Confirm;
-		UI.SASort.controlClass.checked = this.config.Sort;
 		// UI has a single field (`SALimit`). Prefer explicit values; fallback to legacy `Limit`.
 		const legacyLimit = this.config.Limit;
 		const seedLimit = (this.config.SeedLimit === undefined || this.config.SeedLimit === null) ? legacyLimit : this.config.SeedLimit;
@@ -107,7 +105,6 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		UI.SATPL.controlClass.value = this.config.TPL;
 		UI.SARandom.controlClass.checked = this.config.Random;
 		UI.SASeed.controlClass.checked = this.config.Seed;
-		// Removed: UI.SASeed2
 		UI.SABest.controlClass.checked = this.config.Best;
 		UI.SARank.controlClass.checked = this.config.Rank;
 
@@ -209,8 +206,15 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
 		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
 		this.config.Navigate = UI.SANavigate.controlClass.value;
-		// Detect real Auto OnPlay state: checkbox may not always reflect module status if toggled manually.
-		const isAutoEnabled = !!(UI.SAOnPlay.controlClass.checked && window.SimilarArtists?.isAutoEnabled);
+		// Detect real Auto OnPlay state: prefer module API when available, otherwise use checkbox
+		let isAutoEnabled = Boolean(UI.SAOnPlay.controlClass.checked);
+		try {
+			if (typeof window.SimilarArtists?.isAutoEnabled === 'function') {
+				isAutoEnabled = Boolean(window.SimilarArtists.isAutoEnabled());
+			}
+		} catch (e) {
+			// ignore and fall back to checkbox
+		}
 		this.config.OnPlay = isAutoEnabled;
 
 		this.config.ClearNP = UI.SAClearNP.controlClass.checked;
