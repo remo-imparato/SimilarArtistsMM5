@@ -217,16 +217,41 @@ try {
 	 */
 	function getIgnorePrefixes() {
 		try {
-			if (app.settings?.getValue) {
-				const ignoreThes = app.settings.getValue('IgnoreTHEs', false);
-				if (ignoreThes) {
-					const theList = app.settings.getValue('IgnoreTHEStrings', 'The');
-					return theList.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+			// 1) Preferred source used by core UI panels
+			if (window?.settings && typeof window.settings.get === 'function') {
+				const opts = window.settings.get('Options') || {};
+				// Some callers store under an Options wrapper, others directly on the object.
+				const cfg = opts.Options || opts;
+				const enabled = cfg?.IgnoreTHEs;
+				const list = cfg?.IgnoreTHEStrings;
+				if (enabled) {
+					return String(list || 'The').split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+				}
+			}
+
+			// 2) MM app.settings API (fallback)
+			if (app?.settings && typeof app.settings.getValue === 'function') {
+				const enabled = app.settings.getValue('IgnoreTHEs', false);
+				if (enabled) {
+					const list = app.settings.getValue('IgnoreTHEStrings', 'The');
+					return String(list || 'The').split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+				}
+			}
+
+			// 3) Generic app.getValue (another possible storage location)
+			if (app?.getValue && typeof app.getValue === 'function') {
+				const opts = app.getValue('Options', {}) || {};
+				const cfg = opts.Options || opts;
+				const enabled = cfg?.IgnoreTHEs;
+				const list = cfg?.IgnoreTHEStrings;
+				if (enabled) {
+					return String(list || 'The').split(',').map((s) => s.trim()).filter((s) => s.length > 0);
 				}
 			}
 		} catch (e) {
-			console.error('Similar Artists: ' + e.toString());
+			console.error('Similar Artists: getIgnorePrefixes error: ' + e.toString());
 		}
+		// Default: no prefixes ignored
 		return [];
 	}
 
@@ -689,7 +714,9 @@ try {
 				artistPool.push(name);
 			};
 
-			if (includeSeedArtist) pushIfNew(seed.name);
+			if (includeSeedArtist)
+				pushIfNew(seed.name);
+
 			if (Array.isArray(similar)) {
 				for (let j = 0; j < (similarLimit || similar.length) && j < similar.length; j++) {
 					const a = similar[j];
@@ -705,10 +732,14 @@ try {
 				if (allTracks.length >= totalLimit) break;
 
 				try {
-					// RANKING MODE: Fetch top 100 tracks and score them
+					// Prepare a container for rank titles if we fetch them for ranking
+					let rankTitles = null;
+
+					// RANKING MODE: Fetch top tracks and score them
 					if (rankEnabled && trackRankMap) {
-						updateProgress(`Ranking: Fetching top 100 tracks for "${artName}"...`, seedProgress * 0.3);
-						const rankTitles = await fetchTopTracksForRank(fixPrefixes(artName));
+						updateProgress(`Ranking: Fetching top tracks for "${artName}"...`, seedProgress * 0.3);
+						// Fetch once using the configured tracksPerArtist limit (avoid double-fetch)
+						rankTitles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist, true);
 
 						if (rankTitles && rankTitles.length > 0) {
 							updateProgress(`Ranking: Batch lookup of ${rankTitles.length} tracks from "${artName}"...`, seedProgress * 0.3);
@@ -721,9 +752,10 @@ try {
 								const rt = rankTitles[rankIdx];
 								const title = rt.title || rt.name || rt;
 								const matches = rankMatches.get(title) || [];
-								const playcountScore = Number(rt.playcount) || 0;
+								// Use Last.fm 'rank' attribute (lower = better). Fall back to position-based score when absent.
+								const trackRankAttr = Number(rt.rank) || 0; // Last.fm provides rank in @attr.rank
 								const fallbackScore = 101 - (rankIdx + 1);
-								const rankScore = playcountScore > 0 ? playcountScore : fallbackScore;
+								const rankScore = trackRankAttr > 0 ? Math.max(0, 101 - trackRankAttr) : fallbackScore;
 
 								for (const track of matches) {
 									const trackId = track.id || track.ID;
@@ -741,7 +773,13 @@ try {
 
 					// COLLECTION MODE: Fetch top N tracks for playlist
 					updateProgress(`Collecting: Fetching top ${tracksPerArtist} tracks from "${artName}"...`, seedProgress * 0.3);
-					const titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
+					let titles;
+					if (rankTitles && rankTitles.length > 0) {
+						// Reuse the previously fetched ranked titles to avoid a second API call
+						titles = rankTitles.map(rt => rt.title || rt.name || rt).slice(0, tracksPerArtist);
+					} else {
+						titles = await fetchTopTracks(fixPrefixes(artName), tracksPerArtist);
+					}
 
 					if (titles && titles.length > 0) {
 						updateProgress(`Collecting: Batch lookup of ${titles.length} tracks from "${artName}"...`, seedProgress * 0.3);
@@ -1025,13 +1063,15 @@ try {
 
 				// Set dialog info message (tip to click OK without selecting)
 				const infoMsg = 'Tip: Click OK without selecting a playlist to auto-create one.';
-				try {
-					if (dlg) {
-						dlg.title = infoMsg;         // common MM dialog property
+				dlg.whenReady(() => {
+					try {
+						if (dlg) {
+							dlg.title = infoMsg;         // common MM dialog property
+						}
+					} catch (err) {
+						console.log('Similar Artists: could not set dialog info message: ' + err.toString());
 					}
-				} catch (err) {
-					console.log('Similar Artists: could not set dialog info message: ' + err.toString());
-				}
+				});
 
 
 				dlg.whenClosed = function () {
@@ -1377,7 +1417,7 @@ try {
 							"REPLACE(REPLACE(REPLACE(REPLACE(" +
 							"UPPER(Songs.SongTitle)," +
 							"'&','AND'),'+','AND'),' N ','AND'),'''N''','AND'),' ',''),'.','')," +
-							"',',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'\"','')";
+							",',''),':',''),';',''),'-',''),'_',''),'!',''),'''',''),'\"','')";
 
 						return `${stripExpr} = '${escapeSql(stripped)}'`;
 					}).filter(c => c !== null);
