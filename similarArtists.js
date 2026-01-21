@@ -644,6 +644,17 @@ try {
 		// Build blacklist set for this run (case-insensitive)
 		const blacklist = new Set(parseListSetting('Black').map(s => String(s || '').toUpperCase()));
 
+		// Track dedupe helper: keep unique track keys to avoid adding duplicates across artists
+		const seenTrackKeys = new Set();
+		function getTrackKey(t) {
+			if (!t) return '';
+			const id = t.id || t.ID;
+			if (id !== undefined && id !== null && String(id) !== '0') return String(id);
+			if (t.path) return `path:${String(t.path)}`;
+			// fallback: combine title/album/artist
+			return `meta:${String(t.title || t.SongTitle || '')}:${String(t.album || '')}:${String(t.artist || '')}`;
+		}
+
 		// Process each seed artist up to configured limit.
 		const seedSlice = seeds.slice(0, seedLimit || seeds.length);
 		for (let i = 0; i < seedSlice.length; i++) {
@@ -742,6 +753,10 @@ try {
 							if (allTracks.length >= totalLimit) break;
 							const trackMatches = matches.get(title) || [];
 							for (const track of trackMatches) {
+								// Deduplicate by key across the whole run
+								const key = getTrackKey(track);
+								if (!key || seenTrackKeys.has(key)) continue;
+								seenTrackKeys.add(key);
 								allTracks.push(track);
 								addedFromArtist++;
 								if (allTracks.length >= totalLimit) break;
@@ -762,7 +777,23 @@ try {
 			if (allTracks.length >= totalLimit) break;
 		}
 
-		return allTracks;
+		// Post-filter to ensure no duplicates remain and enforce totalLimit
+		try {
+			const finalSeen = new Set();
+			const filtered = [];
+			for (const t of allTracks) {
+				const key = getTrackKey(t);
+				if (!key) continue;
+				if (finalSeen.has(key)) continue;
+				finalSeen.add(key);
+				filtered.push(t);
+				if (filtered.length >= totalLimit) break;
+			}
+			return filtered;
+		} catch (e) {
+			console.error('Similar Artists: Error deduplicating final track list: ' + e.toString());
+			return allTracks.slice(0, totalLimit);
+		}
 	}
 
 	/**
