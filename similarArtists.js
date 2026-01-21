@@ -1431,7 +1431,7 @@ try {
 			// Fill Map<title, tracks[]> with maxPerTitle cap.
 			tl.forEach((track) => {
 				if (!track) return;
-				const requested = track.RequestedTitle || track.requestedTitle || track.requestedtitle;
+				const requested = track.title;
 				const key = requested ? String(requested) : '';
 				if (!key || !results.has(key)) return;
 				const arr = results.get(key);
