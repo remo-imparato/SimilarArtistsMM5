@@ -117,11 +117,12 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		// - `Rating` stores the minimum rating (0..100). When Unknown is true and Rating is 0,
 		//   we show -1 in the control to represent "no minimum, include unknown".
 		const allowUnknown = Boolean(this.config.Unknown);
-		const ratingValueRaw = (this.config.Rating === undefined || this.config.Rating === null)
-			? 0
-			: parseInt(this.config.Rating, 10);
+		const ratingValueRaw = (this.config.Rating === undefined || this.config.Rating === null) ? 0 : parseInt(this.config.Rating, 10);
 		const ratingValue = Number.isFinite(ratingValueRaw) ? Math.max(0, Math.min(100, ratingValueRaw)) : 0;
+
 		UI.SARating.controlClass.value = ratingValue;
+		UI.SARating2.controlClass.value = ratingValue;
+		UI.SARating3.controlClass.setValue(ratingValue);
 
 		UI.SAUnknown.controlClass.checked = allowUnknown;
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite;
@@ -180,8 +181,8 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.save = function (sett) {
 
 		// Rating control stores a normalized value in range 0-100; -1 only when useUnknown is enabled.
 		// Explicitly persist as string to match text input control behavior.
-		const rawRating = UI.SARating?.controlClass?.value;
-		this.config.Rating = (rawRating === undefined || rawRating === null) ? '0' : String(rawRating);
+		const rawRating = Number.isFinite(UI.SARating.controlClass.value) ? Math.max(0, Math.min(100, UI.SARating.controlClass.value)) : 0;
+		this.config.Rating = String(rawRating);
 
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
