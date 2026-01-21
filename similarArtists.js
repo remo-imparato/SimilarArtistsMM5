@@ -1058,7 +1058,7 @@ try {
 
 				const dlg = uitools.openDialog('dlgSelectPlaylist', {
 					modal: true,
-					showNewPlaylist: true
+					showNewPlaylist: false
 				});
 
 				// Set dialog info message (tip to click OK without selecting)
