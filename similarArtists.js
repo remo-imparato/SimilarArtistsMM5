@@ -590,26 +590,33 @@ try {
 		// Try to iterate selection first; only fall back if we added nothing.
 		if (selectedList) {
 
-			await selectedList.whenLoaded();
-
 			try {
-				if (typeof selectedList.forEach === 'function') {
-					selectedList.forEach((t) => {
-						if (t && t.artist) {
-							seeds.push({ name: normalizeName(t.artist), track: t });
-						}
-					});
-				} else if (typeof selectedList.getFastObject === 'function' && typeof selectedList.count === 'number') {
-					let tmp;
-					for (let i = 0; i < selectedList.count; i++) {
-						tmp = selectedList.getFastObject(i, tmp);
-						if (tmp && tmp.artist) {
-							seeds.push({ name: normalizeName(tmp.artist), track: tmp });
+				await selectedList.whenLoaded();
+			} catch (e) {
+				console.error('Similar Artists: collectSeedTracks: whenLoaded error: ' + e.toString());
+				selectedList = null; // Force fallback to playing track
+			}
+
+			if (selectedList) {
+				try {
+					if (typeof selectedList.forEach === 'function') {
+						selectedList.forEach((t) => {
+							if (t && t.artist) {
+								seeds.push({ name: normalizeName(t.artist), track: t });
+							}
+						});
+					} else if (typeof selectedList.getFastObject === 'function' && typeof selectedList.count === 'number') {
+						let tmp;
+						for (let i = 0; i < selectedList.count; i++) {
+							tmp = selectedList.getFastObject(i, tmp);
+							if (tmp && tmp.artist) {
+								seeds.push({ name: normalizeName(tmp.artist), track: tmp });
+							}
 						}
 					}
+				} catch (e) {
+					console.error('Similar Artists: collectSeedTracks: error iterating selection: ' + e.toString());
 				}
-			} catch (e) {
-				console.error('Similar Artists: collectSeedTracks: error iterating selection: ' + e.toString());
 			}
 
 
@@ -621,11 +628,15 @@ try {
 
 		// Fallback: use current playing track if no selection
 		console.log('Similar Artists: collectSeedTracks: No selection found, falling back to currently playing track');
-		const currentTrack = app.player?.getCurrentTrack?.();
-		if (currentTrack && currentTrack.artist) {
-			console.log(`collectSeedTracks: Current playing track artist = ${currentTrack.artist}`);
-			seeds.push({ name: normalizeName(currentTrack.artist), track: currentTrack });
-			return seeds;
+		try {
+			const currentTrack = app.player?.getCurrentTrack?.();
+			if (currentTrack && currentTrack.artist) {
+				console.log(`collectSeedTracks: Current playing track artist = ${currentTrack.artist}`);
+				seeds.push({ name: normalizeName(currentTrack.artist), track: currentTrack });
+				return seeds;
+			}
+		} catch (e) {
+			console.error('Similar Artists: collectSeedTracks: error getting current track: ' + e.toString());
 		}
 
 		console.log('Similar Artists: collectSeedTracks: No tracks found (no selection and no playing track)');
@@ -1765,7 +1776,7 @@ try {
 							console.warn(`fetchArtistBatch: API error or no artist data for "${name}"`);
 							cacheSetWithTtl(lastfmRunCache?.artistInfo, cacheKey, null);
 							return null;
-								}
+						}
 
 		// Successful response: normalize and cache the artist info
 		const info = {
@@ -1862,8 +1873,11 @@ async function fetchWithDedup(url, options = {}) {
 	// Create new request promise
 	const promise = fetchWithBackoff(url, options)
 		.then(res => {
-			// Clear from cache after a short delay to allow concurrent requests to share result
-			setTimeout(() => requestCache.delete(url), 100);
+			// Clear from cache after request completes successfully
+			// Use microtask (Promise.resolve) instead of setTimeout to avoid race conditions
+			Promise.resolve().then(() => {
+				requestCache.delete(url);
+			});
 			return res;
 		})
 		.catch(err => {
@@ -1963,7 +1977,7 @@ async function runWithConcurrency(items, concurrency, worker) {
 	const runners = new Array(Math.min(c, list.length)).fill(0).map(async () => {
 		while (true) {
 			const cur = idx++;
-			if cur >= list.length) return;
+			if (cur >= list.length) return;
 			results[cur] = await worker(list[cur], cur);
 		}
 	});
@@ -2234,7 +2248,7 @@ async function findLibraryTracksBatch(artistName, titles, maxPerTitle = 1, opts 
 
 		// Initialize map entries
 		titles.forEach(t => results.set(t, []));
-
+		
 		// Precompute normalized inputs once
 		const wantedRows = titles.map((title, idx) => {
 			const raw = String(title || '');
