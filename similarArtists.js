@@ -1777,7 +1777,7 @@ try {
 
 		} catch (e) {
 			console.error(`enqueueTracks: Error adding tracks: ${e.toString()}`);
-				}
+						}
 	}
 
 	/**
@@ -2199,5 +2199,39 @@ try {
 		return arr
 			.map((t) => normalizeTopTrackTitle(t?.title || t?.name || t))
 			.filter(Boolean);
+	}
+
+	function sleep(ms) {
+		return new Promise((r) => setTimeout(r, Math.max(0, Number(ms) || 0)));
+	}
+
+	async function fetchWithBackoff(url, options = {}) {
+		const maxRetries = Math.max(0, Number(LASTFM_MAX_RETRIES) || 0);
+		let attempt = 0;
+		let lastErr;
+
+		while (attempt <= maxRetries) {
+			try {
+				// MM environment may or may not provide global fetch; assume it exists where addon runs.
+				const res = await lastfmRateLimiter.schedule(() => fetch(url, options));
+				// Retry only on explicit rate limiting or transient server errors.
+				if (res && (res.status === 429 || (res.status >= 500 && res.status <= 599))) {
+					lastErr = new Error(`HTTP ${res.status}`);
+					throw lastErr;
+				}
+				return res;
+			} catch (e) {
+				lastErr = e;
+				if (attempt >= maxRetries) break;
+				// Exponential backoff with jitter
+				const base = 300;
+				const backoff = Math.min(5000, base * Math.pow(2, attempt));
+				const jitter = Math.floor(Math.random() * 250);
+				await sleep(backoff + jitter);
+				attempt += 1;
+			}
+		}
+
+		throw lastErr || new Error('fetchWithBackoff failed');
 	}
 })(typeof window !== 'undefined' ? window : global);
