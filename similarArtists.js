@@ -2194,7 +2194,7 @@ try {
 				if (ratingMin > 0) {
 					if (allowUnknown) {
 						// Include unrated tracks (NULL or negative) as well as those meeting the minimum
-						filters.push(`(Songs.Rating IS NULL OR Songs.Rating < 0 OR Songs.Rating >= ${ratingMin})`);
+						filters.push(`(Songs.Rating IS NULL OR Songs.Rating <= 0 OR Songs.Rating >= ${ratingMin})`);
 					} else {
 						filters.push(`(Songs.Rating >= ${ratingMin} AND Songs.Rating <= 100)`);
 					}
