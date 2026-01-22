@@ -2121,7 +2121,7 @@ return results.filter(Boolean);
 				return new Map();
 
 			// Ensure titles is array of strings
-			titles = titles.map(t => String(t || ''));
+			titles = titles.map(t => String(t || '');
 
 			const results = new Map();
 			const useBest = opts.best !== undefined ? opts.best : boolSetting('Best');
@@ -2211,7 +2211,7 @@ return results.filter(Boolean);
 			const orderClause = useBest ? ' ORDER BY Songs.Rating DESC, Random()' : ' ORDER BY Random()';
 			const baseJoins = `
 			FROM Songs
-			${artistClause ? 'INNER JOIN ArtistsSongs on Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1' : ''}
+			${artistClause ? 'INNER JOIN ArtistsSongs on Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType IN (1,2)' : ''}
 			${artistClause ? 'INNER JOIN Artists on ArtistsSongs.IDArtist = Artists.ID' : ''}
 			${excludeGenres.length > 0 ? 'LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong' : ''}
 		`;
