@@ -46,9 +46,47 @@ SimilarArtists is a MediaMonkey 5 add-on that leverages the Last.fm API to disco
    - Search your library for matching tracks
    - Create a playlist or queue tracks based on your settings
 
-### Auto-Queue Mode
+### Usage guide & examples
 
-Enable **"Automatically run when playing the last track"** in settings to have SimilarArtists automatically queue new tracks when your playlist is about to end—perfect for continuous, seamless listening!
+This short guide shows common ways to run SimilarArtists and what to expect.
+
+- Single-track selection
+  - Select a single track in any library pane and run `Tools → Similar Artists`.
+  - The add-on uses the selected track's artist as the seed. If enabled, the original seed track can be included in results.
+
+- Multiple-track selection
+  - Select two or more tracks (from one or more artists) and run the add-on.
+  - Each selected track contributes its artist as a seed; the add-on deduplicates seed artists and processes them up to the configured seed limit.
+
+- No selection (use currently playing track)
+  - If no tracks are selected, SimilarArtists falls back to the currently playing track and uses its artist as the seed.
+  - This makes it convenient to trigger discovery directly from the player without changing library selection.
+
+- Common examples
+  - Create a playlist of similar-artist tracks for a single artist: select one track → `Tools → Similar Artists` → choose playlist creation options.
+  - Build a wider discovery playlist from multiple artists: select several tracks (or albums) → run the add-on → set `Tracks/artist` and `Tracks/playlist` to control size.
+  - Quick enqueue to Now Playing: enable `Automatically enqueue` in settings or run in auto-mode (see below) to add tracks directly to the queue.
+
+- Notes on behavior
+  - Seed deduplication: duplicate seed artists are removed automatically and any configured blacklist is applied.
+  - Confirmation (Show confirmation prompt): When this option is enabled the add-on opens a "Select Playlist" dialog before creating or adding tracks.
+    - If you select an existing playlist and click OK, the add-on will add tracks to that playlist (and will overwrite its contents only if your "Playlist creation" mode is set to Overwrite).
+    - If you click OK without selecting a playlist, the add-on will automatically create a new playlist using the playlist name template configured in settings (the `Name` template, and optional `Parent playlist` setting will be used when available).
+    - If you click Cancel the operation is aborted and no playlist is created or modified.
+
+### Auto-Queue (Auto-mode)
+
+The Auto-Queue feature (Auto-mode) can keep playback going by automatically queuing similar-artist tracks when your Now Playing list is nearly finished.
+
+How it works
+  - Enable Auto-mode in the add-on settings (setting `OnPlay`). When enabled the add-on attaches a playback listener.
+  - When playback advances and only a small number of entries remain (the add-on uses a default threshold of 2 or fewer), it automatically runs discovery and enqueues additional tracks.
+  - In auto-mode the add-on forces enqueue behavior (it will add results to Now Playing instead of creating a playlist) and uses conservative defaults for limits to avoid overfilling the queue.
+
+Auto-mode details and tips
+  - Auto-mode respects deduplication and (optionally) will avoid enqueuing tracks already present in Now Playing.
+  - You can tune limits (seed artists, tracks per artist, total tracks) in settings to control how many tracks are added each trigger.
+  - The add-on includes safeguards to avoid multiple simultaneous auto-run invocations and will skip auto-queue triggers while one run is in progress.
 
 ---
 

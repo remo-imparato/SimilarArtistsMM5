@@ -1055,20 +1055,16 @@ try {
 
 				const dlg = uitools.openDialog('dlgSelectPlaylist', {
 					modal: true,
+					// IMPORTANT: prevent dlgSelectPlaylist from creating a new playlist object
 					showNewPlaylist: false
 				});
 
-				// Set dialog info message (tip to click OK without selecting)
-				const infoMsg = 'Tip: Click OK without selecting a playlist to auto-create one.';
-				dlg.whenReady(() => {
-					try {
-						if (dlg) {
-							dlg.title = infoMsg;
-						}
-					} catch (err) {
-						console.log('Similar Artists: could not set dialog info message: ' + err.toString());
-					}
-				});
+				// Best-effort: some MM builds don't expose whenReady() on SharedWindow
+				try {
+					dlg.title = 'Select an existing playlist or click OK to auto-create one.';
+				} catch (_) {
+					// ignore
+				}
 
 				dlg.whenClosed = function () {
 					try {
@@ -1080,20 +1076,18 @@ try {
 						}
 
 						// User clicked OK
-						const selectedPlaylist = dlg.getValue('getPlaylist')?.();
+						const selectedPlaylist = dlg.getValue && dlg.getValue('getPlaylist') ? dlg.getValue('getPlaylist')() : null;
 
 						if (selectedPlaylist) {
-							// User selected or created a playlist in the dialog
-							console.log(`confirmPlaylist: User selected/created playlist: ${selectedPlaylist.name || selectedPlaylist.title}`);
+							console.log(`confirmPlaylist: User selected existing playlist: ${selectedPlaylist.name || selectedPlaylist.title}`);
 							resolve(selectedPlaylist);
 						} else {
-							// User clicked OK without selecting a playlist - auto-create one
 							console.log('Similar Artists: confirmPlaylist: User clicked OK without selecting playlist - will auto-create');
 							resolve({ autoCreate: true });
 						}
 					} catch (e) {
 						console.error('Similar Artists: confirmPlaylist: Error in dialog closure: ' + e.toString());
-						resolve({ autoCreate: true }); // Fallback to auto-create on error
+						resolve({ autoCreate: true });
 					}
 				};
 
@@ -1191,7 +1185,7 @@ try {
 			const lim = Number(limit) || undefined;
 			const params = new URLSearchParams({ method: 'artist.getTopTracks', api_key: apiKey, format: 'json', artist: artistName, autocorrect: '1' });
 			if (lim)
-				params.set('limit', String(lim));
+			params.set('limit', String(lim));
 
 			const url = API_BASE + '?' + params.toString();
 			const purpose = (lim >= 100) ? 'for ranking' : 'for collection';

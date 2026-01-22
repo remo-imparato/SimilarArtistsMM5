@@ -3,3 +3,72 @@
 ################################################################################
 
 /.vs
+
+# .gitignore for SimilarArtistsMM5
+# Exclude common Visual Studio, editor, OS, and build artifacts
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio build outputs
+[Bb]in/
+[Oo]bj/
+Debug/
+Release/
+x64/
+
+# Visual Studio Code settings
+.vscode/
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temp / logs
+*.log
+temp_*
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+*.bak
+
+# PowerShell
+*.ps1xml
+
+# Generated MMIP package and temporary ZIP produced by build-local.ps1
+bin/
+temp_package.zip
+*.mmip
+*.mmip.sha256
+
+# MediaMonkey / database files (if present locally)
+*.db
+
+# Certificates, keys, secrets
+*.pfx
+*.key
+*.pem
+
+# OneDrive/Office temporary files
+~$*
+
+# Ignore package managers' cache directories
+.pnpm-store/
+
+# End of file

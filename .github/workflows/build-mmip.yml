@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           fetch-tags: true
-      
+
       - name: Ensure zip is available
         run: |
           sudo apt-get update
@@ -44,14 +44,43 @@ jobs:
             BUILD=$((PATCH + GITHUB_RUN_NUMBER))
             VERSION="$MAJOR.$MINOR.$BUILD"
           fi
-      
+
           # Persist the computed version for the package
           tmpfile=$(mktemp)
           jq --arg v "$VERSION" '.version = $v' info.json > "$tmpfile" && mv "$tmpfile" info.json
-      
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
-      
+
+      - name: Generate update.json
+        id: gen_update
+        run: |
+          VERSION="${{ steps.bump_version.outputs.version }}"
+          MIN_APP=$(jq -r '.minAppVersion // "5.0.0"' info.json)
+
+          # For tag builds we can point directly to the versioned release asset.
+          # For branch builds, still generate a file (useful for artifacts/testing), but it won't be published.
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v${VERSION}"
+          fi
+
+          REPO="${GITHUB_REPOSITORY}"
+          ASSET_NAME="SimilarArtists-${VERSION}.mmip"
+          UPDATE_URL="https://github.com/${REPO}/releases/download/${TAG_NAME}/${ASSET_NAME}"
+
+          cat > update.json <<EOF
+          {
+            "version": "${VERSION}",
+            "minAppVersion": "${MIN_APP}",
+            "updateUrl": "${UPDATE_URL}"
+          }
+          EOF
+
+          echo "update_json=update.json" >> $GITHUB_OUTPUT
+          echo "Generated update.json for version ${VERSION}"
+
       - name: Create MMIP package
         run: |
           # MMIP files are just ZIP archives with .mmip extension
@@ -68,7 +97,7 @@ jobs:
             -x ".github/*" \
             -x "ai_*" \
             -x "lastfm.txt"
-          
+
           echo "Package created: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip"
 
       - name: Package diagnostics
@@ -78,13 +107,14 @@ jobs:
           echo "Package details:" && ls -la SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip || true
           sha256sum SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip > SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256 || true
 
-      - name: Upload artifacts (package + checksum)
+      - name: Upload artifacts (package + checksum + update.json)
         uses: actions/upload-artifact@v4
         with:
           name: mmip-package
           path: |
             SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip
             SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256
+            update.json
           retention-days: 90
 
       # Create or update release when running on a tag, then upload package and checksum
@@ -122,22 +152,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Note: if you re-enable automated pushes from CI, always use an explicit refspec to avoid ambiguous refs:
-      # git push origin HEAD:refs/heads/main
-      # This prevents errors when a tag exists with the same name as a branch.
+      # Publish update.json to a stable location (so updateURL can always point to a constant URL)
+      # We publish to a dedicated 'updates' branch.
+      - name: Publish update.json to updates branch
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -e
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
 
-      # - name: Commit bumped version
-      #   if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
-      #   env:
-      #     VERSION: ${{ steps.bump_version.outputs.version }}
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     if git diff --quiet -- info.json; then
-      #       echo "info.json unchanged; skipping commit"
-      #       exit 0
-      #     fi
-      #     git config user.name "github-actions"
-      #     git config user.email "github-actions@users.noreply.github.com"
-      #     git add info.json
-      #     git commit -m "chore: bump info.json to ${VERSION}"
-      #     git push origin HEAD:refs/heads/main
+          # Create/checkout updates branch without carrying repo history
+          git checkout --orphan updates
+          git rm -rf . >/dev/null 2>&1 || true
+
+          mv update.json update.json
+          git add update.json
+          git commit -m "Update update.json for ${{ github.ref_name }}"
+
+          # Force-push the single-file branch
+          git push --force origin updates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
