@@ -106,10 +106,27 @@ api.cache.getCachedSimilarArtists('Pink Floyd');
 api.cache.clearLastfmRunCache();
 ```
 
+### Last.fm API
+```javascript
+const { api } = require('./modules');
+
+// Fetch similar artists from Last.fm
+const similar = await api.lastfmApi.fetchSimilarArtists('Pink Floyd', 10);
+// Returns: [{name: 'David Gilmour', ...}, {name: 'Led Zeppelin', ...}, ...]
+
+// Fetch top tracks for an artist
+const topTracks = await api.lastfmApi.fetchTopTracks('Pink Floyd', 20);
+// Returns: ['Time', 'Money', 'Us and Them', ...]
+
+// Fetch top tracks with ranking data
+const rankedTracks = await api.lastfmApi.fetchTopTracks('Pink Floyd', 100, true);
+// Returns: [{title: 'Time', playcount: 5000, rank: 1}, ...]
+```
+
 ## Refactoring Phases
 
 - **Phase 1-2** (Complete): Utilities and Settings modules extracted ?
-- **Phase 3** (Pending): API layer (Last.fm queries)
+- **Phase 3** (Complete): API layer (Last.fm queries) ?
 - **Phase 4** (Pending): Database layer (library search, playlist operations)
 - **Phase 5** (Pending): Core logic (seed collection, processing)
 - **Phase 6** (Pending): UI (dialogs, actions)
@@ -146,3 +163,7 @@ When adding new modules:
 3. Document in this README
 4. Ensure no circular dependencies
 5. Keep module responsibilities focused and single-purpose
+
+### API
+- **`api/cache.js`** - Cache management
+- **`api/lastfm.js`** - Last.fm API queries (fetchSimilarArtists, fetchTopTracks)

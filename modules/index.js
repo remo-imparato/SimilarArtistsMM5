@@ -25,6 +25,7 @@ const notifications = require('./ui/notifications');
 
 // API
 const cache = require('./api/cache');
+const lastfmApi = require('./api/lastfm');
 
 module.exports = {
 	config,
@@ -43,5 +44,6 @@ module.exports = {
 	},
 	api: {
 		cache,
+		lastfmApi,
 	},
 };
