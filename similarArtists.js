@@ -762,8 +762,9 @@ try {
 					for (const simTrack of similarTracks) {
 						if (allTracks.length >= totalLimit) break;
 
-						const matches = await findLibraryTracks(simTrack.artist, simTrack.title, 1, { rank: false, best: bestEnabled });
-
+						// Title-only lookup because track.getSimilar may not return artist consistently
+						const matches = await findLibraryTracks(simTrack.artist, simTrack.title, 1, { rank: false, best: bestEnabled, titleOnly: true });
+						
 						for (const track of matches) {
 							if (allTracks.length >= totalLimit) break;
 
@@ -1771,21 +1772,21 @@ try {
 							bio: (data.artist.bio?.summary || '').substring(0, 500) // limit bio length
 						};
 
-						cacheSetWithTtl(lastfmRunCache?.artistInfo, cacheKey, info);
-						return info;
-					} catch (e) {
-						console.error(`fetchArtistBatch: Error for "${name}": ${e.toString()}`);
-						return null;
-					}
-				}
-			);
+	cacheSetWithTtl(lastfmRunCache?.artistInfo, cacheKey, info);
+	return info;
+} catch (e) {
+	console.error(`fetchArtistBatch: Error for "${name}": ${e.toString()}`);
+	return null;
+}
+}
+);
 
-			return results.filter(Boolean);
-		} catch (e) {
-			console.error('fetchArtistBatch error: ' + e.toString());
-			return [];
-		}
-	}
+return results.filter(Boolean);
+} catch (e) {
+	console.error('fetchArtistBatch error: ' + e.toString());
+	return [];
+}
+}
 
 	function sleep(ms) {
 		return new Promise((r) => setTimeout(r, Math.max(0, Number(ms) || 0)));
@@ -2211,11 +2212,8 @@ try {
 			const orderClause = useBest ? ' ORDER BY Songs.Rating DESC, Random()' : ' ORDER BY Random()';
 			const baseJoins = `
 			FROM Songs
-			INNER JOIN ArtistsSongs 
-				on Songs.ID = ArtistsSongs.IDSong 
-				AND ArtistsSongs.PersonType = 1
-			INNER JOIN Artists 
-				on ArtistsSongs.IDArtist = Artists.ID
+			${artistClause ? 'INNER JOIN ArtistsSongs on Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1' : ''}
+			${artistClause ? 'INNER JOIN Artists on ArtistsSongs.IDArtist = Artists.ID' : ''}
 			${excludeGenres.length > 0 ? 'LEFT JOIN GenresSongs ON Songs.ID = GenresSongs.IDSong' : ''}
 		`;
 
