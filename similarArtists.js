@@ -2198,7 +2198,7 @@ try {
 				if (ratingMin > 0) {
 					if (allowUnknown) {
 						// Include unrated tracks (NULL or negative) as well as those meeting the minimum
-						filters.push(`(Songs.Rating IS NULL OR Songs.Rating <= 0 OR Songs.Rating >= ${ratingMin})`);
+					.filters.push(`(Songs.Rating IS NULL OR Songs.Rating <= 0 OR Songs.Rating >= ${ratingMin})`);
 					} else {
 						filters.push(`(Songs.Rating >= ${ratingMin} AND Songs.Rating <= 100)`);
 					}
@@ -2236,9 +2236,10 @@ try {
 			if (wantedNonEmpty.length === 0) return results;
 
 			// Build VALUES list for CTE. Note: rawUpper/norm are safe-quoted.
+			// Build CTE rows using UNION ALL SELECT to avoid trailing comma/VALUES syntax issues
 			const wantedValuesSql = wantedNonEmpty
-				.map(r => `(${r.idx}, '${escapeSql(r.raw)}', '${escapeSql(r.rawUpper)}', '${escapeSql(r.norm)}')`)
-				.join(',');
+				.map(r => `SELECT ${r.idx} AS Idx, '${escapeSql(r.raw)}' AS Raw, '${escapeSql(r.rawUpper)}' AS RawUpper, '${escapeSql(r.norm)}' AS Norm`)
+				.join(' UNION ALL ');
 
 			// SQL-side normalization expression (must match stripName's semantics)
 			const songTitleNormExpr =
@@ -2255,7 +2256,7 @@ try {
 			whereParts.push(...commonFilters);
 
 			const sql = `
-			WITH Wanted(Idx, Raw, RawUpper, Norm) AS (VALUES ${wantedValuesSql})
+			WITH Wanted(Idx, Raw, RawUpper, Norm) AS (${wantedValuesSql})
 			SELECT Songs.*, Wanted.Raw AS RequestedTitle
 			${baseJoins}
 			INNER JOIN Wanted
