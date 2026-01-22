@@ -1765,17 +1765,31 @@ try {
 							console.warn(`fetchArtistBatch: API error or no artist data for "${name}"`);
 							cacheSetWithTtl(lastfmRunCache?.artistInfo, cacheKey, null);
 							return null;
-							}
+						 }
 
+						// Successful response: normalize and cache the artist info
+						const info = {
+							name: normalizeName(data.artist.name),
+							listeners: Number(data.artist.listeners) || 0,
+							playcount: Number(data.artist.playcount) || 0,
+							bio: data.artist.bio?.summary ? data.artist.bio.summary.trim() : ''
+						};
+
+						cacheSetWithTtl(lastfmRunCache?.artistInfo, cacheKey, info);
+						return info;
+					} catch (e) {
+						console.error('fetchArtistBatch: Error processing artist info: ' + e.toString());
+						return null;
+					}
+				}
+			);
+
+			return results.filter(Boolean);
+		} catch (e) {
+			console.error('fetchArtistBatch error: ' + e.toString());
+			return [];
 		}
-	);
-
-	return results.filter(Boolean);
-} catch (e) {
-	console.error('fetchArtistBatch error: ' + e.toString());
-	return [];
-}
-}
+	}
 
 	function sleep(ms) {
 		return new Promise((r) => setTimeout(r, Math.max(0, Number(ms) || 0)));
@@ -2111,7 +2125,7 @@ try {
 				return new Map();
 
 			// Ensure titles is array of strings
-			titles = titles.map(t => String(t || '');
+			titles = titles.map(t => String(t || ''));
 
 			const results = new Map();
 			const useBest = opts.best !== undefined ? opts.best : boolSetting('Best');
