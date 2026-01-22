@@ -23,6 +23,11 @@ modules/
 ??? api/
     ??? cache.js                # Last.fm API response caching
     ??? lastfm.js               # (TBD) Last.fm API queries
+??? db/
+    ??? library.js              # Library track searching (single & batch)
+    ??? playlist.js             # Playlist creation and management
+    ??? queue.js                # Track enqueueing (Now Playing & playlists)
+    ??? index.js                # Database module exports
 ```
 
 ## Module Dependencies
@@ -38,6 +43,9 @@ config
   ?? utils/helpers
   ?? utils/sql ? utils/helpers
   ?? api/cache ? utils/normalization
+  ?? db/library ? utils/sql, settings/prefixes
+  ?? db/playlist ? ui/notifications
+  ?? db/queue ? ui/notifications
 ```
 
 ## Usage Examples
@@ -123,11 +131,43 @@ const rankedTracks = await api.lastfmApi.fetchTopTracks('Pink Floyd', 100, true)
 // Returns: [{title: 'Time', playcount: 5000, rank: 1}, ...]
 ```
 
+### Database
+```javascript
+const { db } = require('./modules');
+
+// Find library tracks by artist
+const tracks = await db.findLibraryTracks('Pink Floyd', ['Time', 'Money'], 20);
+// Returns: [{id, title, artist, album, path, playCount, rating}, ...]
+
+// Batch find tracks for multiple titles
+const titleMap = await db.findLibraryTracksBatch('Pink Floyd', ['Time', 'Money'], 5);
+// Returns: Map { 'Time' => [...tracks], 'Money' => [...tracks] }
+
+// Create a new playlist
+const playlist = await db.createPlaylist('Similar Artists - Pink Floyd');
+
+// Find existing playlist
+const playlist = db.findPlaylist('My Favorites');
+
+// Get or create playlist (prefer existing)
+const playlist = await db.getOrCreatePlaylist('My Collection');
+
+// Queue a track to Now Playing
+await db.queueTrack(trackObject);
+
+// Queue multiple tracks
+const count = await db.queueTracks(trackArray, true);  // true = play now
+
+// Add tracks to a playlist
+await db.addTracksToPlaylist(playlist, trackArray);
+await playlist.commitAsync();  // Save changes
+```
+
 ## Refactoring Phases
 
 - **Phase 1-2** (Complete): Utilities and Settings modules extracted ?
 - **Phase 3** (Complete): API layer (Last.fm queries) ?
-- **Phase 4** (Pending): Database layer (library search, playlist operations)
+- **Phase 4** (Complete): Database layer (library search, playlists, queuing) ?
 - **Phase 5** (Pending): Core logic (seed collection, processing)
 - **Phase 6** (Pending): UI (dialogs, actions)
 - **Phase 7** (Pending): Playback (auto-mode, enqueue)

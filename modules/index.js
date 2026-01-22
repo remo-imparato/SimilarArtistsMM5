@@ -2,7 +2,7 @@
  * SimilarArtists Modules Index
  * 
  * Central export point for all refactored modules.
- * Allows importing with: const { storage, normalization, ... } = require('./modules');
+ * Allows importing with: const { storage, normalization, db, ... } = require('./modules');
  */
 
 'use strict';
@@ -27,6 +27,9 @@ const notifications = require('./ui/notifications');
 const cache = require('./api/cache');
 const lastfmApi = require('./api/lastfm');
 
+// Database
+const db = require('./db');
+
 module.exports = {
 	config,
 	utils: {
@@ -46,4 +49,5 @@ module.exports = {
 		cache,
 		lastfmApi,
 	},
+	db,
 };
