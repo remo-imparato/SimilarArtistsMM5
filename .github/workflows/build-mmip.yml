@@ -70,6 +70,10 @@ jobs:
           ASSET_NAME="SimilarArtists-${VERSION}.mmip"
           UPDATE_URL="https://github.com/${REPO}/releases/download/${TAG_NAME}/${ASSET_NAME}"
 
+          # Keep the packaged metadata consistent with the generated update manifest
+          tmpfile=$(mktemp)
+          jq --arg v "$VERSION" '.version = $v' info.json > "$tmpfile" && mv "$tmpfile" info.json
+
           cat > update.json <<EOF
           {
             "version": "${VERSION}",
