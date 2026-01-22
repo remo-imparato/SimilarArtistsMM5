@@ -30,9 +30,10 @@ const lastfmApi = require('./api/lastfm');
 // Database
 const db = require('./db');
 
-// Core Orchestration & Auto-Mode
+// Core: Orchestration, Auto-Mode, and MM5 Integration
 const orchestration = require('./core/orchestration');
 const autoMode = require('./core/autoMode');
+const mm5Integration = require('./core/mm5Integration');
 
 module.exports = {
 	config,
@@ -57,5 +58,6 @@ module.exports = {
 	core: {
 		orchestration,
 		autoMode,
+		mm5Integration,
 	},
 };
