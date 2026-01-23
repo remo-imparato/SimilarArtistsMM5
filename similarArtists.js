@@ -17,16 +17,107 @@
 	'use strict';
 
 	// ============================================================================
-	// INITIALIZATION
+	// MODULE LOADING - Load modules using MM5's module system
 	// ============================================================================
-
-	// Import all modules
-	const modules = require('./modules');
-	const {
-		config,
-		settings: { storage },
-		core: { orchestration, autoMode, mm5Integration },
-	} = modules;
+	
+	// For now, we'll use a simplified approach without external modules
+	// TODO: Implement proper module loading when modules/ directory is created
+	
+	// Placeholder for modules until refactoring is complete
+	const modules = {
+		config: {
+			TOOLBAR_AUTO_ID: 'SimilarArtistsToggle'
+		},
+		settings: {
+			storage: {
+				getSetting: function(key, defaultVal) {
+					try {
+						return app.getValue('SimilarArtists_' + key, defaultVal);
+					} catch (e) {
+						return defaultVal;
+					}
+				},
+				setSetting: function(key, value) {
+					try {
+						app.setValue('SimilarArtists_' + key, value);
+					} catch (e) {
+						console.error('Failed to save setting:', key);
+					}
+				}
+			}
+		},
+		core: {
+			orchestration: {
+				generateSimilarPlaylist: async function(modules, autoModeFlag) {
+					// Placeholder - implement actual logic
+					console.log('SimilarArtists: generateSimilarPlaylist called');
+					return { success: false, error: 'Not implemented yet', tracksAdded: 0 };
+				}
+			},
+			autoMode: {
+				isAutoModeEnabled: function(getSetting) {
+					return getSetting('autoModeEnabled', false);
+				},
+				toggleAutoMode: function(state, getSetting, setSetting, handler, callback) {
+					const current = getSetting('autoModeEnabled', false);
+					const newState = !current;
+					setSetting('autoModeEnabled', newState);
+					if (callback) callback(newState);
+					return newState;
+				},
+				createAutoTriggerHandler: function(options) {
+					return function() {
+						console.log('SimilarArtists: Auto-trigger handler called');
+					};
+				},
+				initializeAutoMode: function(getSetting, handler, logger) {
+					logger('Initializing auto-mode state');
+					return {
+						enabled: getSetting('autoModeEnabled', false),
+						handler: handler
+					};
+				},
+				shutdownAutoMode: function(state, logger) {
+					logger('Shutting down auto-mode');
+				},
+				syncAutoModeListener: function(state, getSetting, handler, logger) {
+					logger('Syncing auto-mode listener');
+				}
+			},
+			mm5Integration: {
+				checkMM5Availability: function() {
+					return {
+						available: typeof app !== 'undefined',
+						missing: typeof app === 'undefined' ? ['app'] : []
+					};
+				},
+				initializeIntegration: function(options) {
+					console.log('SimilarArtists: MM5 integration initialized');
+					return {
+						options: options
+					};
+				},
+				shutdownIntegration: function(integration, logger) {
+					logger('MM5 integration shutdown');
+				},
+				updateToolbarIcon: function(toolbarId, enabled, logger) {
+					logger('Toolbar icon updated:', enabled);
+				},
+				updateActionState: function(actionId, logger) {
+					logger('Action state updated:', actionId);
+				}
+			}
+		},
+		ui: {
+			notifications: {
+				showToast: function(message) {
+					console.log('Toast:', message);
+				}
+			}
+		}
+	};
+	
+	const { config, settings: { storage }, core: { orchestration, autoMode, mm5Integration } } = modules;
 
 	// Create runtime state
 	const appState = {
