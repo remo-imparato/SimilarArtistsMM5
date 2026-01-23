@@ -22,17 +22,17 @@ window.actions.SimilarArtistsToggleAuto = {
 	title: () => _('Similar Artists: &Auto On/Off'),
 	icon: 'script',
 	checkable: true,
-	hotkeyAble: true,
+	hotkeyable: true,
 	visible: true,
 	disabled: false,
-	checked: function() {
+	checked: function () {
 		try {
 			return Boolean(window.SimilarArtists?.isAutoEnabled?.());
 		} catch (e) {
 			return false;
 		}
 	},
-	execute: function() {
+	execute: function () {
 		window.SimilarArtists?.toggleAuto();
 	}
 };

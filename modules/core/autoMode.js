@@ -253,6 +253,9 @@ window.similarArtistsAutoMode = {
 			logger = console.log,
 		} = config;
 
+		// Capture reference to autoMode module for use inside handler
+		const autoMode = this;
+
 		return async function handleAutoTrigger(state, loggerFunc) {
 			try {
 				const log = loggerFunc || logger;
@@ -276,12 +279,18 @@ window.similarArtistsAutoMode = {
 					return;
 				}
 
-				const remaining = this.getPlaylistRemaining(player, log);
+				// Use captured autoMode reference instead of 'this'
+				const remaining = autoMode.getPlaylistRemaining(player, log);
 				log(`Auto-Mode: Remaining entries: ${remaining}`);
 
 				// Check if we should trigger (remaining <= threshold)
-				if (remaining <= 0 || remaining > threshold) {
-					log(`Auto-Mode: Not near end (remaining=${remaining}, threshold=${threshold}), skipping`);
+				if (remaining > threshold) {
+					log(`Auto-Mode: Not near end yet (remaining=${remaining}, threshold=${threshold}), skipping`);
+					return;
+				}
+				
+				if (remaining <= 0) {
+					log(`Auto-Mode: Playlist already ended (remaining=${remaining}), too late to trigger`);
 					return;
 				}
 
@@ -326,7 +335,7 @@ window.similarArtistsAutoMode = {
 				state.autoRunning = false;
 				showToast(`Auto-queue error: ${e.message}`, 'error');
 			}
-		}.bind(this);
+		};
 	},
 
 	/**

@@ -1,7 +1,10 @@
 /**
  * SimilarArtists Add-on Configuration
  * 
- * Centralized configuration constants, script identifiers, and defaults.
+ * Centralized configuration constants and script identifiers.
+ * 
+ * NOTE: Default configuration values are defined in install.js
+ *       and initialized when the addon is first installed.
  */
 
 'use strict';
@@ -25,11 +28,6 @@ const SETTINGS_SHEET_ID = SCRIPT_ID + '.settings';
 // Last.fm API base endpoint.
 const API_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
-// Default settings (kept commented-out here because this add-on reads defaults from the Options page).
-const DEFAULTS = {
-	Name: '- Similar to %',
-};
-
 // Export to window namespace for MM5
 window.similarArtistsConfig = {
 	SCRIPT_ID,
@@ -41,5 +39,4 @@ window.similarArtistsConfig = {
 	TOOLBAR_AUTO_ID,
 	SETTINGS_SHEET_ID,
 	API_BASE,
-	DEFAULTS,
 };

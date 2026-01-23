@@ -142,6 +142,7 @@ try {
 	Write-Host "`n? Build complete! You can now install this package in MediaMonkey 5.0+" -ForegroundColor Green
 	Write-Host "  Package uses refactored modular architecture (Phases 1-7)" -ForegroundColor Gray
 	Write-Host "  Directory structure properly maintained (modules/, dialogs/)" -ForegroundColor Gray
+	Write-Host "  Configuration initialized in init.js on first startup" -ForegroundColor Gray
 	Write-Host "  Note: Local builds use version $version. GitHub builds use version from info.json." -ForegroundColor Yellow
 
 } finally {

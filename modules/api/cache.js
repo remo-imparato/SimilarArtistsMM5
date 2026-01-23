@@ -7,9 +7,6 @@
 
 'use strict';
 
-// Load normalization utilities into global scope
-localRequirejs('../utils/normalization');
-
 /**
  * Per-run cache structure containing:
  * - similarArtists: Map<string, object[]>
@@ -102,9 +99,9 @@ function isCacheActive() {
 window.lastfmCache = {
 	init: initLastfmRunCache,
 	clear: clearLastfmRunCache,
-	getSimilarArtists: getCachedSimilarArtists,
+	getCachedSimilarArtists: getCachedSimilarArtists,
 	cacheSimilarArtists: cacheSimilarArtists,
-	getTopTracks: getCachedTopTracks,
+	getCachedTopTracks: getCachedTopTracks,
 	cacheTopTracks: cacheTopTracks,
 	isActive: isCacheActive
 };

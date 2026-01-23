@@ -1,47 +1,27 @@
 /**
  * SimilarArtists Modules Index
  * 
- * Central export point for all refactored modules.
- * Allows importing with: const { storage, normalization, db, ... } = localRequirejs('modules');
+ * NOTE: This file is no longer the primary loader.
+ * All modules are now loaded directly in similarArtists.js
+ * 
+ * This file is kept for backward compatibility and exports the module namespace.
  */
 
 'use strict';
 
-// Configuration
-localRequirejs('./config');
+// All modules are loaded by similarArtists.js using requirejs()
+// This file just exports the namespace for convenience
 
-// Utilities
-localRequirejs('utils/normalization');
-localRequirejs('utils/helpers');
-localRequirejs('utils/sql');
-
-// Settings
-localRequirejs('settings/storage');
-localRequirejs('settings/prefixes');
-localRequirejs('settings/lastfm');
-
-// UI
-localRequirejs('ui/notifications');
-
-// API
-localRequirejs('api/cache');
-localRequirejs('api/lastfm');
-
-// Database
-localRequirejs('db/index');
-
-// Core: Orchestration, Auto-Mode, and MM5 Integration
-localRequirejs('core/orchestration');
-localRequirejs('core/autoMode');
-localRequirejs('core/mm5Integration');
-
-// Export to window namespace
+// Export to window namespace (modules should already be loaded)
 window.similarArtistsModules = {
 	config: window.similarArtistsConfig,
 	utils: {
 		normalization: {
-			normalizeArtistName: window.normalizeArtistName,
-			normalizeTrackTitle: window.normalizeTrackTitle,
+			normalizeName: window.normalizeName,
+			splitArtists: window.splitArtists,
+			stripName: window.stripName,
+			cacheKeyArtist: window.cacheKeyArtist,
+			cacheKeyTopTracks: window.cacheKeyTopTracks,
 		},
 		helpers: window.similarArtistsHelpers,
 		sql: window.similarArtistsSQL,

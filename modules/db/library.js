@@ -13,11 +13,6 @@
 
 'use strict';
 
-// Load dependencies (they export to window)
-localRequirejs('../utils/sql');
-localRequirejs('../utils/helpers');
-localRequirejs('../settings/prefixes');
-
 /**
  * Find tracks in the library matching a single artist name and optional track titles.
  *
@@ -87,9 +82,11 @@ async function findLibraryTracks(artistName, trackTitles, limit = 100, options =
 		}
 
 		// Add rating filter if specified
-		if (best || minRating > 0) {
-			const minRatingValue = best ? 80 : Math.max(0, minRating);
-			whereClause += ` AND Songs.SongRating >= ${minRatingValue}`;
+		// Use configured minRating value, or fall back to 'best' mode with rating 80
+		const ratingThreshold = minRating > 0 ? minRating : (best ? 80 : 0);
+		
+		if (ratingThreshold > 0) {
+			whereClause += ` AND Songs.SongRating >= ${ratingThreshold}`;
 		}
 
 		// Build ORDER clause - prioritize by rating and play count
@@ -114,16 +111,28 @@ async function findLibraryTracks(artistName, trackTitles, limit = 100, options =
 			LIMIT ${Math.max(1, Math.min(limit, 10000))}
 		`;
 
-		// Execute via app.db if available
-		if (typeof app !== 'undefined' && app.db && app.db.Query) {
-			const result = app.db.Query(query);
-			if (result && Array.isArray(result)) {
-				return result;
-			}
+		// Execute using app.db.getTracklist if available
+		if (typeof app !== 'undefined' && app.db && app.db.getTracklist) {
+			const tracklist = app.db.getTracklist(query, -1);
+			
+			// Wait for tracklist to load
+			await tracklist.whenLoaded();
+
+			// Convert tracklist to array
+			const results = [];
+			tracklist.locked(() => {
+				let track;
+				for (let i = 0; i < tracklist.count; i++) {
+					track = tracklist.getFastObject(i, track);
+					results.push(track);
+				}
+			});
+
+			return results;
 		}
 
 		// Fallback for testing or development
-		console.warn('findLibraryTracks: app.db.Query not available, returning empty');
+		console.warn('findLibraryTracks: app.db.getTracklist not available, returning empty');
 		return [];
 	} catch (e) {
 		console.error('findLibraryTracks error: ' + e.toString());
@@ -164,29 +173,46 @@ async function findLibraryTracksBatch(artistName, trackTitles, limit = 100, opti
 		return resultMap;
 	}
 
+	// Initialize map entries for all requested titles
+	for (const title of trackTitles) {
+		resultMap.set(title, []);
+	}
+
 	// Use batch query for efficiency
 	try {
 		const normalizedArtist = window.fixPrefixes(artistName);
-		const titleList = trackTitles
-			.filter(t => t && String(t).trim().length > 0)
-			.map(t => window.quoteSqlString('%' + window.escapeSql(String(t).trim()) + '%'))
-			.join(',');
-
-		if (!titleList) {
+		if (!normalizedArtist) {
+			console.warn('findLibraryTracksBatch: Invalid artist name');
 			return resultMap;
 		}
 
-		const { best = false, minRating = 0 } = options;
+		const { best = false, minRating = 0, allowUnknown = false } = options;
 
-		// Build comprehensive query for all titles at once
+		// Build title conditions
+		const titleConditions = trackTitles
+			.filter(t => t && String(t).trim().length > 0)
+			.map(t => `Songs.SongTitle LIKE ${window.quoteSqlString('%' + window.escapeSql(String(t).trim()) + '%')}`)
+			.join(' OR ');
+
+		if (!titleConditions) {
+			return resultMap;
+		}
+
+		// Build WHERE clause
 		let whereClause = `WHERE Songs.SongArtist LIKE ${window.quoteSqlString('%' + window.escapeSql(normalizedArtist) + '%')}
-		AND (Songs.SongTitle LIKE ${trackTitles
-			.map(t => window.quoteSqlString('%' + window.escapeSql(String(t).trim()) + '%'))
-			.join(' OR Songs.SongTitle LIKE ')})`;
+		AND (${titleConditions})`;
 
-		if (best || minRating > 0) {
-			const minRatingValue = best ? 80 : Math.max(0, minRating);
-			whereClause += ` AND Songs.SongRating >= ${minRatingValue}`;
+		// Use configured minRating value, or fall back to 'best' mode with rating 80
+		const ratingThreshold = minRating > 0 ? minRating : (best ? 80 : 0);
+		
+		if (ratingThreshold > 0) {
+			if (allowUnknown) {
+				// Include tracks with rating >= threshold OR unknown rating (rating < 0)
+				whereClause += ` AND (Songs.SongRating >= ${ratingThreshold} OR Songs.SongRating < 0)`;
+			} else {
+				// Only include tracks with rating >= threshold
+				whereClause += ` AND Songs.SongRating >= ${ratingThreshold}`;
+			}
 		}
 
 		const query = `
@@ -204,35 +230,56 @@ async function findLibraryTracksBatch(artistName, trackTitles, limit = 100, opti
 			LIMIT ${Math.max(1, Math.min(limit * trackTitles.length, 10000))}
 		`;
 
-		if (typeof app !== 'undefined' && app.db && app.db.Query) {
-			const allMatches = app.db.Query(query) || [];
+		if (typeof app !== 'undefined' && app.db && app.db.getTracklist) {
+			const tl = app.db.getTracklist(query, -1);
+			if (!tl) return resultMap;
 
-			// Group results by title for easy lookup
-			for (const track of allMatches) {
-				// Find which requested title this matches
-				for (const reqTitle of trackTitles) {
-					if (track.title && track.title.toLowerCase().includes(reqTitle.toLowerCase())) {
-						if (!resultMap.has(reqTitle)) {
-							resultMap.set(reqTitle, []);
-						}
-						const existing = resultMap.get(reqTitle);
-						if (existing.length < limit) {
-							existing.push(track);
-						}
-						break;
+			// Disable auto-update and notifications for performance (pattern from original code)
+			tl.autoUpdateDisabled = true;
+			tl.dontNotify = true;
+			
+			// Wait for tracklist to load using .then() pattern (MediaMonkey standard)
+			return new Promise((resolve) => {
+				tl.whenLoaded().then(() => {
+					try {
+						// Group results by title for easy lookup
+						tl.forEach((track) => {
+							if (!track) return;
+							
+							// Find which requested title this matches
+							for (const reqTitle of trackTitles) {
+								if (track.title && track.title.toLowerCase().includes(reqTitle.toLowerCase())) {
+									if (!resultMap.has(reqTitle)) {
+										resultMap.set(reqTitle, []);
+									}
+									const existing = resultMap.get(reqTitle);
+									if (existing.length < limit) {
+										existing.push(track);
+									}
+									break;
+								}
+							}
+						});
+					} catch (e) {
+						console.error('findLibraryTracksBatch: forEach error:', e.toString());
+					} finally {
+						// Re-enable auto-update and notifications after we're done
+						tl.autoUpdateDisabled = false;
+						tl.dontNotify = false;
 					}
-				}
-			}
+					
+					resolve(resultMap);
+				}).catch((e) => {
+					console.error('findLibraryTracksBatch: Tracklist load error:', e.toString());
+					// Re-enable auto-update and notifications on error
+					tl.autoUpdateDisabled = false;
+					tl.dontNotify = false;
+					resolve(resultMap); // Return empty results rather than throwing
+				});
+			});
 		}
 	} catch (e) {
 		console.error('findLibraryTracksBatch error: ' + e.toString());
-	}
-
-	// Ensure all requested titles have an entry in the map
-	for (const title of trackTitles) {
-		if (!resultMap.has(title)) {
-			resultMap.set(title, []);
-		}
 	}
 
 	return resultMap;

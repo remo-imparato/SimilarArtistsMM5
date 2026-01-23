@@ -10,9 +10,6 @@
 
 'use strict';
 
-// Load dependencies (they export to window)
-localRequirejs('../ui/notifications');
-
 /**
  * Create a new playlist in MediaMonkey.
  *

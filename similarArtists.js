@@ -17,21 +17,113 @@
 	'use strict';
 
 	// ============================================================================
-	// MODULE LOADING - Load modules using MM5's module system
+	// EARLY EXPORT - Set window.SimilarArtists immediately to prevent race conditions
 	// ============================================================================
 	
-	// Load the modular implementation
-	localRequirejs('modules/index', function() {
-		// Get modules from window namespace
-		const modules = globalArg.similarArtistsModules;
-		
-		if (!modules) {
-			console.error('SimilarArtists: Failed to load modules');
-			return;
-		}
-		
-		console.log('SimilarArtists: Modules loaded successfully');
-		initializeSimilarArtists(modules);
+	// Create placeholder object immediately so init.js can detect it loaded
+	globalArg.SimilarArtists = {
+		_loading: true,
+		start: function() {
+			console.warn('SimilarArtists: start() called before modules loaded, queuing...');
+			// Queue the start call for when modules are ready
+			if (!globalArg.SimilarArtists._startQueue) {
+				globalArg.SimilarArtists._startQueue = [];
+			}
+			globalArg.SimilarArtists._startQueue.push(arguments);
+		},
+	};
+
+	// ============================================================================
+	// MODULE LOADING - Load all modules directly using requirejs
+	// ============================================================================
+	
+	// Load all module files in correct dependency order
+	// Configuration first
+	requirejs('modules/config');
+	
+	// Utilities (no dependencies)
+	requirejs('modules/utils/normalization');
+	requirejs('modules/utils/helpers');
+	requirejs('modules/utils/sql');
+	
+	// Settings (depend on utils)
+	requirejs('modules/settings/storage');
+	requirejs('modules/settings/prefixes');
+	requirejs('modules/settings/lastfm');
+	
+	// UI (no dependencies)
+	requirejs('modules/ui/notifications');
+	
+	// API (depend on utils and settings)
+	requirejs('modules/api/cache');
+	requirejs('modules/api/lastfm');
+	
+	// Database individual modules FIRST (they export to window.dbLibrary, window.dbPlaylist, window.dbQueue)
+	requirejs('modules/db/library');
+	requirejs('modules/db/playlist');
+	requirejs('modules/db/queue');
+	// THEN load the index which depends on them
+	requirejs('modules/db/index');
+	
+	// Core orchestration and integration (depend on everything)
+	requirejs('modules/core/orchestration');
+	requirejs('modules/core/autoMode');
+	requirejs('modules/core/mm5Integration');
+	
+	// Wait for all modules to load, then initialize
+	// Using requestAnimationFrame for better timing than setTimeout
+	// This ensures all requirejs calls have completed
+	requestAnimationFrame(function() {
+		// Double-wrap to ensure all modules are fully loaded
+		requestAnimationFrame(function() {
+			// Get modules from window namespace (exported by individual module files)
+			const modules = {
+				config: globalArg.similarArtistsConfig,
+				utils: {
+					normalization: {
+						normalizeName: globalArg.normalizeName,
+						splitArtists: globalArg.splitArtists,
+						stripName: globalArg.stripName,
+						cacheKeyArtist: globalArg.cacheKeyArtist,
+						cacheKeyTopTracks: globalArg.cacheKeyTopTracks,
+					},
+					helpers: globalArg.similarArtistsHelpers,
+					sql: globalArg.similarArtistsSQL,
+				},
+				settings: {
+					storage: globalArg.similarArtistsStorage,
+					prefixes: globalArg.similarArtistsPrefixes,
+					lastfm: globalArg.similarArtistsLastfm,
+				},
+				ui: {
+					notifications: globalArg.similarArtistsNotifications,
+				},
+				api: {
+					cache: globalArg.lastfmCache,
+					lastfmApi: globalArg.similarArtistsLastfmAPI,
+				},
+				db: globalArg.similarArtistsDB,
+				core: {
+					orchestration: globalArg.similarArtistsOrchestration,
+					autoMode: globalArg.similarArtistsAutoMode,
+					mm5Integration: globalArg.similarArtistsMM5Integration,
+				},
+			};
+			
+			if (!modules.config) {
+				console.error('SimilarArtists: Failed to load modules - config not found');
+				return;
+			}
+			
+			if (!modules.db || !modules.db.findLibraryTracksBatch) {
+				console.error('SimilarArtists: Failed to load modules - db.findLibraryTracksBatch not found');
+				console.error('SimilarArtists: db object:', modules.db);
+				return;
+			}
+			
+			console.log('SimilarArtists: Modules loaded successfully');
+			initializeSimilarArtists(modules);
+		});
 	});
 	
 	function initializeSimilarArtists(modules) {
@@ -88,38 +180,42 @@
 			try {
 				console.log('SimilarArtists: Toggling auto-mode');
 
-				if (!appState.autoModeState) {
-					console.log('SimilarArtists: Auto-mode state not initialized');
-					return;
-				}
-
 				// Get handlers
 				const { getSetting, setSetting } = storage;
-				const handler = createAutoTriggerHandler();
-
-				// Toggle using the autoMode module
-				const newState = autoMode.toggleAutoMode(
-					appState.autoModeState,
-					getSetting,
-					setSetting,
-					handler,
-					(enabled) => {
-						console.log(`SimilarArtists: Auto-mode toggled to ${enabled ? 'enabled' : 'disabled'}`);
-						
-						// Update the state's enabled flag
-						appState.autoModeState.enabled = enabled;
-						
-						// Update UI
-						updateAutoModeUI(enabled);
-						
-						// Notify action state changed to update checkmark
-						if (typeof window.updateActionState === 'function') {
-							window.updateActionState('SimilarArtistsToggleAuto');
-						}
-					},
-					console.log
-				);
-
+				
+				// Read current state from settings (not from autoModeState)
+				const currentState = autoMode.isAutoModeEnabled(getSetting);
+				const newState = !currentState;
+				
+				// Write new state to settings
+				setSetting('OnPlay', newState);
+				console.log(`SimilarArtists: Auto-mode setting changed from ${currentState} to ${newState}`);
+				
+				// Initialize autoModeState if needed
+				if (!appState.autoModeState) {
+					console.log('SimilarArtists: Auto-mode state not initialized, initializing now');
+					initializeAutoMode();
+				}
+				
+				// Sync listener with new setting
+				if (appState.autoModeState) {
+					const handler = createAutoTriggerHandler();
+					autoMode.syncAutoModeListener(
+						appState.autoModeState,
+						getSetting,
+						handler,
+						console.log
+					);
+				}
+				
+				// Update UI
+				updateAutoModeUI(newState);
+				
+				// Notify action state changed to update checkmark
+				if (typeof window.updateActionState === 'function') {
+					window.updateActionState('SimilarArtistsToggleAuto');
+				}
+				
 				console.log(`SimilarArtists: Auto-mode is now ${newState ? 'enabled' : 'disabled'}`);
 
 			} catch (e) {
@@ -306,6 +402,9 @@
 			try {
 				console.log('SimilarArtists: Starting add-on...');
 
+				// NOTE: Configuration initialization is now handled by install.js
+				// which runs on first install and upgrades. No need to initialize here.
+
 				// Validate MM5 environment
 				const mmStatus = mm5Integration.checkMM5Availability();
 				if (!mmStatus.available) {
@@ -399,6 +498,19 @@
 		};
 
 		console.log('SimilarArtists: Module loaded, call start() to initialize');
+		
+		// Process any queued start calls
+		const queuedStarts = globalArg.SimilarArtists._startQueue;
+		if (queuedStarts && queuedStarts.length > 0) {
+			console.log(`SimilarArtists: Processing ${queuedStarts.length} queued start call(s)`);
+			queuedStarts.forEach(() => {
+				try {
+					start();
+				} catch (e) {
+					console.error('SimilarArtists: Error processing queued start:', e);
+				}
+			});
+		}
 	}
 
 })(typeof window !== 'undefined' ? window : global);

@@ -151,6 +151,7 @@ jobs:
 
           echo "? Package created: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip"
           echo "? Modular structure included (Phases 1-7)"
+          echo "? Configuration initialized in init.js"
           echo "? MM5 5.0+ compatible"
 
       - name: Package diagnostics
@@ -270,4 +271,4 @@ jobs:
           # Force-push the single-file branch
           git push --force origin updates
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}}

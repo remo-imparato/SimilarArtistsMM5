@@ -15,11 +15,6 @@
 
 'use strict';
 
-// Load sub-modules into global scope (they export to window.dbLibrary, window.dbPlaylist, window.dbQueue)
-localRequirejs('./library');
-localRequirejs('./playlist');
-localRequirejs('./queue');
-
 // Export unified interface to window namespace for MM5
 window.similarArtistsDB = {
 	// Library search operations (from window.dbLibrary)

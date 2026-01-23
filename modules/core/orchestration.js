@@ -44,7 +44,7 @@ window.similarArtistsOrchestration = {
 			settings: { storage, prefixes },
 			ui: { notifications },
 			api: { lastfmApi },
-			db: { library },
+			db,  // Changed: db is already the full interface, no need to destructure library
 		} = modules;
 
 		const {
@@ -69,9 +69,12 @@ window.similarArtistsOrchestration = {
 			fixPrefixes,
 		} = prefixes;
 
+		// Declare taskId outside try block so it's accessible in catch
+		let taskId = null;
+
 		try {
 			// Initialize progress tracking
-			const taskId = createProgressTask('Generating Similar Artists Playlist');
+			taskId = createProgressTask('Generating Similar Artists Playlist');
 			updateProgress('Initializing...', 0);
 
 			// Validate environment
@@ -81,15 +84,15 @@ window.similarArtistsOrchestration = {
 
 			// Load configuration
 			const config_ = {
-				seedLimit: autoMode ? 2 : intSetting('Seed', config.DEFAULTS.Seed),
-				similarLimit: intSetting('Similar', config.DEFAULTS.Similar),
-				tracksPerArtist: autoMode ? 2 : intSetting('TPA', config.DEFAULTS.TPA),
-				totalLimit: autoMode ? 10 : intSetting('Total', config.DEFAULTS.Total),
-				includeSeedArtist: !autoMode && boolSetting('IncludeSeed', config.DEFAULTS.IncludeSeed),
-				rankEnabled: boolSetting('Rank', config.DEFAULTS.Rank),
-				bestEnabled: boolSetting('Best', config.DEFAULTS.Best),
-				randomize: boolSetting('Random', config.DEFAULTS.Random),
-				showConfirm: !autoMode && boolSetting('ShowConfirm', config.DEFAULTS.ShowConfirm),
+				seedLimit: autoMode ? 2 : intSetting('SeedLimit'),
+				similarLimit: intSetting('SimilarLimit'),
+				tracksPerArtist: autoMode ? 2 : intSetting('TPA'),
+				totalLimit: autoMode ? 10 : intSetting('TPL'),
+				includeSeedArtist: !autoMode && boolSetting('Seed'),
+				rankEnabled: boolSetting('Rank'),
+				bestEnabled: boolSetting('Best'),
+				randomize: boolSetting('Random'),
+				showConfirm: !autoMode && boolSetting('Confirm'),
 				autoMode,
 			};
 
@@ -97,27 +100,44 @@ window.similarArtistsOrchestration = {
 
 			// Step 1: Collect seed tracks
 			updateProgress('Collecting seed tracks...', 0.1);
-			const seeds = await collectSeedTracks(modules);
+			const seeds = await this.collectSeedTracks(modules);
 
 			if (!seeds || seeds.length === 0) {
 				throw new Error('No seed tracks found. Please select one or more tracks or start playing a track.');
 			}
 
-			console.log(`generateSimilarPlaylist: Collected ${seeds.length} seed artist(s)`);
+			//console.log(`generateSimilarPlaylist: Collected ${seeds.length} seed artist(s)`);
 			updateProgress(`Found ${seeds.length} seed artist(s)`, 0.15);
 
 			// Step 2: Process seeds to find similar artists and their tracks
 			updateProgress('Processing seed artists...', 0.2);
 			const trackRankMap = config_.rankEnabled ? new Map() : null;
-			const results = await processSeedArtists(
+
+			console.log(`generateSimilarPlaylist: About to process seeds with config:`, {
+				seedLimit: config_.seedLimit,
+				similarLimit: config_.similarLimit,
+				tracksPerArtist: config_.tracksPerArtist,
+				totalLimit: config_.totalLimit,
+			});
+
+			const results = await this.processSeedArtists(
 				modules,
 				seeds,
 				config_,
 				trackRankMap
 			);
 
+			console.log(`generateSimilarPlaylist: processSeedArtists returned ${results?.length || 0} tracks`);
+
 			if (!results || results.length === 0) {
-				throw new Error('No matching tracks found in your library. Try adjusting your settings.');
+				// Not an error - just means no matches found, which is a normal scenario
+				terminateProgressTask(taskId);
+				showToast('No matching tracks found in your library. Try adjusting your filters or adding more music.', 'info');
+				return {
+					success: false,
+					error: 'No matching tracks found in your library. Try adjusting your filters or adding more music.',
+					tracksAdded: 0,
+				};
 			}
 
 			console.log(`generateSimilarPlaylist: Found ${results.length} matching tracks`);
@@ -148,11 +168,11 @@ window.similarArtistsOrchestration = {
 			if (config_.autoMode || boolSetting('Enqueue', config.DEFAULTS.Enqueue)) {
 				// Auto-mode or enqueue mode: add to Now Playing
 				console.log('generateSimilarPlaylist: Enqueueing to Now Playing');
-				outputPromise = queueResults(modules, results, config_);
+				outputPromise = this.queueResults(modules, results, config_);
 			} else {
 				// Create/update playlist
 				console.log('generateSimilarPlaylist: Creating/updating playlist');
-				outputPromise = buildResultsPlaylist(modules, results, config_);
+				outputPromise = this.buildResultsPlaylist(modules, results, config_);
 			}
 
 			const output = await outputPromise;
@@ -171,7 +191,9 @@ window.similarArtistsOrchestration = {
 
 		} catch (e) {
 			console.error('generateSimilarPlaylist error: ' + formatError(e));
-			terminateProgressTask(taskId);
+			if (taskId) {
+				terminateProgressTask(taskId);
+			}
 			showToast(`Error: ${formatError(e)}`, 'error');
 			return {
 				success: false,
@@ -188,9 +210,10 @@ window.similarArtistsOrchestration = {
 	 * 2. Currently playing track
 	 * 
 	 * Returns array of {name, track} objects where name is normalized artist name.
+	 * Duplicates are removed based on normalized artist names.
 	 * 
 	 * @param {object} modules - Module dependencies
-	 * @returns {Promise<Array>} Seed artist objects
+	 * @returns {Promise<Array>} Seed artist objects (deduplicated)
 	 */
 	async collectSeedTracks(modules) {
 		const { utils: { normalization }, settings: { storage } } = modules;
@@ -198,6 +221,16 @@ window.similarArtistsOrchestration = {
 		const { getSetting } = storage;
 
 		const seeds = [];
+		const seenArtists = new Set(); // Track seen artists for deduplication
+
+		// Helper to add artist if not already seen
+		const addArtistIfNew = (artistName, track) => {
+			const normalizedName = artistName.trim().toUpperCase();
+			if (normalizedName && !seenArtists.has(normalizedName)) {
+				seenArtists.add(normalizedName);
+				seeds.push({ name: artistName, track: track });
+			}
+		};
 
 		// Try to get selected tracklist from any pane
 		let selectedList = null;
@@ -220,7 +253,7 @@ window.similarArtistsOrchestration = {
 					selectedList.forEach((t) => {
 						if (t?.artist) {
 							for (const a of splitArtists(t.artist)) {
-								seeds.push({ name: a, track: t });
+								addArtistIfNew(a, t);
 							}
 						}
 					});
@@ -230,14 +263,15 @@ window.similarArtistsOrchestration = {
 						tmp = selectedList.getFastObject(i, tmp);
 						if (tmp?.artist) {
 							for (const a of splitArtists(tmp.artist)) {
-								seeds.push({ name: a, track: tmp });
+								addArtistIfNew(a, tmp);
 							}
 						}
 					}
 				}
 
 				if (seeds.length > 0) {
-					console.log(`collectSeedTracks: Using ${seeds.length} selected track(s)`);
+					const artistNames = seeds.map(s => s.name).join(', ');
+					console.log(`collectSeedTracks: Using ${seeds.length} unique selected artist(s): ${artistNames}`);
 					return seeds;
 				}
 			} catch (e) {
@@ -250,7 +284,7 @@ window.similarArtistsOrchestration = {
 			const currentTrack = app.player?.getCurrentTrack?.();
 			if (currentTrack?.artist) {
 				for (const a of splitArtists(currentTrack.artist)) {
-					seeds.push({ name: a, track: currentTrack });
+					addArtistIfNew(a, currentTrack);
 				}
 				console.log(`collectSeedTracks: Using currently playing track`);
 				return seeds;
@@ -260,7 +294,7 @@ window.similarArtistsOrchestration = {
 		}
 
 		console.log('collectSeedTracks: No seed tracks found');
-		return [];
+		return seeds;
 	},
 
 	/**
@@ -287,11 +321,11 @@ window.similarArtistsOrchestration = {
 			settings: { storage, prefixes },
 			ui: { notifications },
 			api: { lastfmApi },
-			db: { library },
+			db,  // Changed: db is already the full interface
 		} = modules;
 
 		const { parseListSetting: parseListSettingUtil } = helpers;
-		const { getSetting } = storage;
+		const { getSetting, intSetting } = storage;
 		const { fixPrefixes } = prefixes;
 		const { updateProgress } = notifications;
 		const {
@@ -300,15 +334,27 @@ window.similarArtistsOrchestration = {
 		} = lastfmApi;
 		const {
 			findLibraryTracksBatch,
-		} = library;
+		} = db;  // Changed: get function directly from db
+
+		// Validate required functions
+		console.log('processSeedArtists: Validating required functions...');
+		console.log('processSeedArtists: fetchSimilarArtists available:', typeof fetchSimilarArtists === 'function');
+		console.log('processSeedArtists: fetchTopTracks available:', typeof fetchTopTracks === 'function');
+		console.log('processSeedArtists: findLibraryTracksBatch available:', typeof findLibraryTracksBatch === 'function');
+
+		if (typeof findLibraryTracksBatch !== 'function') {
+			console.error('processSeedArtists: findLibraryTracksBatch is not a function!');
+			console.error('processSeedArtists: db object:', db);
+			throw new Error('Database function findLibraryTracksBatch is not available');
+		}
 
 		const allTracks = [];
 		const seenKeys = new Set();
 
 		// Build blacklist from settings
+		// parseListSetting already returns an array, no need to split
 		const blacklist = new Set(
 			parseListSettingUtil(getSetting('Black', ''))
-				.split(',')
 				.map(s => String(s || '').trim().toUpperCase())
 				.filter(s => s.length > 0)
 		);
@@ -331,10 +377,7 @@ window.similarArtistsOrchestration = {
 
 			const seed = seedSlice[i];
 			const progress = 0.2 + ((i + 1) / seedSlice.length) * 0.6;
-			updateProgress(
-				`Processing seed ${i + 1}/${seedSlice.length}: "${seed.name}"`,
-				progress * 0.5
-			);
+			updateProgress(`Processing seed ${i + 1}/${seedSlice.length}: "${seed.name}"`, progress * 0.5);
 
 			try {
 				// Fetch similar artists
@@ -372,7 +415,6 @@ window.similarArtistsOrchestration = {
 						pushIfNew(similar[j].name);
 					}
 				}
-
 				console.log(`processSeedArtists: Processing ${artistPool.length} artists for seed "${seed.name}"`);
 
 				// Process each artist in pool
@@ -380,10 +422,9 @@ window.similarArtistsOrchestration = {
 					if (allTracks.length >= config.totalLimit) break;
 
 					try {
-						updateProgress(
-							`Fetching tracks for "${artName}"...`,
-							progress * 0.75
-						);
+						updateProgress(`Fetching tracks for "${artName}"...`, progress * 0.75);
+
+						console.log(`processSeedArtists: Fetching top tracks for "${artName}" (limit: ${config.tracksPerArtist})`);
 
 						// Fetch top tracks from Last.fm
 						let titles = await fetchTopTracks(
@@ -397,26 +438,39 @@ window.similarArtistsOrchestration = {
 							continue;
 						}
 
-						updateProgress(
-							`Matching ${titles.length} tracks from "${artName}"...`,
-							progress * 0.9
-						);
+						// Extract title strings (titles may be objects if rankEnabled)
+						const titleStrings = titles.map(t => {
+							if (typeof t === 'string') return t;
+							if (t && typeof t === 'object') return t.title || t.name || String(t);
+							return String(t || '');
+						}).filter(s => s.length > 0);
+
+						console.log(`processSeedArtists: Found ${titleStrings.length} top tracks for "${artName}":`, titleStrings.slice(0, 3));
+
+						updateProgress(`Matching ${titleStrings.length} tracks from "${artName}"...`, progress * 0.9);
+
+						// Get minimum rating from settings
+						const minRating = intSetting('Rating', 0);
+						const allowUnknown = boolSetting('Unknown', false);
 
 						// Batch-match against library
+						console.log(`processSeedArtists: Calling findLibraryTracksBatch for "${artName}" with ${titleStrings.length} titles`);
 						const matches = await findLibraryTracksBatch(
 							artName,
-							titles,
+							titleStrings,
 							1,
-							{ rank: false, best: config.bestEnabled }
+							{ rank: false, best: config.bestEnabled, minRating: minRating, allowUnknown: allowUnknown }
 						);
+
+						console.log(`processSeedArtists: findLibraryTracksBatch returned ${matches?.size || 0} results for "${artName}"`);
 
 						// Add matched tracks with deduplication
 						let addedCount = 0;
-						for (const title of titles) {
+						for (const title of titleStrings) {
 							if (allTracks.length >= config.totalLimit) break;
 
 							const trackMatches = matches.get(title) || [];
-							for (const track of trackMatches) {
+							console.log(`processSeedArtists: Title "${title}" has ${trackMatches.length} matches`); for (const track of trackMatches) {
 								const key = getTrackKey(track);
 								if (!key || seenKeys.has(key)) continue;
 
@@ -428,10 +482,11 @@ window.similarArtistsOrchestration = {
 							}
 						}
 
-						console.log(`processSeedArtists: Added ${addedCount} tracks from "${artName}"`);
+						console.log(`processSeedArtists: Added ${addedCount} tracks from "${artName}" (total: ${allTracks.length})`);
 
 					} catch (e) {
 						console.error(`processSeedArtists: Error processing "${artName}": ${e.toString()}`);
+						console.error(`processSeedArtists: Error stack:`, e.stack);
 					}
 				}
 

@@ -12,9 +12,6 @@
 
 'use strict';
 
-// Load dependencies (they export to window)
-localRequirejs('../ui/notifications');
-
 /**
  * Add a single track to the Now Playing queue.
  *

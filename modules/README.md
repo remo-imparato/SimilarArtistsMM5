@@ -80,7 +80,6 @@ utils.sql.getTrackKey(track);                           // Track dedup key
 const { settings } = localRequirejs('./modules');
 
 // Storage
-settings.storage.getSetting('Limit', 50);
 settings.storage.setSetting('OnPlay', true);
 settings.storage.intSetting('SeedLimit');
 settings.storage.boolSetting('Rank');
@@ -163,15 +162,6 @@ await db.addTracksToPlaylist(playlist, trackArray);
 await playlist.commitAsync();  // Save changes
 ```
 
-## Refactoring Phases
-
-- **Phase 1-2** (Complete): Utilities and Settings modules extracted ?
-- **Phase 3** (Complete): API layer (Last.fm queries) ?
-- **Phase 4** (Complete): Database layer (library search, playlists, queuing) ?
-- **Phase 5** (Pending): Core logic (seed collection, processing)
-- **Phase 6** (Pending): UI (dialogs, actions)
-- **Phase 7** (Pending): Playback (auto-mode, enqueue)
-- **Phase 8** (Pending): Entry point (ties modules together)
 
 ## Testing Strategy
 
@@ -190,7 +180,6 @@ describe('normalization', () => {
 
 ## Migration Notes
 
-- All modules use CommonJS (`module.exports`) for compatibility with MM5 environment
 - No external dependencies beyond MM5's built-in `app` object
 - Settings modules gracefully handle cases where `app` is undefined (for testing)
 - Modules are designed to be swappable as implementation details evolve
