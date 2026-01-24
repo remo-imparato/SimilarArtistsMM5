@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - make-smaller-JS-files
     tags:
       - 'v*.*.*'  # Trigger on version tags like v1.0.0
   pull_request:
@@ -196,20 +195,6 @@ jobs:
             ## Release Information
             - **Version:** ${{ github.ref_name }}
             - **MM5 Compatibility:** 5.0+
-            - **Architecture:** Refactored modular (Phases 1-7)
-            
-            ## Package Contents
-            - Core entry points (init.js, actions_add.js)
-            - Action handlers for toolbar/menu integration
-            - 15+ modular components:
-              - Phase 1: Configuration
-              - Phase 2: Settings & utilities
-              - Phase 3: Notifications & UI
-              - Phase 4: Database & library
-              - Phase 5: Orchestration
-              - Phase 6: Auto-mode
-              - Phase 7: MM5 Integration
-            - Options dialog and settings panels
             
             ## Installation
             1. Download the .mmip file
@@ -218,8 +203,8 @@ jobs:
             4. Restart MediaMonkey
             
             ## Features
-            - Generate playlists from similar artists via Last.fm
-            - Auto-queue similar tracks when approaching playlist end
+            - Generate playlists from similar artists, tracks, or genre via Last.fm
+            - Auto-queue similar tracks when approaching playlist
             - Extensive filtering and ranking options
             - Full MM5 integration (toolbar, menu, hotkeys)
             
