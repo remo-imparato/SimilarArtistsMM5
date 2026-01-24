@@ -1,0 +1,75 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+
+.animCheck {
+    .inline;
+    .noWrap;    
+}
+
+.menuitem > .animCheck {  
+    .flexcenter; // #16400    
+}
+
+.animCheck input[type="radio"] {
+    border-radius: 50%;
+    margin-top: -@units0_1;
+}
+
+.animCheck input[type="checkbox"],
+.animCheck input[type="radio"] {
+	width: @units1_0;
+	height: @units1_0;
+    border: 1px solid @textColor;
+	-webkit-appearance: none;
+	display: inline-block;
+	vertical-align: middle;
+    padding: 0;
+    margin: 0;    
+    position: relative;
+}
+
+.animCheck input[type="checkbox"]:disabled,
+.animCheck input[type="radio"]:disabled {
+    border: 1px solid @disabledColor;
+}
+
+.animCheck span[data-icon] svg {
+    height: @units1_0;
+    width: @units1_0;
+    fill: @textColor;
+}
+
+.animCheck span[data-input_container] {
+    padding: 0;
+    margin: 0;
+    margin-right: @units0_2;
+    margin-left: @units0_2;
+    align-items: center;
+    display: inline-block;
+}
+
+.animCheck svg[svgchk] {
+    position: absolute;
+	width: ~"calc(@{units1_0} - 2px)";
+	height: ~"calc(@{units1_0} - 2px)";
+	margin-left: -@units0_9;
+    margin-top: @units0_1;
+	pointer-events: none;
+}
+
+.animCheck svg[svgchk] path {
+	stroke: @textColor;
+	stroke-width: 13px;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	fill: transparent;
+}
+
+.animCheck svg[data-disabled] path{
+	stroke: @disabledColor;
+	fill: transparent;
+}
+
+.animCheck[data-disabled] label {
+	color: @disabledColor;
+}

@@ -1,0 +1,9 @@
+{
+    "title": "Milkshake",
+    "id": "vis_milkshake",
+    "description": "Visualization plugin.",
+    "version": "1.0.0",
+    "type": "visualization",
+    "author": "Matt Gattis and contributors, Ventis Media, Inc.",
+    "icon": "thumb.png"
+}

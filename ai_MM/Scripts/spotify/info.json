@@ -1,0 +1,9 @@
+{
+    "title": "Spotify",
+    "id": "spotify",
+    "description": "Adds ability to sync Spotify library",
+    "version": "1.0.0",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "spotify.svg"
+}

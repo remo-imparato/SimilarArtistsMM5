@@ -1,0 +1,9 @@
+{
+    "title": "Auto-increment Track #s",
+    "id": "autoIncTrack",
+    "description": "Sequentially numbers files.",
+    "version": "1.0.0",
+    "author": "Ventis Media, Inc.",
+    "type": "general",
+    "icon": "icon.svg"
+}

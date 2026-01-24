@@ -1,0 +1,9 @@
+{
+    "title": "Oscillator",
+    "id": "vis_oscillator",
+    "description": "Visualization plugin.",
+    "version": "1.0.0",
+    "type": "visualization",
+    "author": "Ventis Media, Inc.",
+    "icon": "icon.svg"
+}

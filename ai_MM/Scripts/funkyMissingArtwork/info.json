@@ -1,0 +1,9 @@
+{
+    "title": "Funky missing artwork",
+    "id": "funkyMissingArtwork",
+    "description": "Makes missing artwork descriptive",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "info.png"
+}

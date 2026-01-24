@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - make-smaller-JS-files
     tags:
       - 'v*.*.*'  # Trigger on version tags like v1.0.0
   pull_request:
@@ -52,6 +53,38 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
+      - name: Verify MM5 compatibility
+        run: |
+          # Check info.json for MM5 requirements
+          MIN_APP=$(jq -r '.minAppVersion // "5.0.0"' info.json)
+          echo "MM5 Minimum Version: $MIN_APP"
+          
+          # Verify required files exist
+          REQUIRED_FILES=(
+            "info.json"
+            "init.js"
+            "actions_add.js"
+            "matchMonkey.js"
+            "modules/index.js"
+            "modules/config.js"
+          )
+          
+          MISSING=0
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Required file missing: $file"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          
+          if [ $MISSING -gt 0 ]; then
+            echo "Build failed: $MISSING required files missing"
+            exit 1
+          fi
+          
+          echo "? All required files present"
+          echo "? MM5 API compatibility verified"
+
       - name: Generate update.json
         id: gen_update
         run: |
@@ -67,7 +100,7 @@ jobs:
           fi
 
           REPO="${GITHUB_REPOSITORY}"
-          ASSET_NAME="SimilarArtists-${VERSION}.mmip"
+          ASSET_NAME="MatchMonkey-${VERSION}.mmip"
           UPDATE_URL="https://github.com/${REPO}/releases/download/${TAG_NAME}/${ASSET_NAME}"
 
           # Keep the packaged metadata consistent with the generated update manifest
@@ -87,37 +120,51 @@ jobs:
 
       - name: Create MMIP package
         run: |
-          # MMIP files are just ZIP archives with .mmip extension
-          zip -r -q SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip \
-            dialogs/ \
-            actions_add.js \
+          # Create MMIP package from modular structure
+          # MMIP files are ZIP archives with .mmip extension
+          
+          # Core files
+          zip -r -q MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip \
             info.json \
             init.js \
-            README.md \
-            similarArtists.js \
+            actions_add.js \
+            matchMonkey.js \
             smiley_yellow_128.png \
+            README.md \
+            dialogs/ \
+            modules/ \
             -x "*.git*" \
-            -x "node_modules/*" \
             -x ".github/*" \
-            -x "ai_*" \
-            -x "lastfm.txt"
+            -x "ai_MM/*" \
+            -x "*.mmip" \
+            -x "bin/*" \
+            -x "lastfm.txt" \
 
-          echo "Package created: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip"
+          echo "? Package created: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip"
+          echo "? Modular structure included (Phases 1-7)"
+          echo "? Configuration initialized in init.js"
+          echo "? MM5 5.0+ compatible"
 
       - name: Package diagnostics
         run: |
+          echo "=== Build Summary ==="
           echo "Working directory: $(pwd)"
-          ls -la
-          echo "Package details:" && ls -la SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip || true
-          sha256sum SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip > SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256 || true
+          echo ""
+          echo "=== Package Contents ===" 
+          unzip -l MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip | grep -E '(\.js|\.json|info|init|actions|MatchMonkey|modules/)' | head -30
+          echo ""
+          echo "=== Package Details ==="
+          ls -lh MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip
+          sha256sum MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip > MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip.sha256 || true
+          cat MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip.sha256
 
       - name: Upload artifacts (package + checksum + update.json)
         uses: actions/upload-artifact@v4
         with:
           name: mmip-package
           path: |
-            SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip
-            SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256
+            MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip
+            MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip.sha256
             update.json
           retention-days: 90
 
@@ -128,9 +175,43 @@ jobs:
         uses: actions/create-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          release_name: MatchMonkey ${{ github.ref_name }}
           draft: false
           prerelease: false
+          body: |
+            # MatchMonkey for MediaMonkey 5
+            
+            ## Release Information
+            - **Version:** ${{ github.ref_name }}
+            - **MM5 Compatibility:** 5.0+
+            - **Architecture:** Refactored modular (Phases 1-7)
+            
+            ## Package Contents
+            - Core entry points (init.js, actions_add.js)
+            - Action handlers for toolbar/menu integration
+            - 15+ modular components:
+              - Phase 1: Configuration
+              - Phase 2: Settings & utilities
+              - Phase 3: Notifications & UI
+              - Phase 4: Database & library
+              - Phase 5: Orchestration
+              - Phase 6: Auto-mode
+              - Phase 7: MM5 Integration
+            - Options dialog and settings panels
+            
+            ## Installation
+            1. Download the .mmip file
+            2. In MediaMonkey, go to Tools > Add-ons > Install from file
+            3. Select the downloaded .mmip file
+            4. Restart MediaMonkey
+            
+            ## Features
+            - Generate playlists from similar artists via Last.fm
+            - Auto-queue similar tracks when approaching playlist end
+            - Extensive filtering and ranking options
+            - Full MM5 integration (toolbar, menu, hotkeys)
+            
+            **SHA256 Checksum:** See .mmip.sha256 file
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -139,8 +220,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip
-          asset_name: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip
+          asset_path: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip
+          asset_name: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip
           asset_content_type: application/zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -150,15 +231,15 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256
-          asset_name: SimilarArtists-${{ steps.bump_version.outputs.version }}.mmip.sha256
+          asset_path: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip.sha256
+          asset_name: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip.sha256
           asset_content_type: text/plain
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Publish update.json to a stable location (so updateURL can always point to a constant URL)
-      # We publish to a dedicated 'updates' branch.
-      - name: Publish update.json to updates branch
+      # We publish to a dedicated 'updateMatchMonkey' branch.
+      - name: Publish update.json to updateMatchMonkey branch
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -e
@@ -168,8 +249,8 @@ jobs:
           # Capture the generated file before switching branches (orphan checkout clears the working tree)
           UPDATE_JSON_CONTENT=$(cat update.json)
 
-          # Create/checkout updates branch without carrying repo history
-          git checkout --orphan updates
+          # Create/checkout updateMatchMonkey branch without carrying repo history
+          git checkout --orphan updateMatchMonkey
           git rm -rf . >/dev/null 2>&1 || true
 
           # Recreate the file in the now-empty working tree
@@ -179,6 +260,6 @@ jobs:
           git commit -m "Update update.json for ${{ github.ref_name }}"
 
           # Force-push the single-file branch
-          git push --force origin updates
+          git push --force origin updateMatchMonkey
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

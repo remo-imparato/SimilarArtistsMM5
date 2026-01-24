@@ -1,0 +1,9 @@
+{
+    "title": "Status bar selected tracks color",
+    "id": "statusBarTracklistInfo",
+    "description": "Changes color for the selected tracks part of status bar",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "version": "1.0.0",
+    "icon": "icon.svg"
+}

@@ -1,0 +1,805 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+.listview {
+    background-color: @controlColor;
+    color: @textColor;
+}
+
+.transparentBackground .listview {
+    background-color: transparent;
+}
+
+.lassoLayer {
+    position: absolute;
+    border: 1px dashed navy;
+    opacity: 0.5;
+    background-color: transparent;
+    z-index: 99999999;
+    transform: none;
+}
+
+.listview.viewControl {
+    border-style: none;
+    border-width: 0px;
+    background-color: initial;
+}
+
+.listview.showInline {
+    border-style: none;
+    border-width: 0px;
+    background-color: initial;
+}
+
+/*.listview .scrollingCanvas { // Just an example of a possible listview background
+	background-color: Blue; 	
+	background: linear-gradient(to right, #00ff00 0%,#ff0000 100%);
+}*/
+
+.listview .groupHeader {
+    height: 3*@fontLineSize;
+    font-size: @units3_0;
+    padding: @units0_25;
+}
+
+	/* Listview Group Header that is drawn above/left of a group that starts off-screen*/
+.listview .groupHeader[data-partial] {
+/*	-webkit-filter: opacity(0.5);	*/
+}
+
+.rowitem {
+	overflow: hidden;
+}
+
+
+.rowitem[data-deleting] {
+	transition: all 0.3s;
+}
+
+.rowitem[data-deleting][data-run] {
+	transform: translate(105%, 0);
+}
+
+
+.rowitem[data-moving] {
+	transition: all 0.3s ease 0.3s;
+}
+
+
+.rowitem[data-dropeffect] {
+	transition: transform 0.2s;
+}
+
+.rowitem[data-dropafter] {
+	transform: translate(0%, -50%);
+	z-index: 999;
+    .borderBottom;
+}
+
+.rowitem[data-dropbefore] {
+	transform: translate(0%, 50%);
+	z-index: 999;
+    .borderTop;
+}
+
+.transparentList .lvCanvas{
+    background-color: transparent !important;
+}
+
+.groupSepHeader {
+    min-height: @fontLineSize + @units0_2;
+    padding-left: @units0_4;
+    font-weight: bold;
+}
+
+div:focus .lvItem[data-selected] {
+    .controlSelected;
+}
+
+@lvItemHeight: @fontLineSize + @units0_3;
+@lvItemPadding: @units0_15;
+
+.lvItem {
+    height: @lvItemHeight;
+    line-height: @lvItemHeight;
+    padding: @lvItemPadding;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    
+    &[data-hover]:not([data-disabled]) {
+       .controlHover;
+    }
+
+    &[data-selected] {
+       .controlSelected;
+
+    }
+    
+    &[data-dropeffect] {
+        transition: transform 0.2s;
+    }
+    
+    &[data-selected][data-hover]:not([data-disabled]) {
+        .controlHoveredSelected;
+    }
+    
+    &[data-dropbefore] {
+        transform: translate(0%, 25%);
+        z-index: 999;
+        .borderTop;
+    }
+
+    &[data-dropafter] {
+        transform: translate(0%, -25%);
+        z-index: 999;
+        .borderBottom;
+    }
+    &.gridrow {
+        /* padding inculded in cells, not needed for row */
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+.lvItem.multiline {
+    white-space: normal;
+    line-height: normal;
+    height: auto;
+}
+
+.lvItem[data-icon] span {
+    margin-left: @units0_2;
+    padding-right: @units0_3;
+    width: @units1_0;
+    height: @units1_0;
+    fill: @textColor;
+}
+.lvItem[data-disabled] {
+    fill: @disabledColor;
+    color: @disabledColor;
+}
+
+// special rule used for animated displaying - so could animate width to full size on hover
+.lvItem[data-hover]:not([data-disabled]) .lvHeaderIcon {
+    width: @units1_0;
+}
+
+.listview .collapseRow {
+    font-size: @units0_7;
+    padding-left: @units0_3;
+}
+
+.lvHeaderItem {
+    height: @lvItemHeight;
+    line-height: @lvItemHeight;
+    padding: @lvItemPadding;
+    background-color: @headerColor;
+    border-color: @borderColor;
+    border-width: @borderWidth;
+	border-style: outset;
+    .verticalCenter;
+    font-weight: bold;
+    overflow: visible;
+    
+    .transparentBackground & {
+        background-color: transparent;
+        border-color: transparent;
+    }
+    &.paddingSides {
+        padding-left: @paddingLarge;
+        padding-right: @paddingLarge;
+    }
+}
+
+.lvHeaderFillRest {
+    background-color: @headerColor;
+}
+
+.lvHeaderItemContentRight {
+    .flex.dynamic;
+    .textEllipsis;
+}
+
+.lvHeaderItemContent {
+    .lvHeaderItemContentRight;
+    flex: 0 1 auto;
+}
+
+.lvHeaderItemResize {
+    .resizeHorizontal;
+}
+
+.lvHeaderSingleItem {
+    .lvHeaderItem;
+    text-align: center;
+}
+
+.nplist div[data-first-col] > .lvHeaderItemContent {
+    margin-left: @fontLineSize + @units0_15 + @lvItemPadding + @lvItemPadding; // should be the width from .lvHeaderSingleItem .toolbutton + lvHeaderSingleItem left+right padding
+}
+.nplist div[data-first-col] {
+    min-width: @fontLineSize + @units0_15 + @lvItemPadding + @lvItemPadding + @units1_2 !important;
+}
+
+.lvColumnItem {
+    overflow: hidden;
+    border-color: transparent;
+    border-width: @borderWidth;
+	border-style: solid;
+    padding-left: @units0_15;
+    padding-right: @units0_15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lvColumnItem[data-right-aligned] {
+    padding-left: @horizontalResizeSize + @lvItemPadding; // #13618 + #17223
+}
+
+.lvColumnItem[highlighted] {
+    background-color: @warningBgColor;
+}
+
+.lvColumnItem > img {
+    max-height: -webkit-fill-available; // #18258
+    max-height: fill-available;
+}
+
+.itemNowPlaying, .itemNowPlaying label, .lvItem.itemNowPlaying[data-selected], .lvItem.itemNowPlaying[data-selected] label, div:focus .lvItem.itemNowPlaying[data-selected], div:focus .lvItem.itemNowPlaying[data-selected] label {
+    font-weight: bold;
+    color: @accentColor; // #15860
+    fill: @accentColor; // #15860
+}
+
+.itemNowPlaying[data-hover], .itemNowPlaying label[data-hover], .itemNowPlaying[data-hover][data-selected], .itemNowPlaying label[data-hover][data-selected] {
+    color: @accentColor;
+    background: @hoverBgColor;
+}
+
+.lvPopup .itemNowPlaying, .lvPopup .itemNowPlaying label, .lvPopup .itemNowPlaying[data-selected], .lvPopup .itemNowPlaying[data-selected] label {
+    color: @accentColorLight; // #15860
+    fill: @accentColorLight; // #15860
+}
+
+.lvPopup .popupHeader {
+    min-height: max(2*@toolButtonPadding + @toolButtonSize, @defaultMargin + 4px + 2px + max(@fontSize, @es-select-width) + 4px + 1px); // 4px dropdown margin, 2px dropdown border, 2px padding, 1px reserve for rounding
+    padding-top: @padding;
+    & .sortBy {
+        .verticalBaseline;
+        margin-top: @defaultMargin;
+    }
+}
+.lvPopupContainer[style*="height: 0px;"] {
+    visibility: hidden; // hide closed popup so it is not tabbable, #20796
+}
+.itemInaccessible, .itemInaccessible label, div:focus .lvItem.itemInaccessible[data-selected], div:focus .lvItem.itemInaccessible[data-selected] label {
+    color: @disabledColor !important; // #20356
+}
+
+.griditem .unknownAA {
+    fill: @warningBgColor;
+}
+
+.lvHeaderItem[data-dropbefore]:not([data-dragging]) {
+    transition: transform 0.2s;
+    transform: translateX(10px);
+	z-index: 999;
+}
+.lvHeaderItem[data-dropafter]:not([data-dragging]) {
+    transition: transform 0.2s;	
+    transform: translateX(-10px);
+	z-index: 999;
+}
+.lvHeaderItem[data-dragging] {
+    opacity: 0.5;
+}
+
+.lvHeaderSort {
+    fill:  @textColor;
+    width: 0;
+    height: @units1_0;
+    margin-right: -2px;
+}
+
+.sortAsc {
+    width: @units1_0;
+    transform: rotate(180deg);
+}
+
+.sortDesc {
+    width: @units1_0;
+}
+
+.lvHeaderItem[data-sortAsc] > .lvHeaderSort {
+    .sortAsc
+}
+.lvHeaderItem[data-sortDesc] > .lvHeaderSort {
+    .sortDesc
+}
+
+.lvHeaderSort[data-sortAsc] {
+    .sortAsc
+}
+.lvHeaderSort[data-sortDesc] {
+    .sortDesc
+}
+
+.lvHeaderItem.lvSimpleHeader {
+    flex: 10 0 auto;
+    border: 0;
+    padding-left: @units0_3;
+}
+
+.lvHeaderItem.lvSimpleHeaderRightAligned {
+    justify-content: flex-end;
+    padding-right: @units0_5;
+}
+
+
+.lvHeaderSortLabel {
+    fill:  @textColor;
+    font-size: 70%;
+    width: 0;
+    height: @fontLineSize - @units0_2;
+    margin-right: -@units0_15;
+    margin-top: -@units0_15;
+    cursor: inherit;
+}
+
+.lvHeaderItem[data-sort-label] > .lvHeaderSortLabel {
+    width: auto;
+}
+
+.rowHeight1line {
+    height: @lvItemHeight !important;
+    line-height: @lvItemHeight !important;
+}
+
+.rowHeight1line > div {
+    padding-top: @units0_15;
+    padding-bottom: @units0_15;
+}
+
+.rowHeight2line {
+    height: 2*(@lvItemHeight) !important;
+    line-height: @lvItemHeight !important;
+}
+
+.rowHeight2line > div {
+    padding-top: @units0_15;
+    padding-bottom: @units0_15;
+}
+
+.rowHeight2lineEx { // for <h2> usage (1.5 * font-size)
+    height: 3*@fontLineSize !important;
+    line-height: round(1.5*@fontLineSize) !important;
+}
+
+// attribtue popup
+@popupBgColor: mix(@highlightBgColor, @baseColor, 20%);
+@popupColor: contrast(@popupBgColor, black, white);
+.attributePopup {
+    background-color: @popupBgColor;
+    color: @popupColor;
+    fill: @popupColor; // for buttons on popup
+    & .hotlink:not(:hover) {
+        color: @popupColor;
+    }
+}
+.attributePopup .toolbutton-background {
+    fill: @iconColor; // for buttons on images
+}
+.popupIndicator {
+    fill: @popupBgColor;
+}
+
+
+// Image items
+@gridItemMargin: 0px;
+@gridItemSize: round(@fontSize*10.0*@gridItemSizeKoef);
+@gridItemSizeStandard: @units10_0;
+@imageSquareSize: @gridItemSize - @gridItemSizeKoef*@units1_0 - 2*@gridItemMargin;
+@imageSquareSizeStandard: @gridItemSizeStandard - @units1_0 - 2*@gridItemMargin;
+@gridItemPadding: @gridItemSizeKoef*@units0_2;
+@gridItemPaddingStandard: @units0_2;
+@gridItemHeight: round(@gridItemSize + 1.8*@fontLineSize); // ordinary font size + 0.8x smaller font size for second line
+@gridItemHeightStandard: round(@gridItemSizeStandard + 1.8*@fontLineSize);
+@gridItemHeight1Line: round(@gridItemSize + 1*@fontLineSize); // for 1 line only
+@gridItemHeight2Line: round(@gridItemSize + 2*@fontLineSize); // for 2 lines only
+@gridItemHeight3Line: round(@gridItemSize + 3*@fontLineSize); // for 3 lines only
+
+@artworkListItemSize: round(@fontSize*12.0*@artworkListItemSizeKoef);
+@artworkListItemHeight: round(@artworkListItemSize + 1.8*@fontLineSize);
+
+.griditem[data-hover], .gridItemSquare[data-hover] {
+    background-color: @hoverBgColor;
+}
+
+.griditem .gridItemInner {
+    //margin: @gridItemMargin;
+}
+
+.lvItem.griditem.imageItem {
+    padding-left: @gridItemPadding;
+    padding-right: @gridItemPadding;
+    padding-top: @gridItemPadding;
+    
+    & span {
+        line-height: initial;
+    }
+    
+}
+
+.griditem .imageSquare {
+	position: absolute;	
+    top: @gridItemPadding;
+    left: @gridItemSizeKoef*@units0_5 + @gridItemPadding; // must add lvItem padding
+	height: @imageSquareSize;
+	width: @imageSquareSize;
+	border-width: 0px;
+}
+
+.imageSquare .artworkBg {
+    background-size: cover;
+    background-repeat: no-repeat;
+    z-index: 100;
+}
+
+.iconLarge img {
+    .ignoreMouse;
+}
+
+.griditem .imageInfo {
+	position: absolute;
+    width: @imageSquareSize;
+    top: 2*@gridItemPadding + @imageSquareSize;
+    left: @gridItemSizeKoef*@units0_5 + @gridItemPadding; // must add lvItem padding    
+}
+
+.griditem[data-selected], .gridItemSquare[data-selected] {
+    background-color: lighten(@selectedColor, 5%); 	
+}
+
+div:focus .griditem[data-selected], div:focus .gridItemSquare[data-selected] {
+    .controlSelected;
+}
+
+.griditem[data-hover], .gridItemSquare[data-hover] {
+	overflow: visible;
+	z-index: 9999;
+}
+
+.griditem[data-deleting] {
+	transition: all 0.6s;
+}
+
+.griditem[data-deleting][data-run] {
+	opacity: 0.0;
+    transform: rotate(360deg) scale(0.0);
+}
+
+.griditem[data-moving] {
+	transition: top 0.6s, left 0.6s;
+}
+
+.griditem[data-dropeffect] {
+	transition: transform 0.2s;
+}
+
+.griditem[data-dropafter] {
+	transform: translate(0%, -50%);
+	z-index: 999;
+    .borderBottom;
+}
+
+.griditem[data-dropbefore] {
+	transform: translate(0%, 50%);
+	z-index: 999;
+    .borderTop;
+}
+
+.griditemHeight, .flex > .griditemHeight {
+    height: @gridItemSize;
+    max-height: @gridItemSize;
+    min-height: @gridItemSize;
+}
+
+.griditemWidth, .flex > .griditemWidth {
+	width:@gridItemSize;
+    max-width:@gridItemSize;
+    min-width:@gridItemSize;
+}
+
+.gridItemSquare {    
+    .griditemHeight;    
+	.griditemWidth;
+}
+
+.artworkListItem .gridItemSquare {
+    height: @artworkListItemSize;
+    max-height: @artworkListItemSize;
+    min-height: @artworkListItemSize;
+	width:@artworkListItemSize;
+    max-width:@artworkListItemSize;
+    min-width:@artworkListItemSize;
+}
+
+.griditemHeight.artworkListItem {
+    height: @artworkListItemSize;
+    max-height: @artworkListItemSize;
+    min-height: @artworkListItemSize;
+}
+
+.griditemHeightWithText, .flex > .griditemHeightWithText {
+    height: @gridItemHeight;
+    max-height: @gridItemHeight;
+    min-height: @gridItemHeight;
+}
+
+.griditemHeightWithScrollbar, .flex > .griditemHeightWithScrollbar {
+    height: @gridItemHeight + @scrollbarSize;
+    max-height: @gridItemHeight + @scrollbarSize;
+    min-height: @gridItemHeight + @scrollbarSize;
+}
+
+.imageItem:not(.smallItem):not(.standardItem):not(.gridItemSquare):not(.threeLines):not(.twoLines) {
+    .griditemHeightWithText;    
+	.griditemWidth;
+}
+
+.imageItem:not(.smallItem):not(.standardItem):not(.twoLines):not(.gridItemSquare) {
+    height: @gridItemHeight1Line;
+    max-height: @gridItemHeight1Line;
+    min-height: @gridItemHeight1Line;
+}
+
+.imageItem.twoLines:not(.threeLines) {
+    height: @gridItemHeight2Line;
+    max-height: @gridItemHeight2Line;
+    min-height: @gridItemHeight2Line;
+    .griditemWidth;
+}
+
+.imageItem.threeLines {
+    height: @gridItemHeight3Line;
+    max-height: @gridItemHeight3Line;
+    min-height: @gridItemHeight3Line;
+    .griditemWidth;
+}
+
+
+// for smaller version of image grid
+@gridItemSizeSmall: round(@fontLineSize*3.5);
+@gridItemHeightSmall: round(@gridItemSizeSmall + 1*@fontSizeSmaller + @gridItemPadding); // i.e. plus the text below the image
+
+.gridViewSmallHeight {
+    min-height: round(@gridItemHeightSmall);
+}
+
+.gridViewSmallMaxHeight {
+    max-height: round(@gridItemSizeSmall);
+}
+
+.gridViewSmallOneRowHeight {
+    min-height: round(@gridItemHeightSmall + @fontLineSize);
+}
+
+.imageItem.smallItem {
+	width:@gridItemSizeSmall;
+    max-width:@gridItemSizeSmall;
+    min-width:@gridItemSizeSmall;
+    height: @gridItemHeightSmall;
+    max-height: @gridItemHeightSmall;
+    min-height: @gridItemHeightSmall;
+    font-size: @fontSizeSmaller;
+}
+
+.griditem.smallItem .imageSquare {    
+    top: @gridItemMargin + @gridItemPadding;
+    left: @gridItemMargin + @gridItemPadding;
+	height: @gridItemSizeSmall - 2*@gridItemMargin;
+	width: @gridItemSizeSmall - 2*@gridItemMargin;    
+}
+
+.griditem.smallItem .imageInfo {
+	top: @gridItemSizeSmall;
+    width: @gridItemSizeSmall + 2*@gridItemPadding;
+    left: 0;
+    height: @units1_0;
+}
+
+.imageItem.standardItem {
+	width:@gridItemSizeStandard;
+    max-width:@gridItemSizeStandard;
+    min-width:@gridItemSizeStandard;
+    height: @gridItemHeightStandard;
+    max-height: @gridItemHeightStandard;
+    min-height: @gridItemHeightStandard;
+}
+
+.griditem.standardItem .imageSquare {
+    top: @gridItemPaddingStandard;
+    left: @units0_5 + @gridItemPaddingStandard;
+	height: @imageSquareSizeStandard;
+	width: @imageSquareSizeStandard;
+}
+
+.griditem.standardItem .imageSquare .padding {
+    padding: @gridItemPaddingStandard;
+}
+
+.griditem.standardItem .imageInfo {
+    top: 2*@gridItemPaddingStandard + @imageSquareSizeStandard;
+    width: @imageSquareSizeStandard;
+    left: @units0_5 + @gridItemPaddingStandard;
+}
+
+.visibleOnHover {
+    display: inline-block;
+    opacity: 0 !important;
+    width: 0px;
+}
+
+.lvItem[data-hover]:not([data-disabled]) .visibleOnHover {
+    opacity: 1 !important;
+    transition: width 0s, opacity @animationTime @defaultEasing;
+    transition-delay: @animationTime;
+}
+
+.lvInlineIcon { // for icons in lv line
+    .inline;
+    .icon;    
+    padding: @lvItemPadding;
+    & .toolbutton {
+        padding: 0; // padding already included in the parent, remove, it would move button unwanted way
+        width: inherit; // inherit size from the parent, not from toolbutton class
+        height: inherit;
+    }
+}
+
+.lvItem:not([data-selected]) .showWhenItemSelected {
+    display: none !important;
+}
+
+@transitionColor: lighten(@baseColor, 50%);
+
+.lvItem[highlightFocused] {
+    background-color: @transitionColor;
+}
+
+.lvItem[highlightFocusedFadeOut] {
+    transition: background-color 0.5s linear;
+    background-color: @controlColor;
+}
+
+.showWhenSelectionMode {
+    display: none;
+}
+
+.listview[data-selection-mode] .showWhenSelectionMode {
+    display: block;
+}
+
+.listview.showInline.canScrollHoriz,
+.listview.showInline.canScrollHoriz .lvBody,
+.listview.showInline.canScrollHoriz .lvFill,
+.listview.showInline.canScrollHoriz .lvCanvas {
+    display: inline-block; // To properly display horizontal scrolling listviews that are a part of a Scroller.
+}
+
+.listview[data-dragging] {
+    opacity: 0.5;
+}
+.listview[data-dropbefore]:not([data-dragging]) {
+    transition: transform 0.2s;
+    transform: translateX(10px);
+	z-index: 999;
+}
+.listview[data-dropafter]:not([data-dragging]) {
+    transition: transform 0.2s;	
+    transform: translateX(-10px);
+	z-index: 999;
+}
+
+.lvItem[data-dropTarget] {
+    .controlSelected;
+}
+
+.tracklistGrid .griditem > div {
+    padding-top: @units0_15;
+    margin-left: round(@defaultMargin*0.4);
+}
+
+// styling popups
+:root { // CSS variables used for styling popups
+    --lvPopup-Clr-Text: initial;
+    --lvPopup-Clr-Hover-Text: initial;
+    --lvPopup-Clr-Hover: initial;
+    --lvPopup-BClr-Hover: darken(@popupBgColor, 5%);
+    --lvPopup-Clr-Select: initial;
+    --lvPopup-BClr-Select: darken(@popupBgColor, 10%);
+    --lvPopup-Clr-Hover-Select: initial;
+    --lvPopup-BClr-Hover-Select: darken(@popupBgColor, 15%);
+    --lvPopup-Clr-Hover-Icon: initial;
+    --lvPopup-BClr-Hover-Icon: initial;
+    --lvPopup-Filter-Hover-Icon: initial;
+    --lvPopup-Clr-Nowplaying: initial;
+}
+
+.lvPopup,
+.lvPopup .lvItem,
+.lvPopup .lvItem[data-selected],
+.lvPopup .button,
+.lvPopup .lvItem[data-hover],
+.lvPopup .hotlink,
+.lvPopup .hotlink:not(:hover),
+.lvPopup .lvItem:not(.itemNowPlaying) .lvInlineIcon .toolbutton:not(:hover):not([data-disabled]),
+.lvPopup .lvItem:not(.itemNowPlaying) .lvInlineIcon .toolbutton:hover:not([data-disabled]) {
+    color: var(--lvPopup-Clr-Text);
+    fill: var(--lvPopup-Clr-Text);
+}
+
+.lvPopup .lvItem[data-hover]:not([data-disabled]),
+.lvPopup .lvItem[data-hover]:not([data-disabled]):not(.itemNowPlaying) .lvInlineIcon .toolbutton:not([data-disabled]) {
+    background-color: var(--lvPopup-BClr-Hover);
+    color: var(--lvPopup-Clr-Hover);
+}
+
+.lvPopup .lvItem[data-selected]:not([data-disabled]):not([data-hover]),
+.lvPopup .lvItem[data-selected]:not([data-disabled]):not([data-hover]):not(.itemNowPlaying) .lvInlineIcon .toolbutton:not([data-disabled]) {
+    background-color: var(--lvPopup-BClr-Select);
+    color: var(--lvPopup-Clr-Select);
+    fill: var(--lvPopup-Clr-Select);
+}
+
+.lvPopup .lvItem[data-hover]:not([data-disabled])[data-selected], 
+.lvPopup .lvItem[data-hover]:not([data-disabled])[data-selected]:not(.itemNowPlaying) .lvInlineIcon .toolbutton:not([data-disabled]) {
+    background-color:var(--lvPopup-BClr-Hover-Select);
+    color: var(--lvPopup-Clr-Hover-Select);
+    fill: var(--lvPopup-Clr-Hover-Select);
+}
+
+.lvPopup .toolbutton:hover:not([data-disabled]),
+.lvPopup .toolbuttonbase:hover:not([data-disabled]),
+.lvPopup .toolbuttonbase:hover:not([data-disabled]) label,
+.lvPopup .toolbuttonbase:hover .ratingStar,
+.lvPopup .lvItem[data-hover]:not([data-disabled]):not(.itemNowPlaying) .lvInlineIcon .toolbutton:not([data-disabled]):hover,
+.lvPopup .lvItem[data-hover]:not([data-disabled])[data-selected]:not(.itemNowPlaying) .lvInlineIcon .toolbutton:not([data-disabled]):hover {
+    color: var(--lvPopup-Clr-Hover-Icon);
+    fill: var(--lvPopup-Clr-Hover-Icon);
+    background-color: var(--lvPopup-BClr-Hover-Icon);
+    filter: var(--lvPopup-Filter-Hover-Icon);
+}
+
+.lvPopupContainer .closeButton {
+    color: var(--lvPopup-Clr-Text);
+    fill: var(--lvPopup-Clr-Text);
+}
+
+.lvPopupContainer .closeButton:hover svg {
+    color:var(--lvPopup-Clr-Hover-Text);
+    fill: var(--lvPopup-Clr-Hover-Text);
+}
+
+.lvPopup .clickable:hover {
+    color: var(--lvPopup-Clr-Hover-Text);
+    fill: var(--lvPopup-Clr-Hover-Text);
+}
+
+.lvPopup .lvItem.itemNowPlaying,
+.lvPopup .lvItem.itemNowPlaying label,
+.lvPopup .lvItem.itemNowPlaying[data-selected],
+.lvPopup .lvItem.itemNowPlaying[data-selected] label,
+.lvPopup .lvItem.itemNowPlaying[data-selected]:not([data-disabled]):not([data-hover]),
+.lvPopup .lvItem.itemNowPlaying:hover,
+.lvPopup .lvItem.itemNowPlaying[data-selected]:hover,
+.lvPopup .lvItem.itemNowPlaying .lvInlineIcon .toolbutton:not([data-disabled]),
+.lvPopup .lvItem.itemNowPlaying[data-selected] .lvInlineIcon .toolbutton:not([data-disabled]) {
+    color: var(--lvPopup-Clr-Nowplaying);
+    fill: var(--lvPopup-Clr-Nowplaying);
+}
+
+.lvPopup .lvInlineIcon .toolbutton:hover:not([data-disabled]) {
+    color: var(--lvPopup-Clr-Hover-Text);
+    fill: var(--lvPopup-Clr-Hover-Text);
+    filter: inherit;
+    background-color: inherit;
+}

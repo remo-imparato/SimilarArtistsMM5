@@ -1,0 +1,10 @@
+{
+    "title": "MusicBrainz Service",
+    "id": "musicbrainz",
+    "description": "Core addon for metadata lookup via MusicBrainz.",
+    "version": "1.0.0",
+    "type": "metadata",
+    "author": "Ventis Media, Inc.",
+    "icon": "musicBrainz.svg",
+    "required": true
+}

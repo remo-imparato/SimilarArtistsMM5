@@ -1,0 +1,9 @@
+{
+    "title": "Redo navigation",
+    "id": "redoNavbarButton",
+    "description": "Adds redo navigation button.",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "info.svg"
+}

@@ -1,4 +1,4 @@
-﻿# SimilarArtists for MediaMonkey 5/2024
+﻿# MatchMonkey for MediaMonkey 5/2024
 
 **Automatically generate playlists or queue tracks from similar artists using Last.fm's powerful music recommendation engine.**
 
@@ -9,17 +9,20 @@
 
 ## 📖 Overview
 
-SimilarArtists is a MediaMonkey 5 add-on that leverages the Last.fm API to discover and play music from artists similar to those in your library. Whether you're looking to explore new music or create dynamic playlists based on your favorite artists, SimilarArtists makes it effortless.
+MatchMonkey is a MediaMonkey 5 add-on that leverages the Last.fm API to discover and play music from artists similar to those in your library. Whether you're looking to explore new music or create dynamic playlists based on your favorite artists, MatchMonkey makes it effortless.
 
 ### Key Features
 
 - 🎵 **Smart Discovery**: Query Last.fm for similar artists based on selected tracks or currently playing music
+- 🔎 **Search by Title & Genre**: Discover tracks by matching track titles or by genre seeds in addition to artist-based discovery
 - 🎯 **Intelligent Matching**: Advanced multi-pass fuzzy matching finds tracks in your local library with high accuracy
 - 📋 **Flexible Output**: Create new playlists, overwrite existing ones, or queue tracks directly to Now Playing
 - 🤖 **Auto-Queue / Endless music**: Automatically queue similar tracks when approaching the end of your playlist; in auto-mode the add-on can continuously add tracks near the end to keep playback going
 - ⭐ **Ranking System**: Prioritize popular tracks using Last.fm's popularity rankings
+- 🧭 **No Duplicate Songs**: Deduplicates tracks by `artist|title` and picks the best version (higher bitrate, then higher rating) to avoid duplicate entries from compilations or different albums
 - 🎲 **Randomization**: Optionally shuffle results for varied listening experiences
 - 🔄 **Prefix Handling**: Intelligent handling of artist name prefixes (e.g., "The Beatles" vs "Beatles, The")
+- 🛠️ **MM5 Best Practices**: Uses MM5 APIs like `addTracksAsync`, persistent track references and navigation handlers for reliable playlist/queue operations
 
 ---
 
@@ -42,13 +45,19 @@ SimilarArtists is a MediaMonkey 5 add-on that leverages the Last.fm API to disco
    - **Toolbar button** (if enabled)
    - **Tools → Similar Artists** menu
 3. The add-on will:
-   - Query Last.fm for similar artists
+   - Query Last.fm for similar artists (or use genre/title mode when selected)
    - Search your library for matching tracks
    - Create a playlist or queue tracks based on your settings
 
-### Usage guide & examples
+### Discovery Modes (new and existing)
 
-This short guide shows common ways to run SimilarArtists and what to expect.
+- Artist-based (default): discover similar artists for seed artist(s)
+- Track title search (new): use a seed title (or titles) to find matching tracks across your library and related artists
+- Genre search (new): discover artists and tracks matching a chosen genre
+
+These discovery modes can be selected from the UI or context menu when invoking the add-on.
+
+### Usage guide & examples
 
 - Single-track selection
   - Select a single track in any library pane and run `Tools → Similar Artists`.
@@ -58,21 +67,18 @@ This short guide shows common ways to run SimilarArtists and what to expect.
   - Select two or more tracks (from one or more artists) and run the add-on.
   - Each selected track contributes its artist as a seed; the add-on deduplicates seed artists and processes them up to the configured seed limit.
 
-- No selection (use currently playing track)
-  - If no tracks are selected, SimilarArtists falls back to the currently playing track and uses its artist as the seed.
-  - This makes it convenient to trigger discovery directly from the player without changing library selection.
+- Title or Genre based discovery (new)
+  - Choose "Similar → By Title" to use a track title (or titles) as seeds; useful to find different versions and covers locally.
+  - Choose "Similar → By Genre" to request top artists for a genre and match tracks from those artists in your library.
 
-- Common examples
-  - Create a playlist of similar-artist tracks for a single artist: select one track → `Tools → Similar Artists` → choose playlist creation options.
-  - Build a wider discovery playlist from multiple artists: select several tracks (or albums) → run the add-on → set `Tracks/artist` and `Tracks/playlist` to control size.
-  - Quick enqueue to Now Playing: enable `Automatically enqueue` in settings or run in auto-mode (see below) to add tracks directly to the queue.
+- No selection (use currently playing track)
+  - If no tracks are selected, MatchMonkey falls back to the currently playing track and uses its artist as the seed.
+
+- Quick enqueue to Now Playing: enable `Automatically enqueue` in settings or run in auto-mode (see below) to add tracks directly to the queue.
 
 - Notes on behavior
   - Seed deduplication: duplicate seed artists are removed automatically and any configured blacklist is applied.
-  - Confirmation (Show confirmation prompt): When this option is enabled the add-on opens a "Select Playlist" dialog before creating or adding tracks.
-    - If you select an existing playlist and click OK, the add-on will add tracks to that playlist (and will overwrite its contents only if your "Playlist creation" mode is set to Overwrite).
-    - If you click OK without selecting a playlist, the add-on will automatically create a new playlist using the playlist name template configured in settings (the `Name` template, and optional `Parent playlist` setting will be used when available).
-    - If you click Cancel the operation is aborted and no playlist is created or modified.
+  - Confirmation (Show confirmation prompt): When enabled the add-on opens a "Select Playlist" dialog before creating or adding tracks. See the README section above for confirmation behavior details.
 
 ### Auto-Queue (Auto-mode)
 
@@ -104,6 +110,7 @@ Access settings via **Tools → Options → Similar Artists**
 | **Randomise playlists** | Shuffle the final track list |
 | **Include seed artist** | Include tracks from the original artist |
 | **Include seed track** | Include the original seed track (single seed only) |
+| **Discovery mode** | Choose Artist / Title / Genre discovery |
 
 ### Playlist Creation
 
@@ -144,7 +151,7 @@ Access settings via **Tools → Options → Similar Artists**
 
 ### Track Matching Strategy
 
-SimilarArtists uses a sophisticated **3-pass matching algorithm** to find tracks in your library:
+MatchMonkey uses a sophisticated **3-pass matching algorithm** to find tracks in your library:
 
 1. **Pass 1: Exact Match** - Case-insensitive exact title matching (fastest)
 2. **Pass 2: Fuzzy Match** - Normalized matching with special character handling
@@ -153,6 +160,13 @@ SimilarArtists uses a sophisticated **3-pass matching algorithm** to find tracks
 3. **Pass 3: Partial Match** - Word-based matching for difficult cases
    - Extracts significant words (3+ characters)
    - Catches remastered versions, featured artists, etc.
+
+When multiple versions of the same `artist|title` are found (different album/compilation), the add-on picks the best candidate using the new deduplication rules: prefer higher bitrate, then higher rating.
+
+### Discovery by Title & Genre
+
+- Title-based discovery uses titles as seeds and attempts to match exact and normalized titles across the library, then expands to related artists when available.
+- Genre-based discovery requests top artists for a genre (via external APIs) and matches tracks for those artists in your library.
 
 ### Artist Name Handling
 
@@ -181,7 +195,7 @@ The add-on intelligently handles common artist name prefix patterns:
 
 ### Key Functions
 
-- `runSimilarArtists()` - Main entry point
+- `runMatchMonkey()` - Main entry point
 - `processSeedArtists()` - Fetch similar artists and match tracks
 - `findLibraryTracks()` - Multi-pass fuzzy matching engine
 - `addTracksToTarget()` - Unified track adding with MM5 best practices
@@ -198,7 +212,7 @@ The add-on intelligently handles common artist name prefix patterns:
 
 ### Original Version
 
-- **Trixmoto** - Original SimilarArtists add-on for MediaMonkey 4
+- **Trixmoto** - Original Similar Artists add-on for MediaMonkey 4
   - Forum: [MediaMonkey Forums](https://www.mediamonkey.com/forum/)
   - Original concept and implementation
 
@@ -235,7 +249,17 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 ## 🔄 Changelog
 
-### Version 1.0 (Current)
+### Version 1.1 (Recent updates)
+
+- ✨ New discovery modes: **Search by Title** and **Search by Genre**
+- ✨ Deduplication: avoid duplicate songs by `artist|title`, choose best bitrate then highest rating
+- 🐛 Fixed: context menu and Tools submenu registration for right-click and Tools menu
+- 🐛 Fixed: Now Playing enqueue behavior (tracks are correctly added to the queue)
+- 🐛 Fixed: Playlist creation now uses `addTracksAsync` and navigation uses MM5 `navigationHandlers`
+- ✅ Persistent track references: switched to MM5 `getValue()` for reliable track objects
+- ✅ Playlist naming consistency: mode suffix (e.g. `(Similar Artists)`) always appended
+
+### Version 1.0 (Initial MM5 rewrite)
 
 - ✨ Complete rewrite for MediaMonkey 5
 - ✨ Modern async/await patterns throughout
@@ -248,12 +272,6 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 - 🐛 Removed legacy MM4 fallback code
 - 🐛 Fixed playlist name uniqueness logic
 - 📚 Comprehensive code documentation
-
-### Version (MediaMonkey 4)
-
-- Original implementation by Trixmoto
-- Basic Last.fm integration
-- Playlist creation and enqueue support
 
 ---
 
@@ -278,4 +296,4 @@ Found a bug or have a feature idea? Please open an issue on the [GitHub Issues](
 
 <p align="center">
   <sub>Built with ❤️ for the MediaMonkey community</sub>
-</p></p>
+</p>

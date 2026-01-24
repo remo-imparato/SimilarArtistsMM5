@@ -1,0 +1,24 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+.icnExpand {
+    .icon;
+}
+
+.treeRow > * {
+   .verticalCenter;
+}
+
+.treeRow {
+    text-overflow: clip;
+}
+
+.treeRow[data-openInNewTab] {
+    cursor: pointer;
+}
+
+@treeLevelIndent: @fontLineSize;
+.treeLevelIndent, .flex > .treeLevelIndent {
+    min-width: @treeLevelIndent;
+    max-width: @treeLevelIndent;
+    width: @treeLevelIndent;
+}

@@ -1,0 +1,9 @@
+{
+    "title": "Deezer",
+    "id": "deezer",
+    "description": "Adds ability to sync playlists between Deezer and MediaMonkey libraries",
+    "version": "1.0.0",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "deezer.svg"
+}

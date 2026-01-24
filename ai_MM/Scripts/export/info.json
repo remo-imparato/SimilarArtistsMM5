@@ -1,0 +1,9 @@
+{
+    "title": "File List",
+    "id": "export",
+    "description": "Exports list of selected files to .htm/.xml/.csv file",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "skin/icon/exportToFile.svg"
+}

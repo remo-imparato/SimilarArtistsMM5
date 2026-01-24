@@ -1,0 +1,28 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+.toolbar {
+    .flex;
+    .flex.row;
+    overflow: hidden;
+}
+
+.toolbar .toolbar { // remove padding for nested toolbar, not needed
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.toolbar > .verticalCenter {
+    align-self: center;
+}
+
+.toolbar hr {    
+    border-color: lighten(@controlColor, 10%);
+    margin-left: round(@fontLineSize/3);
+    margin-right: round(@fontLineSize/3);
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.customToolbar {
+    .toolbar;    
+}

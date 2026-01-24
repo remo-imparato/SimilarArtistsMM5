@@ -1,0 +1,233 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+@sliderColor: fade(darken(average(@controlColor, @textColor), 20%), 60%);
+@sliderColorHighlight: @highlightColor;
+@thumbColor: @textColor;
+@thumbHoverColor: @warningColor;
+@thumbInWidth: round(@fontSize*0.43);
+@thumbInHeight: round(@fontSize*0.43);
+@thumbBorderSize: round(@fontSize*0.215);
+@seekbarSize: round(@fontSize*0.286);
+@thumbWidth: @thumbInWidth+2*@thumbBorderSize;
+@thumbHeight: @thumbInHeight+2*@thumbBorderSize;
+@tickSize: round(@fontSize*0.357);
+@tickThickness: round(@fontSize*0.072);
+@centerTickKoef: 2; // 2x longer tick for center
+
+.slider {
+    position: relative;
+}
+
+.seekBarOuter {
+    position: relative;
+    z-index: 999999; // to be sure that seeking will work over layer
+    &:focus {
+        .focused;
+    }
+}
+.slider.horizontal > .seekBarOuter {
+    width: 100%;
+    height: @thumbHeight;
+}
+.slider.vertical > .seekBarOuter {
+    height: 100%;
+    width: @thumbWidth;
+}
+
+.seekBar {
+    position: absolute;
+    background-color: @sliderColor;
+    border-radius: @seekbarSize;
+}
+
+.slider.horizontal .seekBar {
+    left: round(@thumbHeight/2);
+    right: round(@thumbHeight/2);
+    height: @seekbarSize;
+    top: round((@thumbHeight - @seekbarSize)/2);
+}
+
+.slider.horizontal.tickBottomRight > .seekBarOuter {
+    top: 0;
+}
+
+.slider.horizontal.tickTopLeft  > .seekBarOuter, .slider.horizontal.tickBoth > .seekBarOuter {
+    top: @tickSize;
+}
+
+.slider.horizontal.tickCenter > .seekBarOuter {
+    top: max(round((@centerTickKoef*@tickSize - @thumbHeight)/2), 0);
+}
+
+.slider.vertical .seekBar {
+    top: round(@thumbHeight/2);
+    bottom: round(@thumbHeight/2);
+    left: round((@thumbWidth - @seekbarSize)/2);
+    width: @seekbarSize;
+}
+.slider.vertical.tickBottomRight > .seekBarOuter {
+    left: 0;
+}
+
+.slider.vertical.tickTopLeft  > .seekBarOuter, .slider.vertical.tickBoth > .seekBarOuter {
+    left: @tickSize;
+}
+
+.slider.vertical.tickCenter > .seekBarOuter {
+    left: max(round((@centerTickKoef*@tickSize - @thumbHeight)/2), 0);
+}
+
+.seekBarBefore {
+    .seekBar;    
+    background-color: @sliderColorHighlight;
+    z-index: 3;
+    &[data-disabled] {
+        opacity: 0.5;
+    };    
+}
+
+.slider.horizontal .seekBarBefore {
+    .slider.horizontal .seekBar;    
+    width: @thumbWidth;
+}
+
+.slider.vertical .seekBarBefore {
+    .slider.vertical .seekBar;
+    height: @thumbHeight;
+}
+
+.seekBarThumb {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    background-color: transparent;
+    width: @thumbInWidth;
+    height: @thumbInHeight;
+    border-radius: @thumbInHeight+@thumbBorderSize;
+    border: @thumbBorderSize solid @thumbColor;
+    z-index: 999999;
+    &[data-disabled] {
+        opacity: 0.5;
+    }
+}
+.seekBarThumb:hover:not([data-disabled]), .seekBarThumb:active:not([data-disabled]) {
+    border: @thumbBorderSize solid @thumbHoverColor;
+}
+
+.microPlayer .seekBarThumb {
+    transform: scale(0.5);
+}
+
+.ticksOuter {
+    position: absolute;
+    z-index: 10;
+}
+.slider.horizontal .ticksOuter {
+    left: round(@thumbWidth/2 - @tickThickness/2);
+    right: round(@thumbWidth/2 + @tickThickness/2);
+}
+.slider.horizontal.tickBottomRight > .ticksOuter {
+    top: @thumbHeight;
+    height: @tickSize;
+}
+.slider.horizontal.tickTopLeft > .ticksOuter, .slider.horizontal.tickBoth > .ticksOuter {
+    top: 0;
+    height: @tickSize;
+}
+
+.slider.horizontal.tickCenter > .ticksOuter {
+    top: max(round((@thumbHeight - @centerTickKoef*@tickSize)/2), 0);
+    height: @centerTickKoef*@tickSize;
+}
+
+.slider.horizontal.tickBoth > .ticksOuter {
+    top: 0;
+    height: 2*@tickSize + max(@thumbHeight, @seekbarSize);
+}
+
+.slider.vertical .ticksOuter {
+    top: round(@thumbHeight/2);
+    bottom: round(@thumbHeight/2);
+    width: @tickSize;
+}
+.slider.vertical.tickBottomRight > .ticksOuter {
+    left: @thumbHeight;
+    
+}
+.slider.vertical.tickTopLeft > .ticksOuter, .slider.vertical.tickBoth > .ticksOuter {
+    left: 0;
+}
+
+.slider.vertical.tickCenter > .ticksOuter {
+    left: max(round((@thumbWidth - @centerTickKoef*@tickSize)/2), 0);
+}
+
+.slider.vertical.tickBoth > .ticksOuter {
+    left: 0;
+    width: 2*@tickSize + max(@thumbWidth, @seekbarSize);
+}
+
+.ticksOuter .tick {
+    position: absolute;
+    background-color: @sliderColor;
+}
+.slider.horizontal .ticksOuter .tick {
+    width: @tickThickness;
+    height: @tickSize;
+    margin-right: 0 - floor(@tickThickness/2);
+}
+
+.slider.horizontal .ticksOuter .tick.center {
+    top: 0;
+    bottom: 0;
+    height: @centerTickKoef*@tickSize;
+}
+
+.slider.horizontal.tickBoth .ticksOuter .tick.bottomRight {
+    bottom: 0;
+}
+
+.slider.vertical .ticksOuter .tick {
+    width: @tickSize;
+    height: @tickThickness;
+    margin-top: 0 - floor(@tickThickness/2);
+}
+.slider.vertical .ticksOuter .tick.topLeft {
+    left: 0;
+}
+.slider.vertical .ticksOuter .tick.bottomRight {
+    right: 0;
+}
+.slider.vertical .ticksOuter .tick.center {
+    left: 0;
+    width: @centerTickKoef*@tickSize;
+}
+
+.slider.horizontal {
+    &.tickBottomRight, &.tickTopLeft {
+        min-height: @tickSize + max(@seekbarSize, @thumbHeight);
+    }
+    &.tickCenter {
+        min-height: max(@centerTickKoef*@tickSize, @seekbarSize, @thumbHeight);
+    }
+    &.tickBoth {
+        min-height: 2*@tickSize + max(@seekbarSize, @thumbHeight);
+    }
+    margin-top: auto;
+    margin-bottom: auto;
+    height: min-content;
+}
+.slider.vertical {
+    &.tickBottomRight, &.tickTopLeft {
+        min-width: @tickSize + max(@seekbarSize, @thumbWidth);
+    }
+    &.tickCenter {
+        min-width: max(@centerTickKoef*@tickSize, @seekbarSize, @thumbWidth);
+    }
+    &.tickBoth {
+        min-width: 2*@tickSize + max(@seekbarSize, @thumbWidth);
+    }
+    margin-left: auto;
+    margin-right: auto;
+    width: min-content;
+}

@@ -1,0 +1,9 @@
+{
+    "title": "Dropbox",
+    "id": "dropBox",
+    "description": "Adds ability to manipulate and sync DropBox content",
+    "version": "1.0.0",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "dropbox.svg"
+}

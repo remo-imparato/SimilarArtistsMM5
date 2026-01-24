@@ -1,0 +1,68 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<!-- '(C) Ventis Media, Licensed under the Ventis Limited Reciprocal License - see: license.txt for details' -->
+
+<script type="module" src="maincontent.js"></script>
+<!--
+<script type="module" src="mainWindowControls.js"></script>
+<script src="controls/navigationBar.js"></script>
+<script src="controls/maintabs.js"></script>
+<script src="controls/embeddedWindow.js"></script>
+<script src="controls/nowplayingList.js"></script>
+<script src="controls/mainToolbar.js"></script>
+-->
+
+<div data-id="mainContentDiv" class="fill flex column animate" data-control-class="Control">
+    <div class="tabs_container flex row verticalCenter">
+        <div data-menu-container data-hideInFullWindowMode class="vSeparator"></div>
+        <div data-hideInFullWindowMode data-id="tabs_parent" class="animate fill uiRow">
+            <div data-id="tabs" class="animate" data-control-class="MainTabs" data-init-params="{hideElement: 'tabs_parent'}" data-mainTabs data-animate-height>
+            </div>
+        </div>
+    </div>
+
+    <div class="fill flex column animate" style="min-height: 200px; min-width: 300px">
+        <div data-id="customtoolbuttons" data-hideInFullWindowMode class="customToolbar flex row" data-control-class="CustomToolbar"></div>
+        <div data-id="toolbuttons" data-hideInFullWindowMode class="mainToolbar flex row" data-control-class="MainToolbar">            
+            <div data-id="lefttoolbuttons" class="toolbar left dynamic vSeparator">
+                <div data-id="showSidebarLeft" data-aria-label="Show or hide left sidebar" data-icon="showSidebarLeft" data-control-class="ToolButton" class="btnShowSidebar"></div>
+                <div data-id="navigationBar" data-control-class="NavigationBar" data-navigation-bar></div>
+            </div>
+            <div data-id="viewtoolbuttons" class="right" data-control-class="Toolbar" data-init-params="{rightElementID: 'righttoolbuttons', linkedElementID:'mainpanel'}">
+            </div>
+            <div data-id="righttoolbuttons" class="toolbar flex right" style="order:999">
+                <div data-id="myTasksController" class="toolbutton animate" data-control-class="TasksController" data-init-params="{details: 'progressContainer'}"></div>
+                <div data-id="contexttoolbuttons" class="right" data-control-class="Toolbar">
+                </div>
+                <div data-id="searchBarBlankShortcut" class="flex fill"></div>
+                <div data-id="searchBar" data-control-class="SearchBar" class="flex row"></div>
+                <div data-id="switchButton" data-control-class="PlayerSwitch"></div>
+                <div data-id="showSidebarRight" data-aria-label="Show or hide right sidebar" data-icon="showSidebarRight" data-control-class="ToolButton" class="btnShowSidebar" style="order:999"></div>
+            </div>
+        </div>
+        <div data-id="innerbody" class="fill flex column">
+            <div data-id="topdock" data-control-class="Control" data-dock data-dock-top data-dock-title="Top panel">
+            </div>
+            <div data-id="innerbodyFlex" class="fill flex row" data-control-class="Control">
+                <!--        <div class="fill flex column">-->
+                <div data-id="mainpanel" data-mainPanelSpot class="fill"></div>
+                <!--        </div>-->
+                <div data-id="nowplayingVerticalSplitter" data-hideInFullWindowMode data-control-class="Splitter"></div>
+                <div data-id="nowplaying" class="flex column animate noOverflow verticalPanel" data-control-class="Control" data-dock data-dock-right data-dock-title="Right panel" data-hideInFullWindowMode style="min-width: 220px">
+                    <div data-id="nowplayinglistContainer" data-control-class="PlayingListContainer" class="fill initialSize middleHighControl" data-dockable data-dock-title="'Playing' list" data-dock-support="left,right" data-hideInFullWindowMode>
+                    </div>
+                    <div data-id="nowplayingHorizontalSplitter" data-hideInFullWindowMode data-control-class="Splitter"></div>
+                    <div data-id="artWindow" data-control-class="ArtWindow" class="animate allinside initialSize" data-init-params="{closable: false, closeAction: actions.view.preview}" data-dockable data-dock-configurable data-dock-support="left,right" data-dock-title="Preview">
+                    </div>
+                </div>
+            </div>
+            <div data-id="toastMessage" class="toastContainer" data-control-class="ToastMessage" style="display: none;">
+            </div>
+        </div>
+        <!-- Innerbody -->
+        <div data-id="mostBottomDock" data-hideInFullWindowMode data-dock data-dock-bottom data-dock-title="Bottom panel">
+            <div data-id="mainPlayer" id="mainPlayer" data-mainPlayer class="animate" data-uiblock="player" data-control-class="Control" data-dockable data-dock-configurable data-dock-support="bottom,top" data-dock-title="Player"></div>
+        </div>
+
+    </div>
+</div>

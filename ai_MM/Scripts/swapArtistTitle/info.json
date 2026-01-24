@@ -1,0 +1,9 @@
+{
+    "title": "Swap Artist and Title",
+    "id": "swapArtistTitle",
+    "description": "Swaps Artist and Title fields.",
+    "version": "1.0.0",
+    "author": "Ventis Media, Inc.",
+    "type": "general",
+    "icon": "icon.svg"
+}

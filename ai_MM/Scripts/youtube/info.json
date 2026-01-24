@@ -1,0 +1,10 @@
+{
+    "title": "YouTube",
+    "id": "youtube",
+    "description": "Core addon for interfacing with YouTube.",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "youtube.svg",
+    "required": true
+}
