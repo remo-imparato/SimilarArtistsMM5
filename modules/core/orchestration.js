@@ -191,11 +191,14 @@ window.matchMonkeyOrchestration = {
 			updateProgress(`[${modeName}] Complete!`, 1.0);
 			terminateProgressTask(taskId);
 
-			showToast(`Added ${finalResults.length} tracks (${modeName})`);
+			// Get actual number of tracks added from output
+			const actualTracksAdded = output?.added ?? finalResults.length;
+			
+			showToast(`Added ${actualTracksAdded} tracks (${modeName})`);
 
 			return {
 				success: true,
-				tracksAdded: finalResults.length,
+				tracksAdded: actualTracksAdded,
 				tracks: finalResults,
 				output,
 				discoveryMode,
@@ -695,6 +698,10 @@ window.matchMonkeyOrchestration = {
 
 			updateProgress(`Adding ${tracksToAdd.length} tracks to Now Playing...`, 0.95);
 
+			// Check if playback has stopped before we add tracks
+			const wasPlaying = app.player.isPlaying;
+			const wasStopped = !wasPlaying;
+
 			// Create tracklist and add
 			const list = app.utils.createTracklist(true);
 			for (const t of tracksToAdd) {
@@ -707,6 +714,23 @@ window.matchMonkeyOrchestration = {
 				saveHistory: true,
 				startPlayback: false,
 			});
+
+			console.log(`queueResults: Added ${list.count} tracks (wasPlaying=${wasPlaying}, wasStopped=${wasStopped})`);
+
+			// In auto-mode, if playback had stopped, restart it
+			if (config.autoMode && wasStopped && list.count > 0) {
+				console.log('queueResults: Auto-mode detected stopped playback, restarting...');
+				try {
+					// Wait a moment for the tracks to be fully added
+					await new Promise(resolve => setTimeout(resolve, 100));
+					
+					// Start playback from the newly added tracks
+					await app.player.playAsync();
+					console.log('queueResults: Playback restarted successfully');
+				} catch (playError) {
+					console.error('queueResults: Error restarting playback:', playError);
+				}
+			}
 
 			return { added: list.count, cleared: clearNP };
 
