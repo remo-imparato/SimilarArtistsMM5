@@ -301,22 +301,62 @@ window.similarArtistsOrchestration = {
 		const { updateProgress } = notifications;
 
 		const allTracks = [];
-		const seenTrackIds = new Set();
+		const seenTrackKeys = new Map(); // Map of "artist|title" -> track object for deduplication
 
-		// Helper to add track if not duplicate
+		// Helper to add track if not duplicate, or replace with better version
 		const addTrack = (track) => {
 			if (!track) return false;
-			const id = track.id || track.ID;
-			// Use ID if available, otherwise use title+artist combo
-			const trackTitle = track.SongTitle || track.songTitle || track.title || '';
-			const trackArtist = track.Artist || track.artist || '';
-			const key = id ? String(id) : `${trackTitle}|${trackArtist}`.toUpperCase();
 			
-			if (key && !seenTrackIds.has(key)) {
-				seenTrackIds.add(key);
+			// Create key for deduplication: artist + title (ignore album)
+			const trackTitle = (track.SongTitle || track.songTitle || track.title || '').trim().toUpperCase();
+			const trackArtist = (track.Artist || track.artist || '').trim().toUpperCase();
+			
+			if (!trackTitle || !trackArtist) return false;
+			
+			const key = `${trackArtist}|${trackTitle}`;
+			
+			// Check if we already have this track
+			const existing = seenTrackKeys.get(key);
+			
+			if (!existing) {
+				// New track - add it
+				seenTrackKeys.set(key, track);
 				allTracks.push(track);
 				return true;
+			} else {
+				// Duplicate - compare quality and replace if better
+				const shouldReplace = isTrackBetter(track, existing);
+				
+				if (shouldReplace) {
+					// Replace the existing track with the better version
+					const idx = allTracks.indexOf(existing);
+					if (idx >= 0) {
+						allTracks[idx] = track;
+						seenTrackKeys.set(key, track);
+					}
+				}
+				return false; // Still a duplicate, but we may have updated it
 			}
+		};
+		
+		// Helper function to determine if a track is better than another
+		// Priority: 1) Bitrate, 2) Rating, 3) First found
+		const isTrackBetter = (newTrack, existingTrack) => {
+			// Compare bitrates
+			const newBitrate = Number(newTrack.Bitrate || newTrack.bitrate || 0);
+			const existingBitrate = Number(existingTrack.Bitrate || existingTrack.bitrate || 0);
+			
+			if (newBitrate > existingBitrate) return true;
+			if (newBitrate < existingBitrate) return false;
+			
+			// Bitrates are equal, compare ratings
+			const newRating = Number(newTrack.Rating || newTrack.rating || -1);
+			const existingRating = Number(existingTrack.Rating || existingTrack.rating || -1);
+			
+			if (newRating > existingRating) return true;
+			if (newRating < existingRating) return false;
+			
+			// Both bitrate and rating are equal - keep existing
 			return false;
 		};
 
@@ -352,13 +392,15 @@ window.similarArtistsOrchestration = {
 					const artistTracks = await findLibraryTracks(
 						candidate.artist,
 						null,
-						Math.min(config.tracksPerArtist, config.totalLimit - allTracks.length),
+						Math.min(config.tracksPerArtist * 2, config.totalLimit * 2), // Get more to account for deduplication
 						queryOptions
 					);
 					
 					if (artistTracks && artistTracks.length > 0) {
 						for (const track of artistTracks) {
 							addTrack(track);
+							// Stop if we have enough tracks after deduplication
+							if (allTracks.length >= config.totalLimit) break;
 						}
 					}
 				} else {
@@ -366,7 +408,7 @@ window.similarArtistsOrchestration = {
 					const matchMap = await findLibraryTracksBatch(
 						candidate.artist,
 						trackTitles,
-						Math.min(config.tracksPerArtist, config.totalLimit - allTracks.length),
+						Math.min(config.tracksPerArtist * 2, config.totalLimit * 2), // Get more to account for deduplication
 						queryOptions
 					);
 
@@ -379,6 +421,8 @@ window.similarArtistsOrchestration = {
 									addTrack(track);
 								}
 							}
+							// Stop if we have enough tracks after deduplication
+							if (allTracks.length >= config.totalLimit) break;
 						}
 					}
 				}
@@ -388,7 +432,7 @@ window.similarArtistsOrchestration = {
 			}
 		}
 
-		console.log(`matchCandidatesToLibrary: Found ${allTracks.length} unique tracks`);
+		console.log(`matchCandidatesToLibrary: Found ${allTracks.length} unique tracks (after deduplication)`);
 		return allTracks;
 	},
 
@@ -561,8 +605,9 @@ window.similarArtistsOrchestration = {
 			if (navigate.toLowerCase().indexOf('playlist') > -1) {
 				console.log('buildResultsPlaylist: Navigating to playlist');
 				try {
-					if (typeof uitools !== 'undefined' && typeof uitools.navigateToPlaylist === 'function') {
-						uitools.navigateToPlaylist(targetPlaylist);
+					// Use MM5's navigationHandlers system instead of uitools
+					if (typeof navigationHandlers !== 'undefined' && navigationHandlers['playlist'] && typeof navigationHandlers['playlist'].navigate === 'function') {
+						navigationHandlers['playlist'].navigate(targetPlaylist);
 					}
 				} catch (navError) {
 					console.log('buildResultsPlaylist: Navigation error (non-fatal):', navError);

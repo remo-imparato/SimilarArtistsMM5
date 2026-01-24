@@ -274,7 +274,7 @@ window.similarArtistsAutoMode = {
 			generateSimilarPlaylist,
 			showToast,
 			isAutoModeEnabled,
-			threshold = 2,
+			threshold = 3,
 			logger = console.log,
 		} = config;
 
@@ -320,7 +320,7 @@ window.similarArtistsAutoMode = {
 				// remaining = 0 means on last track
 				// remaining = 1 means 1 track left after current (on second-to-last)
 				// remaining = 2 means 2 tracks left after current (on third-to-last)
-				// Default threshold = 2, so trigger when on second-to-last or third-to-last
+				// Default threshold = 3, so trigger when on second-to-last or third-to-last
 				if (remaining > threshold) {
 					log(`Auto-Mode: Not near end yet (remaining=${remaining}, threshold=${threshold}), skipping`);
 					return;
