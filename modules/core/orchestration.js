@@ -51,7 +51,7 @@ window.matchMonkeyOrchestration = {
 			// Initialize progress tracking
 			const modeName = strategies.getDiscoveryModeName(discoveryMode);
 			taskId = createProgressTask(`Generating ${modeName} Playlist`);
-			updateProgress('Initializing...', 0);
+			updateProgress(`Initializing ${modeName} search...`, 0);
 
 			// Validate environment
 			if (typeof app === 'undefined' || !app.player) {
@@ -75,15 +75,15 @@ window.matchMonkeyOrchestration = {
 				discoveryMode,
 			};
 
-			console.log(`Match Monkey: Starting ${modeName} (autoMode=${autoMode})`);
+			console.log(`Match Monkey: Starting ${modeName} discovery (autoMode=${autoMode}, mode=${discoveryMode})`);
 
 			// Step 1: Collect seed tracks
-			updateProgress('Collecting seed tracks...', 0.05);
+			updateProgress(`[${modeName}] Collecting seed tracks...`, 0.05);
 			const seeds = await this.collectSeedTracks(modules);
 
 			if (!seeds || seeds.length === 0) {
 				terminateProgressTask(taskId);
-				showToast('No seed tracks found. Select tracks or play something first.', 'warning');
+				showToast(`[${modeName}] No seed tracks found. Select tracks or play something first.`, 'warning');
 				return {
 					success: false,
 					error: 'No seed tracks found.',
@@ -91,8 +91,8 @@ window.matchMonkeyOrchestration = {
 				};
 			}
 
-			console.log(`Match Monkey: Collected ${seeds.length} seed(s)`);
-			updateProgress(`Found ${seeds.length} seed(s)`, 0.1);
+			console.log(`Match Monkey [${modeName}]: Collected ${seeds.length} seed(s)`);
+			updateProgress(`[${modeName}] Found ${seeds.length} seed(s)`, 0.1);
 
 			// Step 2: Run discovery strategy
 			const discoveryFn = strategies.getDiscoveryStrategy(discoveryMode);
@@ -101,9 +101,9 @@ window.matchMonkeyOrchestration = {
 			try {
 				candidates = await discoveryFn(modules, seeds, config_);
 			} catch (discoveryError) {
-				console.error('Discovery error:', discoveryError);
+				console.error(`Match Monkey [${modeName}]: Discovery error:`, discoveryError);
 				terminateProgressTask(taskId);
-				showToast(`Discovery error: ${formatError(discoveryError)}`, 'error');
+				showToast(`[${modeName}] Discovery error: ${formatError(discoveryError)}`, 'error');
 				return {
 					success: false,
 					error: formatError(discoveryError),
@@ -113,7 +113,7 @@ window.matchMonkeyOrchestration = {
 
 			if (!candidates || candidates.length === 0) {
 				terminateProgressTask(taskId);
-				showToast(`No ${modeName.toLowerCase()} found. Try different seeds.`, 'info');
+				showToast(`[${modeName}] No matches found. Try different seeds.`, 'info');
 				return {
 					success: false,
 					error: `No ${modeName.toLowerCase()} found.`,
@@ -121,18 +121,18 @@ window.matchMonkeyOrchestration = {
 				};
 			}
 
-			console.log(`Match Monkey: Discovery returned ${candidates.length} candidates`);
+			console.log(`Match Monkey [${modeName}]: Discovery returned ${candidates.length} candidates`);
 
 			// Step 3: Match candidates to local library
-			updateProgress('Searching local library...', 0.6);
+			updateProgress(`[${modeName}] Searching local library...`, 0.6);
 			let results;
 			
 			try {
 				results = await this.matchCandidatesToLibrary(modules, candidates, config_);
 			} catch (matchError) {
-				console.error('Library matching error:', matchError);
+				console.error(`Match Monkey [${modeName}]: Library matching error:`, matchError);
 				terminateProgressTask(taskId);
-				showToast(`Library error: ${formatError(matchError)}`, 'error');
+				showToast(`[${modeName}] Library error: ${formatError(matchError)}`, 'error');
 				return {
 					success: false,
 					error: formatError(matchError),
@@ -142,7 +142,7 @@ window.matchMonkeyOrchestration = {
 
 			if (!results || results.length === 0) {
 				terminateProgressTask(taskId);
-				showToast('No matching tracks in your library. Try different seeds or filters.', 'info');
+				showToast(`[${modeName}] No matching tracks in your library. Try different seeds or filters.`, 'info');
 				return {
 					success: false,
 					error: 'No matching tracks found in your library.',
@@ -150,12 +150,12 @@ window.matchMonkeyOrchestration = {
 				};
 			}
 
-			console.log(`Match Monkey: Found ${results.length} matching tracks in library`);
-			updateProgress(`Found ${results.length} matching tracks`, 0.8);
+			console.log(`Match Monkey [${modeName}]: Found ${results.length} matching tracks in library`);
+			updateProgress(`[${modeName}] Found ${results.length} matching tracks`, 0.8);
 
 			// Step 4: Apply randomization if enabled
 			if (config_.randomize) {
-				updateProgress('Randomizing results...', 0.85);
+				updateProgress(`[${modeName}] Randomizing results...`, 0.85);
 				shuffleUtil(results);
 			}
 
@@ -163,7 +163,7 @@ window.matchMonkeyOrchestration = {
 			const finalResults = results.slice(0, config_.totalLimit);
 
 			// Step 5: Choose output method
-			updateProgress('Preparing output...', 0.9);
+			updateProgress(`[${modeName}] Preparing output...`, 0.9);
 
 			const enqueueEnabled = boolSetting('Enqueue', false);
 			let output;
@@ -178,9 +178,9 @@ window.matchMonkeyOrchestration = {
 					output = await this.buildResultsPlaylist(modules, finalResults, config_);
 				}
 			} catch (outputError) {
-				console.error('Output error:', outputError);
+				console.error(`Match Monkey [${modeName}]: Output error:`, outputError);
 				terminateProgressTask(taskId);
-				showToast(`Output error: ${formatError(outputError)}`, 'error');
+				showToast(`[${modeName}] Output error: ${formatError(outputError)}`, 'error');
 				return {
 					success: false,
 					error: formatError(outputError),
@@ -188,7 +188,7 @@ window.matchMonkeyOrchestration = {
 				};
 			}
 
-			updateProgress('Complete!', 1.0);
+			updateProgress(`[${modeName}] Complete!`, 1.0);
 			terminateProgressTask(taskId);
 
 			showToast(`Added ${finalResults.length} tracks (${modeName})`);
@@ -199,6 +199,7 @@ window.matchMonkeyOrchestration = {
 				tracks: finalResults,
 				output,
 				discoveryMode,
+				modeName,
 			};
 
 		} catch (e) {

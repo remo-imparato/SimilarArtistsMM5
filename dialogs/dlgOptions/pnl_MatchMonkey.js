@@ -86,6 +86,10 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function(sett, p
 
 		UI.SAUnknown.controlClass.checked = Boolean(this.config.Unknown);
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite || 'Create new playlist';
+		
+		// Auto-mode discovery type dropdown (Artist/Track/Genre)
+		UI.SAAutoMode.controlClass.value = this.config.AutoMode || 'Track';
+		
 		UI.SAEnqueue.controlClass.checked = Boolean(this.config.Enqueue);
 		UI.SANavigate.controlClass.value = this.config.Navigate || 'None';
 
@@ -237,6 +241,10 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function(sett) {
 
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
+		
+		// Auto-mode discovery type dropdown (Artist/Track/Genre)
+		this.config.AutoMode = UI.SAAutoMode.controlClass.value;
+		
 		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
 		this.config.Navigate = UI.SANavigate.controlClass.value;
 

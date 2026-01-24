@@ -238,8 +238,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Publish update.json to a stable location (so updateURL can always point to a constant URL)
-      # We publish to a dedicated 'updates' branch.
-      - name: Publish update.json to updates branch
+      # We publish to a dedicated 'updateMatchMonkey' branch.
+      - name: Publish update.json to updateMatchMonkey branch
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -e
@@ -249,8 +249,8 @@ jobs:
           # Capture the generated file before switching branches (orphan checkout clears the working tree)
           UPDATE_JSON_CONTENT=$(cat update.json)
 
-          # Create/checkout updates branch without carrying repo history
-          git checkout --orphan updates
+          # Create/checkout updateMatchMonkey branch without carrying repo history
+          git checkout --orphan updateMatchMonkey
           git rm -rf . >/dev/null 2>&1 || true
 
           # Recreate the file in the now-empty working tree
@@ -260,6 +260,6 @@ jobs:
           git commit -m "Update update.json for ${{ github.ref_name }}"
 
           # Force-push the single-file branch
-          git push --force origin updates
+          git push --force origin updateMatchMonkey
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -264,6 +264,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} config.generateSimilarPlaylist - Phase 5 orchestration function
 	 * @param {Function} config.showToast - UI notification function
 	 * @param {Function} config.isAutoModeEnabled - Settings check function
+	 * @param {Function} [config.getModeName] - Optional function to get current mode name
 	 * @param {number} [config.threshold=2] - Remaining entries threshold
 	 * @param {Function} [config.logger=console.log] - Logging function
 	 * @returns {Function} Handler function for playback events
@@ -274,6 +275,7 @@ window.matchMonkeyAutoMode = {
 			generateSimilarPlaylist,
 			showToast,
 			isAutoModeEnabled,
+			getModeName,
 			threshold = 3,
 			logger = console.log,
 		} = config;
@@ -283,6 +285,9 @@ window.matchMonkeyAutoMode = {
 		return async function handleAutoTrigger(state, loggerFunc) {
 			try {
 				const log = loggerFunc || logger;
+
+				// Get mode name for messages
+				const modeName = typeof getModeName === 'function' ? getModeName() : 'Similar Tracks';
 
 				// Support both styles:
 				// - isAutoModeEnabled(getSetting)
@@ -295,26 +300,26 @@ window.matchMonkeyAutoMode = {
 				}
 
 				if (!enabled) {
-					log('Auto-Mode: Auto-mode disabled, skipping trigger');
+					log(`Auto-Mode [${modeName}]: Auto-mode disabled, skipping trigger`);
 					return;
 				}
 
 				// Check if already running (rate limiting)
 				if (state.autoRunning) {
-					log('Auto-Mode: Already running, skipping concurrent trigger');
+					log(`Auto-Mode [${modeName}]: Already running, skipping concurrent trigger`);
 					return;
 				}
 
 				// Get player and check remaining entries
 				const player = app.player;
 				if (!player) {
-					log('Auto-Mode: Player not available');
+					log(`Auto-Mode [${modeName}]: Player not available`);
 					return;
 				}
 
 				// Use captured autoMode reference instead of 'this'
 				const remaining = autoMode.getPlaylistRemaining(player, log);
-				log(`Auto-Mode: Remaining entries: ${remaining} (threshold: ${threshold})`);
+				log(`Auto-Mode [${modeName}]: Remaining entries: ${remaining} (threshold: ${threshold})`);
 
 				// Trigger when remaining entries <= threshold AND > 0
 				// remaining = 0 means on last track
@@ -322,23 +327,23 @@ window.matchMonkeyAutoMode = {
 				// remaining = 2 means 2 tracks left after current (on third-to-last)
 				// Default threshold = 3, so trigger when on second-to-last or third-to-last
 				if (remaining > threshold) {
-					log(`Auto-Mode: Not near end yet (remaining=${remaining}, threshold=${threshold}), skipping`);
+					log(`Auto-Mode [${modeName}]: Not near end yet (remaining=${remaining}, threshold=${threshold}), skipping`);
 					return;
 				}
 				
 				if (remaining < 0) {
-					log(`Auto-Mode: Invalid remaining count (${remaining}), skipping`);
+					log(`Auto-Mode [${modeName}]: Invalid remaining count (${remaining}), skipping`);
 					return;
 				}
 				
 				// Note: We trigger even when remaining=0 (on last track) to give one last chance
-				log(`Auto-Mode: Near end of playlist detected (remaining=${remaining}), will trigger`);
+				log(`Auto-Mode [${modeName}]: Near end of playlist detected (remaining=${remaining}), will trigger`);
 
 				// Check cooldown (prevent rapid re-triggers)
 				const now = Date.now();
 				const timeSinceLastTrigger = now - state.lastTriggerTime;
 				if (timeSinceLastTrigger < state.triggerCooldown) {
-					log(`Auto-Mode: Cooldown active (${state.triggerCooldown - timeSinceLastTrigger}ms remaining)`);
+					log(`Auto-Mode [${modeName}]: Cooldown active (${state.triggerCooldown - timeSinceLastTrigger}ms remaining)`);
 					return;
 				}
 
@@ -347,27 +352,27 @@ window.matchMonkeyAutoMode = {
 				state.lastTriggerTime = now;
 
 				try {
-					log(`Auto-Mode: Triggering auto-queue (remaining=${remaining})`);
-					showToast('Queuing similar artists...', 'info');
+					log(`Auto-Mode [${modeName}]: Triggering auto-queue (remaining=${remaining})`);
+					showToast(`Queuing ${modeName.toLowerCase()}...`, 'info');
 
 					// Call Phase 5 orchestration with autoMode=true
 					// This applies conservative limits and forces enqueue behavior
 					const result = await generateSimilarPlaylist(true);
 
 					if (result && result.success) {
-						log(`Auto-Mode: Successfully added ${result.tracksAdded} tracks`);
-						showToast(`Added ${result.tracksAdded} similar artist tracks`, 'success');
+						log(`Auto-Mode [${modeName}]: Successfully added ${result.tracksAdded} tracks`);
+						showToast(`Added ${result.tracksAdded} tracks (${modeName})`, 'success');
 					} else {
-						log('Auto-Mode: Orchestration failed');
+						log(`Auto-Mode [${modeName}]: Orchestration failed`);
 						if (result?.error) {
-							showToast(`Auto-queue failed: ${result.error}`, 'error');
+							showToast(`[${modeName}] Auto-queue failed: ${result.error}`, 'error');
 						}
 					}
 
 				} finally {
 					// Always clear the running flag
 					state.autoRunning = false;
-					log('Auto-Mode: Trigger handler completed');
+					log(`Auto-Mode [${modeName}]: Trigger handler completed`);
 				}
 
 			} catch (e) {

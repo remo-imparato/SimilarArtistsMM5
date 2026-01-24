@@ -203,6 +203,15 @@
 
 		let cachedAutoTriggerHandler = null;
 
+		/**
+		 * Clear the cached auto trigger handler so it gets recreated with new settings.
+		 * Called when settings change to pick up new AutoMode value.
+		 */
+		function clearAutoTriggerHandlerCache() {
+			cachedAutoTriggerHandler = null;
+			console.log('Match Monkey: Auto trigger handler cache cleared');
+		}
+
 		function createAutoTriggerHandler() {
 			if (cachedAutoTriggerHandler) return cachedAutoTriggerHandler;
 
@@ -211,16 +220,36 @@
 
 			cachedAutoTriggerHandler = autoMode.createAutoTriggerHandler({
 				getSetting,
-				// AUTO-MODE USES TRACK-BASED DISCOVERY for seamless playlist continuation
-				// This finds tracks similar to the currently playing track, maintaining the mood
+				// Auto-mode uses the discovery mode configured in settings (AutoMode)
+				// Options: 'Artist', 'Track', or 'Genre'
 				generateSimilarPlaylist: (autoModeFlag) => {
-					console.log('Match Monkey Auto-Mode: Using Similar Tracks discovery for seamless continuation');
-					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, DISCOVERY_MODES.TRACK);
+					// Read the AutoMode setting to determine discovery type
+					const autoModeSetting = getSetting('AutoMode', 'Track');
+					let discoveryMode = DISCOVERY_MODES.TRACK; // Default to track-based
+					
+					// Map setting value to discovery mode constant
+					if (autoModeSetting === 'Artist') {
+						discoveryMode = DISCOVERY_MODES.ARTIST;
+					} else if (autoModeSetting === 'Genre') {
+						discoveryMode = DISCOVERY_MODES.GENRE;
+					} else {
+						discoveryMode = DISCOVERY_MODES.TRACK;
+					}
+					
+					console.log(`Match Monkey Auto-Mode: Using ${autoModeSetting} discovery (mode=${discoveryMode})`);
+					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode);
 				},
 				showToast,
 				isAutoModeEnabled: () => autoMode.isAutoModeEnabled(getSetting),
 				threshold: 2,
 				logger: console.log,
+				// Pass the mode name getter for toast messages
+				getModeName: () => {
+					const autoModeSetting = getSetting('AutoMode', 'Track');
+					if (autoModeSetting === 'Artist') return 'Similar Artists';
+					if (autoModeSetting === 'Genre') return 'Similar Genre';
+					return 'Similar Tracks';
+				},
 			});
 
 			return cachedAutoTriggerHandler;
@@ -228,9 +257,10 @@
 
 		function initializeAutoMode() {
 			try {
-				console.log('Match Monkey: Initializing auto-mode (using Similar Tracks discovery)');
-
 				const { getSetting } = storage;
+				const autoModeSetting = getSetting('AutoMode', 'Track');
+				console.log(`Match Monkey: Initializing auto-mode (configured for ${autoModeSetting} discovery)`);
+
 				const handler = createAutoTriggerHandler();
 
 				appState.autoModeState = autoMode.initializeAutoMode(
@@ -252,6 +282,8 @@
 					autoMode.shutdownAutoMode(appState.autoModeState, console.log);
 					appState.autoModeState = null;
 				}
+				// Clear the cached handler on shutdown
+				clearAutoTriggerHandlerCache();
 			} catch (e) {
 				console.error(`Match Monkey: Error shutting down auto-mode: ${e.toString()}`);
 			}
@@ -285,6 +317,9 @@
 		function onSettingsChanged() {
 			try {
 				const { getSetting } = storage;
+
+				// Clear cached handler so it picks up new AutoMode setting
+				clearAutoTriggerHandlerCache();
 
 				if (!appState.autoModeState) {
 					initializeAutoMode();

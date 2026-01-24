@@ -25,7 +25,7 @@
 /**
  * Run action
  */
-actions.matchMonkeyRun = {
+actions.similarArtistsRun = {
 	title: _('Similar &Artists'),
 	icon: 'artist',
 	hotkeyAble: true,
@@ -45,7 +45,7 @@ actions.matchMonkeyRun = {
  */
 actions.similarTracksRun = {
 	title: _('Similar &Tracks'),
-	icon: 'track',
+	icon: 'song',
 	hotkeyAble: true,
 	visible: true,
 	disabled: uitools.notMediaListSelected,
@@ -111,11 +111,11 @@ actions.matchMonkeyToggleAuto = {
 // Similar Artists submenu for Tools menu
 _menuItems.tools.action.submenu.push({
 	action: {
-		title: _('&Similar...'),
+		title: _('&Match Monkey...'),
 		icon: 'script',
 		visible: true,
 		submenu: [
-			{ action: actions.matchMonkeyRun, order: 10 },
+			{ action: actions.similarArtistsRun, order: 10 },
 			{ action: actions.similarTracksRun, order: 20 },
 			{ action: actions.similarGenreRun, order: 30 },
 			{ separator: true, order: 40 },
@@ -132,12 +132,12 @@ _menuItems.tools.action.submenu.push({
 
 // Define the context submenu action
 var similarContextSubmenu = {
-	title: _('&Similar...'),
+	title: _('&Match...'),
 	icon: 'script',
 	visible: true,
 	disabled: uitools.notMediaListSelected,
 	submenu: [
-		{ action: actions.matchMonkeyRun, order: 10 },
+		{ action: actions.similarArtistsRun, order: 10 },
 		{ action: actions.similarTracksRun, order: 20 },
 		{ action: actions.similarGenreRun, order: 30 }
 	]

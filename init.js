@@ -83,6 +83,7 @@ localRequirejs('modules/core/mm5Integration');
 		Random: true,          // Randomize results
 		Confirm: false,        // Show confirmation checkbox
 		Enqueue: false,        // Add to Now Playing instead of creating playlist
+		AutoMode: 'Track',     // Auto-mode type dropdown
 
 		// Auto-mode settings
 		OnPlay: false,         // Auto-mode checkbox
