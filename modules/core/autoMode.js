@@ -76,20 +76,18 @@ window.similarArtistsAutoMode = {
 			const player = app.player;
 			state.autoListen = app.listen(player, 'playbackState', (newState) => {
 				logger(`Auto-Mode: Playback state changed to '${newState}'`);
-				
-				// Only trigger on track change events (playback advancing to next track)
 				if (newState === 'trackChanged') {
-					// Rate limiting: prevent triggers too close together
 					const now = Date.now();
 					const timeSinceLastTrigger = now - state.lastTriggerTime;
-					
 					if (timeSinceLastTrigger < state.triggerCooldown) {
 						logger(`Auto-Mode: Cooldown active (${state.triggerCooldown - timeSinceLastTrigger}ms remaining), skipping trigger`);
 						return;
 					}
 
 					logger('Auto-Mode: Track changed event - calling trigger handler');
-					handleAutoTrigger(state, logger);
+					Promise.resolve(handleAutoTrigger(state, logger)).catch((e) => {
+						logger(`Auto-Mode: Trigger handler rejected: ${e?.stack || e?.message || e}`);
+					});
 				}
 			});
 
@@ -253,15 +251,23 @@ window.similarArtistsAutoMode = {
 			logger = console.log,
 		} = config;
 
-		// Capture reference to autoMode module for use inside handler
 		const autoMode = this;
 
 		return async function handleAutoTrigger(state, loggerFunc) {
 			try {
 				const log = loggerFunc || logger;
 
-				// Double-check auto-mode is enabled
-				if (!isAutoModeEnabled(getSetting)) {
+				// Support both styles:
+				// - isAutoModeEnabled(getSetting)
+				// - isAutoModeEnabled()
+				let enabled = false;
+				try {
+					enabled = isAutoModeEnabled.length >= 1 ? !!isAutoModeEnabled(getSetting) : !!isAutoModeEnabled();
+				} catch (_) {
+					enabled = !!isAutoModeEnabled(getSetting);
+				}
+
+				if (!enabled) {
 					log('Auto-Mode: Auto-mode disabled, skipping trigger');
 					return;
 				}

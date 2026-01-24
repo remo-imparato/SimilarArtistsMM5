@@ -124,11 +124,15 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 		// Checkbox change listener
 		const onPlayCheckboxChanged = () => {
 			try {
-				if (window.SimilarArtists?.toggleAuto) {
-					const currentModuleState = Boolean(window.SimilarArtists.isAutoEnabled?.());
-					const checkboxState = Boolean(UI.SAOnPlay.controlClass.checked);
+				const desired = Boolean(UI.SAOnPlay.controlClass.checked);
 
-					if (currentModuleState !== checkboxState) {
+				// Persist immediately so toggleAuto (which reads settings) sees the new value.
+				setSetting('OnPlay', desired);
+
+				// Ensure addon listener/UI is synced.
+				if (window.SimilarArtists?.toggleAuto && typeof window.SimilarArtists.toggleAuto === 'function') {
+					const current = Boolean(window.SimilarArtists.isAutoEnabled?.());
+					if (current !== desired) {
 						window.SimilarArtists.toggleAuto();
 					}
 				}
@@ -137,8 +141,20 @@ optionPanels.pnl_Library.subPanels.pnl_SimilarArtists.load = async function (set
 			}
 		};
 
-		if (UI.SAOnPlay?.controlClass?.container) {
-			app.listen(UI.SAOnPlay.controlClass.container, 'change', onPlayCheckboxChanged);
+		// MM option panel controls don't always bubble 'change' from container.
+		// Prefer listening on the actual checkbox element when available.
+		try {
+			const ctrl = UI.SAOnPlay?.controlClass;
+			const el = ctrl?.container?.querySelector?.('input[type="checkbox"]') || ctrl?.container;
+			if (el) {
+				app.listen(el, 'change', onPlayCheckboxChanged);
+				app.listen(el, 'click', onPlayCheckboxChanged);
+			}
+		} catch (e) {
+			// fallback
+			if (UI.SAOnPlay?.controlClass?.container) {
+				app.listen(UI.SAOnPlay.controlClass.container, 'change', onPlayCheckboxChanged);
+			}
 		}
 
 		// Listen for auto-mode changes from other sources

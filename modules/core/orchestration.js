@@ -249,7 +249,20 @@ window.similarArtistsOrchestration = {
 			try {
 				await selectedList.whenLoaded();
 
-				if (typeof selectedList.forEach === 'function') {
+				// Prefer locked()+getFastObject (read-lock safe) when available, else fall back to forEach.
+				if (typeof selectedList.locked === 'function' && typeof selectedList.getFastObject === 'function') {
+					selectedList.locked(() => {
+						let tmp;
+						for (let i = 0; i < (selectedList.count || 0); i++) {
+							tmp = selectedList.getFastObject(i, tmp);
+							if (tmp?.artist) {
+								for (const a of splitArtists(tmp.artist)) {
+									addArtistIfNew(a, tmp);
+								}
+							}
+						}
+					});
+				} else if (typeof selectedList.forEach === 'function') {
 					selectedList.forEach((t) => {
 						if (t?.artist) {
 							for (const a of splitArtists(t.artist)) {
@@ -258,6 +271,7 @@ window.similarArtistsOrchestration = {
 						}
 					});
 				} else if (typeof selectedList.getFastObject === 'function' && typeof selectedList.count === 'number') {
+					// Last resort (may crash on some MM5 builds if read lock is required)
 					let tmp;
 					for (let i = 0; i < selectedList.count; i++) {
 						tmp = selectedList.getFastObject(i, tmp);
@@ -321,11 +335,11 @@ window.similarArtistsOrchestration = {
 			settings: { storage, prefixes },
 			ui: { notifications },
 			api: { lastfmApi },
-			db,  // Changed: db is already the full interface
+			db,
 		} = modules;
 
 		const { parseListSetting: parseListSettingUtil } = helpers;
-		const { getSetting, intSetting } = storage;
+		const { getSetting, intSetting, boolSetting } = storage;
 		const { fixPrefixes } = prefixes;
 		const { updateProgress } = notifications;
 		const {
@@ -470,7 +484,9 @@ window.similarArtistsOrchestration = {
 							if (allTracks.length >= config.totalLimit) break;
 
 							const trackMatches = matches.get(title) || [];
-							console.log(`processSeedArtists: Title "${title}" has ${trackMatches.length} matches`); for (const track of trackMatches) {
+							//console.log(`processSeedArtists: Title "${title}" has ${trackMatches.length} matches`);
+
+							for (const track of trackMatches) {
 								const key = getTrackKey(track);
 								if (!key || seenKeys.has(key)) continue;
 

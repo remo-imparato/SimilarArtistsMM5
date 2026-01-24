@@ -16,6 +16,10 @@
 (function(globalArg) {
 	'use strict';
 
+	// Preserve any early queued start calls from a previously-created placeholder
+	// (e.g. init.js calling start() before modules finish loading)
+	const __queuedStarts = globalArg.SimilarArtists?._startQueue;
+
 	// ============================================================================
 	// EARLY EXPORT - Set window.SimilarArtists immediately to prevent race conditions
 	// ============================================================================
@@ -33,6 +37,11 @@
 		},
 	};
 
+	// Re-attach any previous queue we captured before overwriting the placeholder
+	if (__queuedStarts && __queuedStarts.length) {
+		globalArg.SimilarArtists._startQueue = (__queuedStarts || []).slice();
+	}
+	
 	// ============================================================================
 	// MODULE LOADING - Load all modules directly using requirejs
 	// ============================================================================
@@ -242,6 +251,9 @@
 		// AUTO-MODE SETUP
 		// ============================================================================
 
+		// Cache a single trigger handler for the lifetime of the add-on instance.
+		let cachedAutoTriggerHandler = null;
+
 		/**
 		 * Create auto-trigger handler.
 		 * 
@@ -250,17 +262,22 @@
 		 * @returns {Function} Handler function
 		 */
 		function createAutoTriggerHandler() {
+			if (cachedAutoTriggerHandler) return cachedAutoTriggerHandler;
+
 			const { getSetting } = storage;
 			const { showToast } = modules.ui.notifications;
 
-			return autoMode.createAutoTriggerHandler({
+			cachedAutoTriggerHandler = autoMode.createAutoTriggerHandler({
 				getSetting,
 				generateSimilarPlaylist: (autoModeFlag) => orchestration.generateSimilarPlaylist(modules, autoModeFlag),
 				showToast,
-				isAutoModeEnabled: (s) => autoMode.isAutoModeEnabled(getSetting),
-				threshold: 2,
+				// Handler itself can re-check current setting at trigger-time
+				isAutoModeEnabled: () => autoMode.isAutoModeEnabled(getSetting),
+				threshold: 5,
 				logger: console.log,
 			});
+
+			return cachedAutoTriggerHandler;
 		}
 
 		/**
@@ -358,14 +375,21 @@
 				console.log('SimilarArtists: Settings changed, syncing auto-mode');
 
 				const { getSetting } = storage;
-				const handler = createAutoTriggerHandler();
 
-				autoMode.syncAutoModeListener(
-					appState.autoModeState,
-					getSetting,
-					handler,
-					console.log
-				);
+				// Ensure auto-mode state exists before attempting to sync.
+				if (!appState.autoModeState) {
+					initializeAutoMode();
+				}
+
+				if (appState.autoModeState) {
+					const handler = createAutoTriggerHandler();
+					autoMode.syncAutoModeListener(
+						appState.autoModeState,
+						getSetting,
+						handler,
+						console.log
+					);
+				}
 
 				// Update UI
 				const enabled = isAutoEnabled();
@@ -499,17 +523,22 @@
 
 		console.log('SimilarArtists: Module loaded, call start() to initialize');
 		
-		// Process any queued start calls
-		const queuedStarts = globalArg.SimilarArtists._startQueue;
+		// Process any queued start calls (from the early placeholder object)
+		const queuedStarts = globalArg.SimilarArtists?._startQueue;
 		if (queuedStarts && queuedStarts.length > 0) {
 			console.log(`SimilarArtists: Processing ${queuedStarts.length} queued start call(s)`);
-			queuedStarts.forEach(() => {
-				try {
-					start();
-				} catch (e) {
-					console.error('SimilarArtists: Error processing queued start:', e);
-				}
-			});
+			// Call start once; multiple queued calls are equivalent.
+			try {
+				start();
+			} catch (e) {
+				console.error('SimilarArtists: Error processing queued start:', e);
+			}
+			// Clear queue to avoid re-running on hot reloads
+			try {
+				delete globalArg.SimilarArtists._startQueue;
+			} catch (_) {
+				// ignore
+			}
 		}
 	}
 
