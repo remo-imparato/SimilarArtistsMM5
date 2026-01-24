@@ -76,7 +76,11 @@ async function discoverByArtist(modules, seeds, config) {
 		try {
 			// Fetch similar artists from Last.fm
 			const fixedName = fixPrefixes(seed.name);
-			const similar = await fetchSimilarArtists(fixedName, config.similarLimit || 30);
+			const similar = await fetchSimilarArtists(
+				fixedName, 
+				config.seedLimit || 15,
+				config.tracksPerArtist || 25
+			);
 
 			if (!similar || similar.length === 0) {
 				console.log(`discoverByArtist: No similar artists found for "${seed.name}"`);
@@ -287,7 +291,7 @@ async function discoverByGenre(modules, seeds, config) {
 	updateProgress('Finding artists in similar genres...', 0.3);
 
 	const numTags = Math.min(sortedTags.length, 3);
-	const artistsPerTag = Math.ceil((config.similarLimit || 30) / numTags);
+	const artistsPerTag = Math.ceil((config.tracksPerArtist || 25) / numTags);
 
 	for (let i = 0; i < numTags; i++) {
 		const tag = sortedTags[i];
