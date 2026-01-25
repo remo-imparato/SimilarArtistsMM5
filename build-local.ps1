@@ -35,7 +35,9 @@ $rootFiles = @(
 	"actions_add.js",
 	"matchMonkey.js",
 	"MatchMonkey.png",
-	"README.md"
+	"README.md",
+	"license-mit.txt",
+	"license-commercial.txt"
 )
 
 $missingFiles = @()
@@ -80,6 +82,37 @@ try {
 		Copy-Item -Path $file -Destination (Join-Path $stagingDir $file) -Force
 		Write-Host "  ? Copied: $file" -ForegroundColor Green
 	}
+
+	# Create combined license.txt for MediaMonkey to display during installation
+	Write-Host "`nCreating license.txt for MediaMonkey installation..." -ForegroundColor Cyan
+	$licensePath = Join-Path $stagingDir "license.txt"
+	$mitContent = Get-Content "license-mit.txt" -Raw
+	$commercialContent = Get-Content "license-commercial.txt" -Raw
+	
+	$combinedLicense = @"
+================================================================================
+MATCH MONKEY - DUAL LICENSE
+================================================================================
+
+This software is available under two licenses:
+1. MIT License (for personal/non-commercial use)
+2. Commercial License (for commercial use)
+
+================================================================================
+MIT LICENSE (Personal/Non-Commercial Use)
+================================================================================
+
+$mitContent
+
+================================================================================
+COMMERCIAL LICENSE
+================================================================================
+
+$commercialContent
+"@
+	
+	$combinedLicense | Out-File -FilePath $licensePath -Encoding UTF8
+	Write-Host "  ? Created: license.txt (combined)" -ForegroundColor Green
 
 	# Copy directories with full structure
 	foreach ($dir in $requiredDirs) {

@@ -66,6 +66,8 @@ jobs:
             "matchMonkey.js"
             "MatchMonkey.png"
             "README.md"
+            "license-mit.txt"
+            "license-commercial.txt"
           )
 
           REQUIRED_DIRS=(
@@ -134,13 +136,42 @@ jobs:
           # Create MMIP package from modular structure
           # MMIP files are ZIP archives with .mmip extension
           
-          # Core files (include same root files as build-local.ps1)
+          # Create combined license.txt for MediaMonkey to display during installation
+          echo "Creating license.txt for MediaMonkey installation..."
+          cat > license.txt <<'EOFLIC'
+================================================================================
+MATCH MONKEY - DUAL LICENSE
+================================================================================
+
+This software is available under two licenses:
+1. MIT License (for personal/non-commercial use)
+2. Commercial License (for commercial use)
+
+================================================================================
+MIT LICENSE (Personal/Non-Commercial Use)
+================================================================================
+
+EOFLIC
+          cat license-mit.txt >> license.txt
+          cat >> license.txt <<'EOFLIC'
+
+================================================================================
+COMMERCIAL LICENSE
+================================================================================
+
+EOFLIC
+          cat license-commercial.txt >> license.txt
+          
+          echo "? Created license.txt (combined)"
+          
+          # Core files (include license files)
           zip -r -q MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip \
             info.json \
             init.js \
             actions_add.js \
             matchMonkey.js \
             MatchMonkey.png \
+            license.txt \
             license-commercial.txt \
             license-mit.txt \
             README.md \
@@ -158,6 +189,7 @@ jobs:
             -x "*.tgz" \
 
           echo "? Package created: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip"
+          echo "? License files included (license.txt will display during installation)"
           echo "? Modular structure included (Phases 1-7)"
           echo "? Configuration initialized in init.js"
           echo "? MM5 5.0+ compatible"
