@@ -1,0 +1,49 @@
+Match Monkey – Commercial End User License Agreement (EULA)
+Version 1.0
+
+This Commercial End User License Agreement ("Agreement") governs the commercial use of the Match Monkey add-on ("Software") created by Remo Imparato.
+
+By downloading, installing, or using the Software, you agree to the terms of this Agreement.
+
+1. License Grant
+The Software is licensed, not sold.
+
+A. Personal / Non?Commercial Use  
+You may use the Software free of charge for personal, private, and non-commercial purposes under the MIT License included in this repository.
+
+B. Commercial Use  
+Any use of the Software in a commercial environment requires a paid commercial license. This includes, but is not limited to:
+- Use within a business, company, or organization  
+- Use in any product or service that generates revenue  
+- Use by employees, contractors, or agents as part of their work  
+- Use in paid software bundles or subscription offerings  
+
+To obtain a commercial license, contact:
+Email: rimparato@hotmail.com  
+Ko?fi: https://ko-fi.com/remoimparato  
+GitHub: https://github.com/remo-imparato/
+
+2. Restrictions (Without a Commercial License)
+Without purchasing a commercial license, you may NOT:
+- Use the Software in any revenue-generating activity  
+- Distribute modified or unmodified versions for commercial gain  
+- Bundle the Software with paid products or services  
+- Use the Software in a business or organizational setting  
+
+3. Ownership
+Match Monkey is the intellectual property of Remo Imparato.  
+All rights not expressly granted are reserved.
+
+4. Disclaimer of Warranty
+The Software is provided "as is", without warranty of any kind, express or implied.  
+The author is not liable for any damages arising from the use or inability to use the Software.
+
+5. Termination
+Violation of this Agreement may result in immediate termination of your license.  
+Commercial use without a valid license may result in legal action.
+
+6. Contact
+For commercial licensing, support, or inquiries:
+Email: rimparato@hotmail.com  
+Ko?fi: https://ko-fi.com/remoimparato  
+GitHub: https://github.com/remo-imparato/
