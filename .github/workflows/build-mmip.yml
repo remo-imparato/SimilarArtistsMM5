@@ -139,27 +139,27 @@ jobs:
           # Create combined license.txt for MediaMonkey to display during installation
           echo "Creating license.txt for MediaMonkey installation..."
           cat > license.txt <<'EOFLIC'
-================================================================================
-MATCH MONKEY - DUAL LICENSE
-================================================================================
-
-This software is available under two licenses:
-1. MIT License (for personal/non-commercial use)
-2. Commercial License (for commercial use)
-
-================================================================================
-MIT LICENSE (Personal/Non-Commercial Use)
-================================================================================
-
-EOFLIC
+          ================================================================================
+          MATCH MONKEY - DUAL LICENSE
+          ================================================================================
+          
+          This software is available under two licenses:
+          1. MIT License (for personal/non-commercial use)
+          2. Commercial License (for commercial use)
+          
+          ================================================================================
+          MIT LICENSE (Personal/Non-Commercial Use)
+          ================================================================================
+          
+          EOFLIC
           cat license-mit.txt >> license.txt
           cat >> license.txt <<'EOFLIC'
-
-================================================================================
-COMMERCIAL LICENSE
-================================================================================
-
-EOFLIC
+          
+          ================================================================================
+          COMMERCIAL LICENSE
+          ================================================================================
+          
+          EOFLIC
           cat license-commercial.txt >> license.txt
           
           echo "? Created license.txt (combined)"
@@ -186,7 +186,7 @@ EOFLIC
             -x "*-source.zip" \
             -x "*-source.tar.gz" \
             -x "*.tar.gz" \
-            -x "*.tgz" \
+            -x "*.tgz"
 
           echo "? Package created: MatchMonkey-${{ steps.bump_version.outputs.version }}.mmip"
           echo "? License files included (license.txt will display during installation)"
