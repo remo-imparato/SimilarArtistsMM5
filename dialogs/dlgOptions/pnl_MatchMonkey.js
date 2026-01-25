@@ -4,12 +4,38 @@
  * MediaMonkey 5 API Only
  * 
  * @author Remo Imparato
- * @version 2.0.0
+ * @version 2.1.0
  * @description Configuration panel for MatchMonkey add-on in MM5 Tools > Options.
- *              Provides UI for configuring Last.fm API settings, playlist creation options,
- *              filters, and automatic behavior.
  * 
- * @repository https://github.com/remo-imparato/SimilarArtistsMM5
+ * Config Property Mapping (UI ID -> Storage Key):
+ * - PlaylistName -> PlaylistName
+ * - ParentPlaylist -> ParentPlaylist
+ * - PlaylistMode -> PlaylistMode
+ * - ShowConfirmDialog -> ShowConfirmDialog
+ * - ShuffleResults -> ShuffleResults
+ * - IncludeSeedArtist -> IncludeSeedArtist
+ * - SimilarArtistsLimit -> SimilarArtistsLimit
+ * - TrackSimilarLimit -> TrackSimilarLimit
+ * - TracksPerArtist -> TracksPerArtist
+ * - MaxPlaylistTracks -> MaxPlaylistTracks
+ * - UseLastfmRanking -> UseLastfmRanking
+ * - PreferHighQuality -> PreferHighQuality
+ * - MinRating -> MinRating
+ * - IncludeUnrated -> IncludeUnrated
+ * - AutoModeEnabled -> AutoModeEnabled
+ * - AutoModeDiscovery -> AutoModeDiscovery
+ * - AutoModeSeedLimit -> AutoModeSeedLimit
+ * - AutoModeSimilarLimit -> AutoModeSimilarLimit
+ * - AutoModeTracksPerArtist -> AutoModeTracksPerArtist
+ * - AutoModeMaxTracks -> AutoModeMaxTracks
+ * - SkipDuplicates -> SkipDuplicates
+ * - EnqueueMode -> EnqueueMode
+ * - ClearQueueFirst -> ClearQueueFirst
+ * - NavigateAfter -> NavigateAfter
+ * - ArtistBlacklist -> ArtistBlacklist
+ * - GenreBlacklist -> GenreBlacklist
+ * - TitleExclusions -> TitleExclusions
+ * 
  * @license MIT
  */
 
@@ -63,45 +89,47 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, 
 		}
 
 		const UI = getAllUIElements(pnl);
+		const cfg = this.config;
 
-		// Load all settings from config
-		UI.SAApiKey.controlClass.value = this.config.ApiKey;
-		UI.SAConfirm.controlClass.checked = Boolean(this.config.Confirm);
+		// === Playlist Creation ===
+		UI.PlaylistName.controlClass.value = cfg.PlaylistName || '- Similar to %';
+		UI.ParentPlaylist.controlClass.value = cfg.ParentPlaylist || '';
+		UI.PlaylistMode.controlClass.value = cfg.PlaylistMode || 'Create new playlist';
+		UI.ShowConfirmDialog.controlClass.checked = Boolean(cfg.ShowConfirmDialog);
+		UI.ShuffleResults.controlClass.checked = cfg.ShuffleResults !== false; // Default true
+		UI.IncludeSeedArtist.controlClass.checked = Boolean(cfg.IncludeSeedArtist);
 
-		// Handle seed/similar limit
-		const seedLimit = this.config.SeedLimit || this.config.similarLimit || 20;
-		UI.SALimit.controlClass.value = seedLimit;
+		// === Discovery Limits ===
+		UI.SimilarArtistsLimit.controlClass.value = cfg.SimilarArtistsLimit || 20;
+		UI.TrackSimilarLimit.controlClass.value = cfg.TrackSimilarLimit || 100;
+		UI.TracksPerArtist.controlClass.value = cfg.TracksPerArtist || 30;
+		UI.MaxPlaylistTracks.controlClass.value = cfg.MaxPlaylistTracks || 0; // 0 = unlimited
+		UI.UseLastfmRanking.controlClass.checked = cfg.UseLastfmRanking !== false; // Default true
+		UI.PreferHighQuality.controlClass.checked = cfg.PreferHighQuality !== false; // Default true
 
-		UI.SAName.controlClass.value = this.config.Name || '- Similar to %';
-		UI.SATPA.controlClass.value = this.config.TPA || 30;
-		UI.SATPL.controlClass.value = this.config.TPL || 1000;
-		UI.SARandom.controlClass.checked = Boolean(this.config.Random);
-		UI.SASeed.controlClass.checked = Boolean(this.config.Seed);
-		UI.SABest.controlClass.checked = Boolean(this.config.Best);
-		UI.SARank.controlClass.checked = Boolean(this.config.Rank);
+		// === Rating Filter ===
+		const ratingValue = parseInt(cfg.MinRating, 10) || 0;
+		this._setRatingControl(UI.MinRating, ratingValue);
+		UI.IncludeUnrated.controlClass.checked = cfg.IncludeUnrated !== false; // Default true
 
-		// Rating control
-		const ratingValue = parseInt(this.config.Rating, 10) || 0;
-		this._setRatingControl(UI.SARating, ratingValue);
+		// === Auto-Mode ===
+		this._setupAutoModeCheckbox(UI.AutoModeEnabled);
+		UI.AutoModeDiscovery.controlClass.value = cfg.AutoModeDiscovery || 'Track';
+		UI.AutoModeSeedLimit.controlClass.value = cfg.AutoModeSeedLimit || 2;
+		UI.AutoModeSimilarLimit.controlClass.value = cfg.AutoModeSimilarLimit || 10;
+		UI.AutoModeTracksPerArtist.controlClass.value = cfg.AutoModeTracksPerArtist || 5;
+		UI.AutoModeMaxTracks.controlClass.value = cfg.AutoModeMaxTracks || 30;
+		UI.SkipDuplicates.controlClass.checked = cfg.SkipDuplicates !== false; // Default true
 
-		UI.SAUnknown.controlClass.checked = Boolean(this.config.Unknown);
-		UI.SAOverwrite.controlClass.value = this.config.Overwrite || 'Create new playlist';
+		// === Queue Behavior ===
+		UI.EnqueueMode.controlClass.checked = Boolean(cfg.EnqueueMode);
+		UI.ClearQueueFirst.controlClass.checked = Boolean(cfg.ClearQueueFirst);
+		UI.NavigateAfter.controlClass.value = cfg.NavigateAfter || 'Navigate to new playlist';
 
-		// Auto-mode discovery type dropdown (Artist/Track/Genre)
-		UI.SAAutoMode.controlClass.value = this.config.AutoMode || 'Track';
-
-		UI.SAEnqueue.controlClass.checked = Boolean(this.config.Enqueue);
-		UI.SANavigate.controlClass.value = this.config.Navigate || 'None';
-
-		// Auto-mode checkbox
-		this._setupAutoModeCheckbox(UI.SAOnPlay);
-
-		UI.SAClearNP.controlClass.checked = Boolean(this.config.ClearNP);
-		UI.SAIgnore.controlClass.checked = Boolean(this.config.Ignore);
-		UI.SAParent.controlClass.value = this.config.Parent || '';
-		UI.SAExclude.controlClass.value = this.config.Exclude || '';
-		UI.SABlack.controlClass.value = this.config.Black || '';
-		UI.SAGenre.controlClass.value = this.config.Genre || '';
+		// === Filters ===
+		UI.ArtistBlacklist.controlClass.value = cfg.ArtistBlacklist || '';
+		UI.GenreBlacklist.controlClass.value = cfg.GenreBlacklist || '';
+		UI.TitleExclusions.controlClass.value = cfg.TitleExclusions || '';
 
 	} catch (e) {
 		console.error('Match Monkey Options: load error:', e.toString());
@@ -150,17 +178,17 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 		if (window.matchMonkey?.isAutoEnabled) {
 			uiCheckbox.controlClass.checked = Boolean(window.matchMonkey.isAutoEnabled());
 		} else {
-			uiCheckbox.controlClass.checked = Boolean(this.config.OnPlay);
+			uiCheckbox.controlClass.checked = Boolean(this.config.AutoModeEnabled);
 		}
 	} catch (e) {
-		uiCheckbox.controlClass.checked = Boolean(this.config.OnPlay);
+		uiCheckbox.controlClass.checked = Boolean(this.config.AutoModeEnabled);
 	}
 
 	// Change handler
 	const onCheckboxChanged = () => {
 		try {
 			const desired = Boolean(uiCheckbox.controlClass.checked);
-			setSetting('OnPlay', desired);
+			setSetting('AutoModeEnabled', desired);
 
 			// Sync with addon
 			if (window.matchMonkey?.toggleAuto) {
@@ -170,7 +198,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 				}
 			}
 		} catch (e) {
-			console.error('Match Monkey Options: OnPlay change error:', e);
+			console.error('Match Monkey Options: AutoModeEnabled change error:', e);
 		}
 	};
 
@@ -200,7 +228,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 	};
 
 	this._autoModeListener = onAutoModeChanged;
-	window.addEventListener('similarartists:automodechanged', onAutoModeChanged);
+	window.addEventListener('matchmonkey:automodechanged', onAutoModeChanged);
 };
 
 /**
@@ -210,62 +238,67 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 	try {
 		// Clean up event listener
 		if (this._autoModeListener) {
-			window.removeEventListener('similarartists:automodechanged', this._autoModeListener);
+			window.removeEventListener('matchmonkey:automodechanged', this._autoModeListener);
 			this._autoModeListener = null;
 		}
 
 		const UI = getAllUIElements();
 
-		// Read current config
+		// Read current config to preserve any keys not in UI
 		this.config = app.getValue(SCRIPT_ID, {});
 
-		// Update all values from UI
-		this.config.ApiKey = UI.SAApiKey.controlClass.value;
-		this.config.Confirm = UI.SAConfirm.controlClass.checked;
-		this.config.SeedLimit = UI.SALimit.controlClass.value;
-		this.config.similarLimit = UI.SALimit.controlClass.value;
-		this.config.Name = UI.SAName.controlClass.value;
-		this.config.TPA = UI.SATPA.controlClass.value;
-		this.config.TPL = UI.SATPL.controlClass.value;
-		this.config.Random = UI.SARandom.controlClass.checked;
-		this.config.Seed = UI.SASeed.controlClass.checked;
-		this.config.Best = UI.SABest.controlClass.checked;
-		this.config.Rank = UI.SARank.controlClass.checked;
-		this.config.Parent = UI.SAParent.controlClass.value;
+		// === Playlist Creation ===
+		this.config.PlaylistName = UI.PlaylistName.controlClass.value || '- Similar to %';
+		this.config.ParentPlaylist = UI.ParentPlaylist.controlClass.value || '';
+		this.config.PlaylistMode = UI.PlaylistMode.controlClass.value || 'Create new playlist';
+		this.config.ShowConfirmDialog = UI.ShowConfirmDialog.controlClass.checked;
+		this.config.ShuffleResults = UI.ShuffleResults.controlClass.checked;
+		this.config.IncludeSeedArtist = UI.IncludeSeedArtist.controlClass.checked;
 
-		// Rating value
-		const rawRating = Number.isFinite(UI.SARating.controlClass.value)
-			? Math.max(0, Math.min(100, UI.SARating.controlClass.value))
+		// === Discovery Limits ===
+		this.config.SimilarArtistsLimit = parseInt(UI.SimilarArtistsLimit.controlClass.value, 10) || 20;
+		this.config.TrackSimilarLimit = parseInt(UI.TrackSimilarLimit.controlClass.value, 10) || 100;
+		this.config.TracksPerArtist = parseInt(UI.TracksPerArtist.controlClass.value, 10) || 30;
+		this.config.MaxPlaylistTracks = parseInt(UI.MaxPlaylistTracks.controlClass.value, 10) || 0;
+		this.config.UseLastfmRanking = UI.UseLastfmRanking.controlClass.checked;
+		this.config.PreferHighQuality = UI.PreferHighQuality.controlClass.checked;
+
+		// === Rating Filter ===
+		const rawRating = Number.isFinite(UI.MinRating.controlClass.value)
+			? Math.max(0, Math.min(100, UI.MinRating.controlClass.value))
 			: 0;
-		this.config.Rating = String(rawRating);
+		this.config.MinRating = rawRating;
+		this.config.IncludeUnrated = UI.IncludeUnrated.controlClass.checked;
 
-		this.config.Unknown = UI.SAUnknown.controlClass.checked;
-		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
-
-		// Auto-mode discovery type dropdown (Artist/Track/Genre)
-		this.config.AutoMode = UI.SAAutoMode.controlClass.value;
-
-		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
-		this.config.Navigate = UI.SANavigate.controlClass.value;
-
-		// Auto-mode state
-		let autoState = false;
+		// === Auto-Mode ===
+		// Get auto-mode state from addon if available, otherwise from checkbox
+		let autoEnabled = false;
 		try {
 			if (typeof window.matchMonkey?.isAutoEnabled === 'function') {
-				autoState = Boolean(window.matchMonkey.isAutoEnabled());
+				autoEnabled = Boolean(window.matchMonkey.isAutoEnabled());
 			} else {
-				autoState = Boolean(UI.SAOnPlay.controlClass.checked);
+				autoEnabled = Boolean(UI.AutoModeEnabled.controlClass.checked);
 			}
 		} catch (e) {
-			autoState = Boolean(UI.SAOnPlay.controlClass.checked);
+			autoEnabled = Boolean(UI.AutoModeEnabled.controlClass.checked);
 		}
+		this.config.AutoModeEnabled = autoEnabled;
+		this.config.AutoModeDiscovery = UI.AutoModeDiscovery.controlClass.value || 'Track';
+		this.config.AutoModeSeedLimit = parseInt(UI.AutoModeSeedLimit.controlClass.value, 10) || 2;
+		this.config.AutoModeSimilarLimit = parseInt(UI.AutoModeSimilarLimit.controlClass.value, 10) || 10;
+		this.config.AutoModeTracksPerArtist = parseInt(UI.AutoModeTracksPerArtist.controlClass.value, 10) || 5;
+		this.config.AutoModeMaxTracks = parseInt(UI.AutoModeMaxTracks.controlClass.value, 10) || 30;
+		this.config.SkipDuplicates = UI.SkipDuplicates.controlClass.checked;
 
-		this.config.OnPlay = autoState;
-		this.config.ClearNP = UI.SAClearNP.controlClass.checked;
-		this.config.Ignore = UI.SAIgnore.controlClass.checked;
-		this.config.Exclude = UI.SAExclude.controlClass.value;
-		this.config.Black = UI.SABlack.controlClass.value;
-		this.config.Genre = UI.SAGenre.controlClass.value;
+		// === Queue Behavior ===
+		this.config.EnqueueMode = UI.EnqueueMode.controlClass.checked;
+		this.config.ClearQueueFirst = UI.ClearQueueFirst.controlClass.checked;
+		this.config.NavigateAfter = UI.NavigateAfter.controlClass.value || 'Navigate to new playlist';
+
+		// === Filters ===
+		this.config.ArtistBlacklist = UI.ArtistBlacklist.controlClass.value || '';
+		this.config.GenreBlacklist = UI.GenreBlacklist.controlClass.value || '';
+		this.config.TitleExclusions = UI.TitleExclusions.controlClass.value || '';
 
 		// Save all settings
 		try {

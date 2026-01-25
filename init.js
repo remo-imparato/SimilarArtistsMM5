@@ -7,7 +7,7 @@
  * MediaMonkey 5 API Only
  * 
  * @author Remo Imparato
- * @version 2.1.0
+ * @version 2.2.0
  * @license MIT
  */
 
@@ -65,54 +65,95 @@ localRequirejs('modules/core/mm5Integration');
 	// Script namespace
 	const SCRIPT_ID = 'MatchMonkey';
 
-	// Default configuration values
+	/**
+	 * Default configuration values with cleaner property names.
+	 * 
+	 * Property naming convention:
+	 * - CamelCase for all properties
+	 * - Descriptive names that explain what they do
+	 * - Grouped logically (Playlist, Discovery, Rating, AutoMode, Queue, Filters)
+	 * 
+	 * Note: API key is hardcoded in modules/api/lastfm.js - not user configurable.
+	 * Each application should have its own Last.fm API key per their terms of service.
+	 */
 	const DEFAULTS = {
-		// Playlist naming
-		Name: '- Similar to %',
+		// === Playlist Creation ===
+		PlaylistName: '- Similar to %', // Template (% = artist name)
+		ParentPlaylist: '',             // Parent playlist to organize results under (blank = root level)
+		PlaylistMode: 'Create new playlist', // Create new / Overwrite / Do not create
+		ShowConfirmDialog: false,       // Show playlist selection dialog
+		ShuffleResults: true,           // Randomize final results
+		IncludeSeedArtist: true,        // Include seed artist tracks
 
-		// Core settings
-		Overwrite: 'Create new playlist', // Playlist creation mode dropdown
-		SeedLimit: 20,         // Number of seed artists to use
-		SimilarLimit: 30,      // Number of similar artists per seed
-		TPA: 50,               // Tracks Per Artist to fetch
-		TPL: 1000,             // Total tracks Per pLaylist limit
+		// === Discovery Limits (Manual Mode) ===
+		SimilarArtistsLimit: 20,        // Max similar artists per seed from Last.fm
+		TrackSimilarLimit: 100,         // Max similar tracks per seed from Last.fm (track-based discovery)
+		TracksPerArtist: 30,            // Max tracks per artist from library
+		MaxPlaylistTracks: 0,           // Final limit (0 = unlimited, add all found)
 
-		// Behavior flags
-		Seed: true,           // Include seed artist checkbox
-		Rank: true,            // Enable ranking by play count/rating
-		Best: true,            // Only include highly-rated tracks
-		Random: true,          // Randomize results
-		Confirm: false,        // Show confirmation checkbox
-		AutoMode: 'Track',     // Auto-mode type dropdown
+		// === Track Selection ===
+		UseLastfmRanking: true,         // Sort by Last.fm popularity
+		PreferHighQuality: true,        // Prefer higher bitrate/rating versions
 
-		// Auto-mode settings
-		OnPlay: false,         // Auto-mode checkbox
-		Ignore: false,         // Skip recent checkbox
+		// === Rating Filter ===
+		MinRating: 0,                   // Minimum rating (0-100)
+		IncludeUnrated: true,           // Include tracks without ratings
 
-		// Playlist parent
-		Parent: '',
+		// === Auto-Mode Settings ===
+		AutoModeEnabled: false,         // Enable auto-queue on playlist end
+		AutoModeDiscovery: 'Track',     // Discovery type: Artist/Track/Genre
+		AutoModeSeedLimit: 2,           // Seeds to process in auto-mode
+		AutoModeSimilarLimit: 10,       // Similar artists per seed in auto-mode
+		AutoModeTracksPerArtist: 5,     // Tracks per artist in auto-mode
+		AutoModeMaxTracks: 30,          // Max tracks per auto-queue trigger
 
-		// Advanced filters
-		Black: '',             // Blacklist of artists (comma-separated)
-		Exclude: '',           // Exclude titles
-		Genre: '',             // Genre filter
+		// === Queue Behavior ===
+		EnqueueMode: false,             // Add to Now Playing instead of playlist
+		ClearQueueFirst: false,         // Clear queue before adding
+		SkipDuplicates: true,           // Skip tracks already in queue
+		NavigateAfter: 'Navigate to new playlist', // Navigation after completion
 
-		// Rating filter
-		Rating: 0,             // Minimum rating (0-100)
-		Unknown: true,         // Include unknown rating
+		// === Filters ===
+		ArtistBlacklist: '',            // Comma-separated blacklisted artists
+		GenreBlacklist: '',             // Comma-separated blacklisted genres
+		TitleExclusions: '',            // Comma-separated title words to exclude
+	};
 
-		// Navigation
-		Navigate: 'Navigate to new playlist',
-		Enqueue: false,        // Add to Now Playing instead of creating playlist
-		ClearNP: false,        // Clear checkbox
-
-		// API - Initialize with MediaMonkey's registered Last.fm key if available, otherwise blank
-		ApiKey: '', // Will be populated in checkConfig() if MM has a registered key
+	/**
+	 * Migration map: old property names -> new property names
+	 * Used to preserve user settings when upgrading from older versions.
+	 */
+	const MIGRATION_MAP = {
+		// Old name -> New name
+		'Name': 'PlaylistName',
+		'Parent': 'ParentPlaylist',
+		'Overwrite': 'PlaylistMode',
+		'Confirm': 'ShowConfirmDialog',
+		'Random': 'ShuffleResults',
+		'Seed': 'IncludeSeedArtist',
+		'SeedLimit': 'SimilarArtistsLimit',
+		'SimilarLimit': 'SimilarArtistsLimit',
+		'similarLimit': 'SimilarArtistsLimit',
+		'TPA': 'TracksPerArtist',
+		'TPL': 'MaxPlaylistTracks',
+		'Rank': 'UseLastfmRanking',
+		'Best': 'PreferHighQuality',
+		'Rating': 'MinRating',
+		'Unknown': 'IncludeUnrated',
+		'OnPlay': 'AutoModeEnabled',
+		'AutoMode': 'AutoModeDiscovery',
+		'Enqueue': 'EnqueueMode',
+		'ClearNP': 'ClearQueueFirst',
+		'Ignore': 'SkipDuplicates',
+		'Navigate': 'NavigateAfter',
+		'Black': 'ArtistBlacklist',
+		'Genre': 'GenreBlacklist',
+		'Exclude': 'TitleExclusions',
 	};
 
 	/**
 	 * Check and initialize configuration with defaults.
-	 * Merges any missing default keys for upgrades.
+	 * Migrates old property names and merges any missing default keys.
 	 */
 	function checkConfig() {
 		try {
@@ -130,54 +171,49 @@ localRequirejs('modules/core/mm5Integration');
 				// FIRST TIME: Create fresh configuration with defaults
 				console.log('Match Monkey: No configuration found - creating defaults...');
 				
-				// Try to get MediaMonkey's registered Last.fm API key
-				let mmApiKey = '';
-				try {
-					if (app?.utils?.web?.getAPIKey) {
-						mmApiKey = app.utils.web.getAPIKey('lastfmApiKey') || '';
-					}
-				} catch (e) {
-					console.log('Match Monkey: Could not retrieve MM Last.fm key:', e);
-				}
-				
-				// Create config with MM's key if available, otherwise blank
 				const initialConfig = Object.assign({}, DEFAULTS);
-				initialConfig.ApiKey = mmApiKey;
-				
 				app.setValue(SCRIPT_ID, initialConfig);
-				console.log('Match Monkey: Default configuration created' + (mmApiKey ? ' (using MediaMonkey Last.fm key)' : ' (no API key set)'));
+				console.log('Match Monkey: Default configuration created');
 			} else {
-				// EXISTING CONFIG: Merge any missing defaults (for upgrades)
+				// EXISTING CONFIG: Migrate old names and merge missing defaults
 				let updatedConfig = Object.assign({}, existingConfig);
+				let migratedKeys = [];
 				let addedKeys = [];
-				let needsUpdate = false;
+				let removedKeys = [];
 
-				// Clean up: If ApiKey is set to the old default, clear it
-				const OLD_DEFAULT_KEY = '7fd988db0c4e9d8b12aed27d0a91a932';
-				if (updatedConfig.ApiKey === OLD_DEFAULT_KEY) {
-					console.log('Match Monkey: Clearing old default API key');
-					updatedConfig.ApiKey = '';
-					needsUpdate = true;
-				}
-
-				// Add any missing default keys (but don't overwrite ApiKey if it exists)
-				for (const key in DEFAULTS) {
-					if (!(key in existingConfig)) {
-						// Special handling for ApiKey: only set if not present
-						if (key === 'ApiKey') {
-							updatedConfig.ApiKey = '';
-							addedKeys.push(key);
-						} else {
-							updatedConfig[key] = DEFAULTS[key];
-							addedKeys.push(key);
-						}
+				// Step 1: Migrate old property names to new names
+				for (const [oldKey, newKey] of Object.entries(MIGRATION_MAP)) {
+					if (oldKey in existingConfig && !(newKey in existingConfig)) {
+						updatedConfig[newKey] = existingConfig[oldKey];
+						migratedKeys.push(`${oldKey} -> ${newKey}`);
 					}
 				}
 
-				if (addedKeys.length > 0 || needsUpdate) {
+				// Step 2: Add any missing default keys
+				for (const key in DEFAULTS) {
+					if (!(key in updatedConfig)) {
+						updatedConfig[key] = DEFAULTS[key];
+						addedKeys.push(key);
+					}
+				}
+
+				// Step 3: Remove deprecated keys (ApiKey is now hardcoded)
+				if ('ApiKey' in updatedConfig) {
+					delete updatedConfig.ApiKey;
+					removedKeys.push('ApiKey');
+				}
+
+				// Save if changes were made
+				if (migratedKeys.length > 0 || addedKeys.length > 0 || removedKeys.length > 0) {
 					app.setValue(SCRIPT_ID, updatedConfig);
+					if (migratedKeys.length > 0) {
+						console.log(`Match Monkey: Migrated ${migratedKeys.length} setting(s):`, migratedKeys.join(', '));
+					}
 					if (addedKeys.length > 0) {
 						console.log(`Match Monkey: Added ${addedKeys.length} new setting(s):`, addedKeys.join(', '));
+					}
+					if (removedKeys.length > 0) {
+						console.log(`Match Monkey: Removed ${removedKeys.length} deprecated setting(s):`, removedKeys.join(', '));
 					}
 				} else {
 					console.log('Match Monkey: Configuration up to date');

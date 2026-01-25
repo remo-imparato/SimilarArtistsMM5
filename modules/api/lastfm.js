@@ -12,6 +12,20 @@
 // Last.fm API base endpoint
 const API_BASE = 'https://ws.audioscrobbler.com/2.0/';
 
+// MatchMonkey's dedicated Last.fm API key
+// Each application should have its own key per Last.fm's terms of service
+const MATCHMONKEY_API_KEY = '7fd988db0c4e9d8b12aed27d0a91a932';
+
+/**
+ * Get the API key for Last.fm requests.
+ * Uses MatchMonkey's dedicated API key.
+ * 
+ * @returns {string} The Last.fm API key
+ */
+function getApiKey() {
+	return MATCHMONKEY_API_KEY;
+}
+
 /**
  * Fetch similar artists from Last.fm API.
  * Results are cached within the current run to avoid redundant API calls.
@@ -27,7 +41,6 @@ async function fetchSimilarArtists(artistName, limit) {
 
 		// Get dependencies
 		const cache = window.lastfmCache;
-		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
 		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 
 		// Check cache first
@@ -39,8 +52,16 @@ async function fetchSimilarArtists(artistName, limit) {
 			}
 		}
 
-		// Build API request
+		// Get API key
 		const apiKey = getApiKey();
+		if (!apiKey) {
+			console.error('fetchSimilarArtists: No API key available');
+			updateProgress('Error: Last.fm API key not configured');
+			cache?.cacheSimilarArtists?.(artistName, []);
+			return [];
+		}
+
+		// Build API request
 		const lim = Number(limit) || undefined;
 		const params = new URLSearchParams({
 			method: 'artist.getSimilar',
@@ -118,7 +139,6 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 
 		// Get dependencies
 		const cache = window.lastfmCache;
-		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
 		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 
 		// Check cache first
@@ -130,8 +150,16 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 			}
 		}
 
-		// Build API request
+		// Get API key
 		const apiKey = getApiKey();
+		if (!apiKey) {
+			console.error('fetchTopTracks: No API key available');
+			updateProgress('Error: Last.fm API key not configured');
+			cache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
+			return [];
+		}
+
+		// Build API request
 		const lim = Number(limit) || undefined;
 		const params = new URLSearchParams({
 			method: 'artist.getTopTracks',
@@ -217,16 +245,15 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
  * 
  * @param {string} artistName Artist name of the seed track.
  * @param {string} trackName Track title of the seed track.
- * @param {number} [limit=30] Maximum number of similar tracks to return.
+ * @param {number} [limit=100] Maximum number of similar tracks to return (increased for better library matching).
  * @returns {Promise<object[]>} Array of similar track objects with artist and title.
  */
-async function fetchSimilarTracks(artistName, trackName, limit = 30) {
+async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 	try {
 		if (!artistName || !trackName) return [];
 
 		// Get dependencies
 		const cache = window.lastfmCache;
-		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
 		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 
 		// Build cache key
@@ -238,17 +265,24 @@ async function fetchSimilarTracks(artistName, trackName, limit = 30) {
 			return cache._similarTracks.get(cacheKey) || [];
 		}
 
-		// Build API request
+		// Get API key
 		const apiKey = getApiKey();
+		if (!apiKey) {
+			console.error('fetchSimilarTracks: No API key available');
+			return [];
+		}
+
+		// Build API request
+		const lim = Number(limit) || undefined;
 		const params = new URLSearchParams({
 			method: 'track.getSimilar',
 			api_key: apiKey,
 			format: 'json',
 			artist: artistName,
 			track: trackName,
-			autocorrect: '1',
-			limit: String(limit)
+			autocorrect: '1'
 		});
+		if (lim) params.set('limit', String(lim));
 
 		const url = API_BASE + '?' + params.toString();
 		updateProgress(`Finding similar tracks to "${trackName}"...`);
@@ -324,7 +358,6 @@ async function fetchArtistInfo(artistName) {
 		if (!artistName) return null;
 
 		const cache = window.lastfmCache;
-		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
 
 		// Build cache key
 		const cacheKey = `artistinfo:${artistName}`.toUpperCase();
@@ -334,8 +367,14 @@ async function fetchArtistInfo(artistName) {
 			return cache._artistInfo.get(cacheKey);
 		}
 
-		// Build API request
+		// Get API key
 		const apiKey = getApiKey();
+		if (!apiKey) {
+			console.error('fetchArtistInfo: No API key available');
+			return null;
+		}
+
+		// Build API request
 		const params = new URLSearchParams({
 			method: 'artist.getInfo',
 			api_key: apiKey,
@@ -400,8 +439,12 @@ async function fetchArtistsByTag(tag, limit = 30) {
 	try {
 		if (!tag) return [];
 
-		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
+		// Get API key
 		const apiKey = getApiKey();
+		if (!apiKey) {
+			console.error('fetchArtistsByTag: No API key available');
+			return [];
+		}
 
 		const params = new URLSearchParams({
 			method: 'tag.getTopArtists',
@@ -448,5 +491,7 @@ window.matchMonkeyLastfmAPI = {
 	fetchSimilarTracks,
 	fetchArtistInfo,
 	fetchArtistsByTag,
+	getApiKey,
 	API_BASE,
+	MATCHMONKEY_API_KEY,
 };

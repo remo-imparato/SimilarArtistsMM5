@@ -234,14 +234,19 @@ window.matchMonkeyAutoMode = {
 
 	/**
 	 * Check if auto-mode is enabled via settings.
+	 * Supports both old and new property names.
 	 * 
 	 * @param {Function} getSetting - Settings getter function
-	 * @param {string} [settingKey='OnPlay'] - Settings key for auto-mode
+	 * @param {string} [settingKey='AutoModeEnabled'] - Settings key for auto-mode
 	 * @returns {boolean} True if auto-mode is enabled
 	 */
-	isAutoModeEnabled: function(getSetting, settingKey = 'OnPlay') {
+	isAutoModeEnabled: function(getSetting, settingKey = 'AutoModeEnabled') {
 		try {
-			const enabled = getSetting(settingKey, false);
+			// Try new property name first, fall back to old
+			let enabled = getSetting(settingKey, undefined);
+			if (enabled === undefined) {
+				enabled = getSetting('OnPlay', false); // Old property name
+			}
 			return Boolean(enabled);
 		} catch (e) {
 			console.error(`Auto-Mode: Error checking enabled status: ${e.toString()}`);
@@ -287,7 +292,11 @@ window.matchMonkeyAutoMode = {
 			try {
 				const log = loggerFunc || logger;
 
-				// Get mode name for messages
+				// Get mode name for messages (try new property name, fall back to old)
+				let configuredMode = getSetting('AutoModeDiscovery', undefined);
+				if (configuredMode === undefined) {
+					configuredMode = getSetting('AutoMode', 'Track');
+				}
 				const modeName = typeof getModeName === 'function' ? getModeName() : 'Similar Tracks';
 
 				// Support both styles:
@@ -353,9 +362,7 @@ window.matchMonkeyAutoMode = {
 				state.lastTriggerTime = now;
 
 				try {
-					// Get the user's configured discovery mode
-					const configuredMode = getSetting('AutoMode', 'track');
-					log(`Auto-Mode [${modeName}]: User configured mode: ${configuredMode}`);
+					log(`Auto-Mode: User configured mode: ${configuredMode}`);
 
 					// Define all discovery modes to try in order
 					const allModes = ['track', 'artist', 'genre'];
@@ -508,8 +515,8 @@ window.matchMonkeyAutoMode = {
 			const currentState = this.isAutoModeEnabled(getSetting);
 			const newState = !currentState;
 
-			// Update setting
-			setSetting('OnPlay', newState);
+			// Update setting (use new property name)
+			setSetting('AutoModeEnabled', newState);
 			logger(`Auto-Mode: Toggled to ${newState ? 'enabled' : 'disabled'}`);
 
 			// Sync listener with new state
