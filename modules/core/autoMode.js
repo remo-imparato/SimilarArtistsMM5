@@ -361,9 +361,9 @@ window.matchMonkeyAutoMode = {
 					const allModes = ['track', 'artist', 'genre'];
 					
 					// Start with user's preferred mode, then try others
-					const modesToTry = [configuredMode];
+					const modesToTry = [configuredMode.toLowerCase()];
 					for (const mode of allModes) {
-						if (mode !== configuredMode) {
+						if (mode !== configuredMode.toLowerCase()) {
 							modesToTry.push(mode);
 						}
 					}

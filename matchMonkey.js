@@ -222,22 +222,29 @@
 				getSetting,
 				// Auto-mode uses the discovery mode configured in settings (AutoMode)
 				// Options: 'Artist', 'Track', or 'Genre'
-				generateSimilarPlaylist: (autoModeFlag) => {
-					// Read the AutoMode setting to determine discovery type
+				// If a discoveryMode is explicitly provided (for retries), use that instead
+				generateSimilarPlaylist: (autoModeFlag, discoveryMode) => {
+					// If discoveryMode is explicitly provided (e.g., from retry logic), use it
+					if (discoveryMode) {
+						console.log(`Match Monkey Auto-Mode: Using explicit discovery mode: ${discoveryMode}`);
+						return orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode);
+					}
+					
+					// Otherwise, read from settings
 					const autoModeSetting = getSetting('AutoMode', 'Track');
-					let discoveryMode = DISCOVERY_MODES.TRACK; // Default to track-based
+					let mode = DISCOVERY_MODES.TRACK; // Default to track-based
 					
 					// Map setting value to discovery mode constant
 					if (autoModeSetting === 'Artist') {
-						discoveryMode = DISCOVERY_MODES.ARTIST;
+						mode = DISCOVERY_MODES.ARTIST;
 					} else if (autoModeSetting === 'Genre') {
-						discoveryMode = DISCOVERY_MODES.GENRE;
+						mode = DISCOVERY_MODES.GENRE;
 					} else {
-						discoveryMode = DISCOVERY_MODES.TRACK;
+						mode = DISCOVERY_MODES.TRACK;
 					}
 					
-					console.log(`Match Monkey Auto-Mode: Using ${autoModeSetting} discovery (mode=${discoveryMode})`);
-					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode);
+					console.log(`Match Monkey Auto-Mode: Using ${autoModeSetting} discovery from settings (mode=${mode})`);
+					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, mode);
 				},
 				showToast,
 				isAutoModeEnabled: () => autoMode.isAutoModeEnabled(getSetting),

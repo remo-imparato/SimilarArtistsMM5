@@ -74,7 +74,7 @@ localRequirejs('modules/core/mm5Integration');
 		Overwrite: 'Create new playlist', // Playlist creation mode dropdown
 		SeedLimit: 20,         // Number of seed artists to use
 		SimilarLimit: 30,      // Number of similar artists per seed
-		TPA: 30,               // Tracks Per Artist to fetch
+		TPA: 50,               // Tracks Per Artist to fetch
 		TPL: 1000,             // Total tracks Per pLaylist limit
 
 		// Behavior flags

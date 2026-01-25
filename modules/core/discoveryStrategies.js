@@ -78,8 +78,7 @@ async function discoverByArtist(modules, seeds, config) {
 			const fixedName = fixPrefixes(seed.name);
 			const similar = await fetchSimilarArtists(
 				fixedName, 
-				config.seedLimit || 15,
-				config.tracksPerArtist || 25
+				config.seedLimit || 15
 			);
 
 			if (!similar || similar.length === 0) {
