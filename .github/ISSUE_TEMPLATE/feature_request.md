@@ -1,9 +1,9 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
+about: Suggest an idea for Match Monkey
+title: "[Feature]"
+labels: documentation, enhancement, good first issue, help wanted
+assignees: remo-imparato
 
 ---
 
