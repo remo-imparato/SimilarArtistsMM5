@@ -51,7 +51,7 @@ function setSetting(key, value) {
 /**
  * Load handler - populates UI controls with current settings.
  */
-optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function(sett, pnl, wndParams) {
+optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, pnl, wndParams) {
 	try {
 		// Read configuration from system storage
 		this.config = app.getValue(SCRIPT_ID, {});
@@ -65,7 +65,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function(sett, p
 		const UI = getAllUIElements(pnl);
 
 		// Load all settings from config
-		UI.SAApiKey.controlClass.value = this.config.ApiKey || '7fd988db0c4e9d8b12aed27d0a91a932';
+		UI.SAApiKey.controlClass.value = this.config.ApiKey;
 		UI.SAConfirm.controlClass.checked = Boolean(this.config.Confirm);
 
 		// Handle seed/similar limit
@@ -86,10 +86,10 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function(sett, p
 
 		UI.SAUnknown.controlClass.checked = Boolean(this.config.Unknown);
 		UI.SAOverwrite.controlClass.value = this.config.Overwrite || 'Create new playlist';
-		
+
 		// Auto-mode discovery type dropdown (Artist/Track/Genre)
 		UI.SAAutoMode.controlClass.value = this.config.AutoMode || 'Track';
-		
+
 		UI.SAEnqueue.controlClass.checked = Boolean(this.config.Enqueue);
 		UI.SANavigate.controlClass.value = this.config.Navigate || 'None';
 
@@ -111,9 +111,9 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function(sett, p
 /**
  * Helper to set rating control value.
  */
-optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setRatingControl = function(uiRatingControl, value) {
+optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setRatingControl = function (uiRatingControl, value) {
 	if (!uiRatingControl?.controlClass) return;
-	
+
 	const ctrl = uiRatingControl.controlClass;
 	const apply = () => {
 		try {
@@ -133,7 +133,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setRatingControl = function(
 	} else {
 		// Wait for control to initialize
 		const onLoad = () => {
-			try { apply(); } 
+			try { apply(); }
 			finally { app.unlisten(ctrl.container, 'load', onLoad); }
 		};
 		app.listen(ctrl.container, 'load', onLoad);
@@ -144,7 +144,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setRatingControl = function(
 /**
  * Helper to setup auto-mode checkbox with change listener.
  */
-optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = function(uiCheckbox) {
+optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = function (uiCheckbox) {
 	// Set initial state
 	try {
 		if (window.matchMonkey?.isAutoEnabled) {
@@ -206,7 +206,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 /**
  * Save handler - persists UI control values to settings.
  */
-optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function(sett) {
+optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 	try {
 		// Clean up event listener
 		if (this._autoModeListener) {
@@ -234,17 +234,17 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function(sett) {
 		this.config.Parent = UI.SAParent.controlClass.value;
 
 		// Rating value
-		const rawRating = Number.isFinite(UI.SARating.controlClass.value) 
-			? Math.max(0, Math.min(100, UI.SARating.controlClass.value)) 
+		const rawRating = Number.isFinite(UI.SARating.controlClass.value)
+			? Math.max(0, Math.min(100, UI.SARating.controlClass.value))
 			: 0;
 		this.config.Rating = String(rawRating);
 
 		this.config.Unknown = UI.SAUnknown.controlClass.checked;
 		this.config.Overwrite = UI.SAOverwrite.controlClass.value;
-		
+
 		// Auto-mode discovery type dropdown (Artist/Track/Genre)
 		this.config.AutoMode = UI.SAAutoMode.controlClass.value;
-		
+
 		this.config.Enqueue = UI.SAEnqueue.controlClass.checked;
 		this.config.Navigate = UI.SANavigate.controlClass.value;
 

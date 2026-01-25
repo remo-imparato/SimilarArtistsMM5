@@ -40,7 +40,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		}
 
 		// Build API request
-		const apiKey = getApiKey ? getApiKey() : '7fd988db0c4e9d8b12aed27d0a91a932';
+		const apiKey = getApiKey();
 		const lim = Number(limit) || undefined;
 		const params = new URLSearchParams({
 			method: 'artist.getSimilar',
@@ -131,7 +131,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		}
 
 		// Build API request
-		const apiKey = getApiKey ? getApiKey() : '7fd988db0c4e9d8b12aed27d0a91a932';
+		const apiKey = getApiKey();
 		const lim = Number(limit) || undefined;
 		const params = new URLSearchParams({
 			method: 'artist.getTopTracks',
@@ -239,7 +239,7 @@ async function fetchSimilarTracks(artistName, trackName, limit = 30) {
 		}
 
 		// Build API request
-		const apiKey = getApiKey ? getApiKey() : '7fd988db0c4e9d8b12aed27d0a91a932';
+		const apiKey = getApiKey();
 		const params = new URLSearchParams({
 			method: 'track.getSimilar',
 			api_key: apiKey,
@@ -335,7 +335,7 @@ async function fetchArtistInfo(artistName) {
 		}
 
 		// Build API request
-		const apiKey = getApiKey ? getApiKey() : '7fd988db0c4e9d8b12aed27d0a91a932';
+		const apiKey = getApiKey();
 		const params = new URLSearchParams({
 			method: 'artist.getInfo',
 			api_key: apiKey,
@@ -401,7 +401,7 @@ async function fetchArtistsByTag(tag, limit = 30) {
 		if (!tag) return [];
 
 		const getApiKey = window.matchMonkeyLastfm?.getApiKey;
-		const apiKey = getApiKey ? getApiKey() : '7fd988db0c4e9d8b12aed27d0a91a932';
+		const apiKey = getApiKey();
 
 		const params = new URLSearchParams({
 			method: 'tag.getTopArtists',

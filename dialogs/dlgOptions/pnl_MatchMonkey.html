@@ -11,17 +11,17 @@
 	<fieldset>
 		<legend>General options</legend>
 		<div class="uiRow">
-			<label class="inline">Last.fm API key:</label>
+			<label class="inline">Alternate Last.fm API key (optional):</label>
 			<div data-id="SAApiKey"
 				 data-control-class="Edit"
 				 style="width:220px"
-				 data-init-params='{"hint":"Enter your Last.fm API key"}'></div>
+				 data-init-params='{"hint":"Enter a custom Last.fm API key (optional). Fall back to current Last.fm API key, or falls back to rimparato key."}'></div>
 		</div>
 		<div class="uiRow">
 			<div data-id="SAOnPlay" data-control-class="Checkbox">Auto queue similar tracks when Now Playing is near the end?</div>
 		</div>
 		<div class="uiRow">
-			<label class="inline">Auto Queue Similar by:</label>
+			<label class="inline">Auto Queue Match by:</label>
 			<div data-id="SAAutoMode" data-control-class="Dropdown">
 				<option>Artist</option>
 				<option>Track</option>
@@ -81,14 +81,19 @@
 
 			<div class="uiRow">
 				<div data-id="SABest" data-control-class="Checkbox">Select highest rated in library?</div>
+			</div>
+
+			<div class="uiRow">
 				<div data-id="SARank" data-control-class="Checkbox">Select highest ranked by Last.fm?</div>
 			</div>
-			<div class="uiRow">
-				<label class="inline">Minimum rating to use in local library:</label>
-				<div data-id="SARating" data-control-class="Rating" data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
-			</div>
+
 			<div class="uiRow">
 				<div data-id="SAUnknown" data-control-class="Checkbox">Include unknown rating?</div>
+			</div>
+
+			<div class="uiRow">
+				<label class="inline">Minimum rating in local library:</label>
+				<div data-id="SARating" data-control-class="Rating" data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
 			</div>
 
 		</div>
