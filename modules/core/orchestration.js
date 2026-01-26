@@ -550,4 +550,20 @@ window.matchMonkeyOrchestration = {
 		// Get unique artists from seeds
 		const artists = new Set();
 		for (const seed of seeds) {
-			if
+			if (seed.artist) {
+				// Split by semicolon and add each artist
+				const parts = seed.artist.split(';').map(a => a.trim()).filter(Boolean);
+				for (const part of parts) {
+					artists.add(part);
+				}
+			}
+		}
+
+		const artistList = Array.from(artists);
+
+		if (artistList.length === 0) return 'Selection';
+		if (artistList.length === 1) return artistList[0];
+		if (artistList.length === 2) return `${artistList[0]} & ${artistList[1]}`;
+		return `${artistList[0]} & Others`;
+	},
+};

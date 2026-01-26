@@ -85,6 +85,7 @@ function setSetting(key, value) {
  */
 optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, pnl, wndParams) {
 	try {
+
 		// Read configuration from system storage
 		this.config = app.getValue(SCRIPT_ID, {});
 

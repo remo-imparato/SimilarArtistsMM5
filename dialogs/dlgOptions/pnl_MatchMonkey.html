@@ -3,7 +3,7 @@
 
 	@author Remo Imparato
 	@description Configuration UI for MatchMonkey add-on in Tools > Options > Library
-	
+
 	Config Property Names:
 	- PlaylistName: Playlist name template (% = artist name)
 	- PlaylistMode: Create new / Overwrite / Do not create
@@ -38,8 +38,7 @@
 	- AutoModeTracksPerArtist: Tracks per artist in auto-mode
 	- AutoModeMaxTracks: Max tracks to add in auto-mode
 -->
-
-<link rel="stylesheet" href="pnl_MatchMonkey.css">
+<!--<link rel="stylesheet" href="pnl_MatchMonkey.css">-->
 
 <div data-id="SimilarArtistsSettings" class="innerDlg">
 
@@ -180,15 +179,17 @@
 			</div>
 			<div class="uiRow">
 				<label class="inline">Seed/Mood balance:</label>
-				<div class="sliderContainer">
-					<div data-id="MoodActivityBlendRatio" 
-						 data-control-class="Slider" 
+				<div class="sliderContainer" style="width: 30em">
+
+					<div data-id="MoodActivityBlendRatio"
+						 data-control-class="Slider"
 						 data-tip="Control the balance between your seed artists and mood recommendations. 0% = pure mood discovery, 50% = balanced (recommended), 100% = seed-based with mood filter"
-						 data-init-params='{"min":0, "max":100, "step":10, "showValue":true}'></div>
-					<div class="sliderLabels">
-						<span class="sliderLabel left">All Mood</span>
-						<span class="sliderLabel center">Balanced</span>
-						<span class="sliderLabel right">All Seeds</span>
+						 data-init-params='{"min":0, "max":100, "step":10, ticks: [0, 50, 100]}'></div>
+
+					<div style="display:flex; width:100%; justify-content:space-between; align-items:center;">
+						<span style="white-space:nowrap; text-align:left;">All Mood</span>
+						<span style="flex:1; text-align:center; white-space:nowrap;">Balanced</span>
+						<span style="white-space:nowrap; text-align:right;">All Seeds</span>
 					</div>
 				</div>
 			</div>
@@ -271,22 +272,22 @@
 		<div class="uiRows">
 			<div class="uiRow">
 				<label class="inline">Exclude artists:</label>
-				<div data-id="ArtistBlacklist" 
-					 data-control-class="Edit" 
+				<div data-id="ArtistBlacklist"
+					 data-control-class="Edit"
 					 data-tip="Comma-separated list of artist names to exclude from results"
 					 data-init-params='{"hint":"e.g., Artist1, Artist2"}'></div>
 			</div>
 			<div class="uiRow">
 				<label class="inline">Exclude genres:</label>
-				<div data-id="GenreBlacklist" 
-					 data-control-class="Edit" 
+				<div data-id="GenreBlacklist"
+					 data-control-class="Edit"
 					 data-tip="Comma-separated list of genres to exclude"
 					 data-init-params='{"hint":"e.g., Christmas, Holiday"}'></div>
 			</div>
 			<div class="uiRow">
 				<label class="inline">Exclude title words:</label>
-				<div data-id="TitleExclusions" 
-					 data-control-class="Edit" 
+				<div data-id="TitleExclusions"
+					 data-control-class="Edit"
 					 data-tip="Comma-separated words - tracks containing these words in title will be excluded"
 					 data-init-params='{"hint":"e.g., Live, Remix, Demo"}'></div>
 			</div>

@@ -56,11 +56,19 @@ localRequirejs('modules/core/orchestration');
 localRequirejs('modules/core/autoMode');
 localRequirejs('modules/core/mm5Integration');
 
+/*
+//Debuging tools (depend on utils)
+requirejs('helpers/debugTools');
+registerDebuggerEntryPoint.call(this, 'start');
+
+//*/
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 
-(function() {
+//NOTE: use a named function so we can register it for debugging
+function start() {
 	'use strict';
 
 	// Script namespace
@@ -292,5 +300,10 @@ localRequirejs('modules/core/mm5Integration');
 		setTimeout(initializeAddon, 500);
 	}
 
-})();
+}
+
+//-- make it named function so we can register it for debugging
+start();
+
+
 
