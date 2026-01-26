@@ -5,6 +5,7 @@
  * - Properties: childrenCount, id, isAutoPlaylist, name, parent, parentID
  * - Methods: addTracksAsync, clearTracksAsync, commitAsync, deleteAsync, 
  *            getChildren, getTracklist, newPlaylist
+ * - app.playlists.getByTitleAsync() - Find playlist by name
  * 
  * @module modules/db/playlist
  */
@@ -13,73 +14,76 @@
 
 /**
  * Find a playlist by name anywhere in the playlist tree.
- * Searches recursively through all playlists.
+ * Uses MM5's getByTitleAsync() method.
  *
+ * @async
  * @param {string} playlistName - Name of playlist to find (case-insensitive)
- * @returns {object|null} Playlist object if found, null otherwise
+ * @returns {Promise<object|null>} Playlist object if found, null otherwise
  */
-function findPlaylist(playlistName) {
+async function findPlaylist(playlistName) {
 	if (!playlistName || String(playlistName).trim().length === 0) {
 		return null;
 	}
 
-	if (typeof app === 'undefined' || !app.playlists?.root) {
-		console.warn('findPlaylist: app.playlists.root not available');
+	if (typeof app === 'undefined' || !app.playlists) {
+		console.warn('findPlaylist: app.playlists not available');
 		return null;
 	}
 
-	const targetName = String(playlistName).trim().toLowerCase();
-
-	function searchNode(node) {
-		if (!node) return null;
-
-		// Check this node's name
-		const nodeName = node.name || '';
-		if (nodeName.toLowerCase() === targetName) {
-			return node;
+	try {
+		const name = String(playlistName).trim();
+		
+		// Use MM5's documented getByTitleAsync method
+		const result = await app.playlists.getByTitleAsync(name);
+		
+		if (result) {
+			console.log(`findPlaylist: Found "${name}"`);
+			return result;
 		}
-
-		// Search children using getChildren() - the documented MM5 method
-		const children = node.getChildren?.() || [];
-		for (const child of children) {
-			const found = searchNode(child);
-			if (found) return found;
-		}
-
+		
+		console.log(`findPlaylist: "${name}" not found`);
+		return null;
+	} catch (e) {
+		console.error('findPlaylist error:', e);
 		return null;
 	}
-
-	const result = searchNode(app.playlists.root);
-	console.log(`findPlaylist: "${playlistName}" ${result ? 'found' : 'not found'}`);
-	return result;
 }
 
 /**
  * Find a playlist by name that is a direct child of a parent playlist.
- * Only searches immediate children, not recursively.
+ * First finds the playlist globally, then verifies it's a child of the parent.
  *
+ * @async
  * @param {string} playlistName - Name of playlist to find (case-insensitive)
- * @param {object} parentPlaylist - Parent playlist node to search under
- * @returns {object|null} Playlist object if found, null otherwise
+ * @param {object} parentPlaylist - Parent playlist node to verify against
+ * @returns {Promise<object|null>} Playlist object if found and is a child of parent, null otherwise
  */
-function findPlaylistUnderParent(playlistName, parentPlaylist) {
+async function findPlaylistUnderParent(playlistName, parentPlaylist) {
 	if (!playlistName || !parentPlaylist) {
 		return null;
 	}
 
-	const targetName = String(playlistName).trim().toLowerCase();
-	const children = parentPlaylist.getChildren?.() || [];
-
-	for (const child of children) {
-		const childName = child.name || '';
-		if (childName.toLowerCase() === targetName) {
-			console.log(`findPlaylistUnderParent: Found "${playlistName}" under parent`);
-			return child;
+	try {
+		// Use app.playlists.getByTitleAsync to find the playlist
+		const playlist = await findPlaylist(playlistName);
+		
+		if (!playlist) {
+			console.log(`findPlaylistUnderParent: "${playlistName}" not found`);
+			return null;
 		}
-	}
 
-	console.log(`findPlaylistUnderParent: "${playlistName}" not found under parent`);
-	return null;
+		// Verify it's a child of the parent by checking parentID
+		if (playlist.parentID === parentPlaylist.id) {
+			console.log(`findPlaylistUnderParent: Found "${playlistName}" under parent`);
+			return playlist;
+		}
+
+		console.log(`findPlaylistUnderParent: "${playlistName}" exists but not under specified parent`);
+		return null;
+	} catch (e) {
+		console.error('findPlaylistUnderParent error:', e);
+		return null;
+	}
 }
 
 /**
@@ -220,7 +224,7 @@ async function deletePlaylist(playlist) {
  * Resolve the target playlist based on settings and mode.
  * 
  * Handles:
- * - Parent playlist: finds or creates if specified
+ * - Parent playlist: finds or creates if specified (0 or 1 parent)
  * - Playlist mode: Create new (with unique naming) or Overwrite existing
  * - Returns the playlist and whether it should be cleared
  *
@@ -241,10 +245,10 @@ async function resolveTargetPlaylist(playlistName, parentName, playlistMode, use
 		};
 	}
 
-	// Determine the parent node
+	// Determine the parent node (0 or 1 parent only)
 	let parentPlaylist = null;
 	if (parentName && parentName.trim()) {
-		parentPlaylist = findPlaylist(parentName.trim());
+		parentPlaylist = await findPlaylist(parentName.trim());
 		if (!parentPlaylist) {
 			// Create the parent playlist at root
 			console.log(`resolveTargetPlaylist: Creating parent playlist "${parentName}"`);
@@ -257,8 +261,8 @@ async function resolveTargetPlaylist(playlistName, parentName, playlistMode, use
 	if (isOverwriteMode) {
 		// Look for existing playlist to overwrite
 		const existing = parentPlaylist
-			? findPlaylistUnderParent(playlistName, parentPlaylist)
-			: findPlaylist(playlistName);
+			? await findPlaylistUnderParent(playlistName, parentPlaylist)
+			: await findPlaylist(playlistName);
 
 		if (existing) {
 			console.log(`resolveTargetPlaylist: Found existing playlist to overwrite`);
@@ -273,11 +277,15 @@ async function resolveTargetPlaylist(playlistName, parentName, playlistMode, use
 		let testName = playlistName;
 		
 		// Check for existing playlist with same name
-		const checkExists = parentPlaylist
-			? (name) => findPlaylistUnderParent(name, parentPlaylist)
-			: (name) => findPlaylist(name);
+		const checkExists = async (name) => {
+			if (parentPlaylist) {
+				return await findPlaylistUnderParent(name, parentPlaylist);
+			} else {
+				return await findPlaylist(name);
+			}
+		};
 
-		while (checkExists(testName)) {
+		while (await checkExists(testName)) {
 			counter++;
 			testName = `${playlistName}_${counter}`;
 			if (counter > 100) break; // Safety limit
@@ -298,7 +306,7 @@ async function resolveTargetPlaylist(playlistName, parentName, playlistMode, use
  * @returns {Promise<object|null>} Playlist object or null on failure
  */
 async function getOrCreatePlaylist(playlistName) {
-	const existing = findPlaylist(playlistName);
+	const existing = await findPlaylist(playlistName);
 	if (existing) {
 		console.log(`getOrCreatePlaylist: Using existing "${playlistName}"`);
 		return existing;
