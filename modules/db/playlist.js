@@ -1,194 +1,321 @@
 /**
  * Playlist Management Module - Phase 4: Database Layer
  *
- * Handles MediaMonkey playlist operations including creation, retrieval,
- * and population with tracks from the library.
+ * Handles MediaMonkey 5 playlist operations using only documented API methods:
+ * - Properties: childrenCount, id, isAutoPlaylist, name, parent, parentID
+ * - Methods: addTracksAsync, clearTracksAsync, commitAsync, deleteAsync, 
+ *            getChildren, getTracklist, newPlaylist
  * 
- * MediaMonkey 5 API Only
- *
  * @module modules/db/playlist
  */
 
 'use strict';
 
 /**
- * Create a new playlist in MediaMonkey.
+ * Find a playlist by name anywhere in the playlist tree.
+ * Searches recursively through all playlists.
  *
- * Creates a new user playlist with the specified name. The playlist
- * will be added to the user's playlist collection, optionally under
- * a parent playlist. If the parent doesn't exist, it will be created.
- * If a child playlist with the same name already exists, returns the existing one.
- *
- * @async
- * @function createPlaylist
- * @param {string} playlistName - Name for the new playlist
- * @param {string} [parentName=''] - Name of parent playlist to create under (empty for root)
- * @returns {Promise<object|null>} Playlist object or null if creation failed
- */
-async function createPlaylist(playlistName, parentName = '') {
-	try {
-		if (!playlistName || String(playlistName).trim().length === 0) {
-			console.error('createPlaylist: Invalid playlist name');
-			return null;
-		}
-
-		const name = String(playlistName).trim();
-
-		// Validate MM5 environment
-		if (typeof app === 'undefined' || !app.playlists) {
-			console.error('createPlaylist: MM5 app.playlists not available');
-			return null;
-		}
-
-		// Step 1: Check if child playlist already exists anywhere
-		const existingChild = findPlaylist(name);
-		if (existingChild) {
-			console.log(`createPlaylist: Playlist "${name}" already exists, returning existing`);
-			return existingChild;
-		}
-
-		// Step 2: Determine parent node
-		let parentNode = app.playlists.root;
-		
-		if (parentName && String(parentName).trim().length > 0) {
-			const parentNameTrimmed = String(parentName).trim();
-			let parent = findPlaylist(parentNameTrimmed);
-			
-			if (!parent) {
-				// Parent doesn't exist, create it first
-				console.log(`createPlaylist: Parent playlist "${parentNameTrimmed}" not found, creating it first`);
-				parent = app.playlists.root.newPlaylist();
-				if (!parent) {
-					console.error('createPlaylist: Failed to create parent playlist object');
-					return null;
-				}
-				parent.name = parentNameTrimmed;
-				await parent.commitAsync();
-				console.log(`createPlaylist: Created parent playlist "${parentNameTrimmed}"`);
-			}
-			
-			parentNode = parent;
-			console.log(`createPlaylist: Creating under parent "${parentNameTrimmed}"`);
-		}
-
-		// Step 3: Create new playlist under parent
-		const newPlaylist = parentNode.newPlaylist();
-		if (!newPlaylist) {
-			console.error('createPlaylist: Failed to create new playlist object');
-			return null;
-		}
-
-		newPlaylist.name = name;
-
-		// Commit changes to database
-		await newPlaylist.commitAsync();
-
-		console.log(`createPlaylist: Created playlist "${name}"`);
-
-		return newPlaylist;
-	} catch (e) {
-		console.error('createPlaylist error: ' + e.toString());
-		return null;
-	}
-}
-
-/**
- * Find an existing playlist by name in MediaMonkey.
- *
- * Searches the user's playlist collection for a playlist matching
- * the specified name (case-insensitive).
- *
- * @function findPlaylist
- * @param {string} playlistName - Name of playlist to find
+ * @param {string} playlistName - Name of playlist to find (case-insensitive)
  * @returns {object|null} Playlist object if found, null otherwise
  */
 function findPlaylist(playlistName) {
-	try {
-		if (!playlistName || String(playlistName).trim().length === 0) {
-			return null;
-		}
-
-		if (typeof app === 'undefined' || !app.playlists) {
-			console.warn('findPlaylist: MM5 app.playlists not available');
-			return null;
-		}
-
-		const targetName = String(playlistName).trim().toLowerCase();
-
-		// Recursive search through playlist hierarchy
-		function searchNode(node) {
-			if (!node) return null;
-
-			// Check if this node is the target playlist (case-insensitive)
-			// MediaMonkey 5 playlists use .name property
-			if (node.name && node.name.toLowerCase() === targetName) {
-				return node;
-			}
-
-			// Search in child playlists if available
-			if (node.childNodes) {
-				// childNodes may be array or list-like
-				const children = Array.isArray(node.childNodes) 
-					? node.childNodes 
-					: (node.childNodes.length ? Array.from(node.childNodes) : []);
-				
-				for (const child of children) {
-					const found = searchNode(child);
-					if (found) return found;
-				}
-			}
-
-			return null;
-		}
-
-		// Start search from root
-		const result = searchNode(app.playlists.root);
-		if (result) {
-			console.log(`findPlaylist: Found playlist "${targetName}"`);
-			return result;
-		}
-
-		console.log(`findPlaylist: Playlist "${targetName}" not found`);
+	if (!playlistName || String(playlistName).trim().length === 0) {
 		return null;
+	}
+
+	if (typeof app === 'undefined' || !app.playlists?.root) {
+		console.warn('findPlaylist: app.playlists.root not available');
+		return null;
+	}
+
+	const targetName = String(playlistName).trim().toLowerCase();
+
+	function searchNode(node) {
+		if (!node) return null;
+
+		// Check this node's name
+		const nodeName = node.name || '';
+		if (nodeName.toLowerCase() === targetName) {
+			return node;
+		}
+
+		// Search children using getChildren() - the documented MM5 method
+		const children = node.getChildren?.() || [];
+		for (const child of children) {
+			const found = searchNode(child);
+			if (found) return found;
+		}
+
+		return null;
+	}
+
+	const result = searchNode(app.playlists.root);
+	console.log(`findPlaylist: "${playlistName}" ${result ? 'found' : 'not found'}`);
+	return result;
+}
+
+/**
+ * Find a playlist by name that is a direct child of a parent playlist.
+ * Only searches immediate children, not recursively.
+ *
+ * @param {string} playlistName - Name of playlist to find (case-insensitive)
+ * @param {object} parentPlaylist - Parent playlist node to search under
+ * @returns {object|null} Playlist object if found, null otherwise
+ */
+function findPlaylistUnderParent(playlistName, parentPlaylist) {
+	if (!playlistName || !parentPlaylist) {
+		return null;
+	}
+
+	const targetName = String(playlistName).trim().toLowerCase();
+	const children = parentPlaylist.getChildren?.() || [];
+
+	for (const child of children) {
+		const childName = child.name || '';
+		if (childName.toLowerCase() === targetName) {
+			console.log(`findPlaylistUnderParent: Found "${playlistName}" under parent`);
+			return child;
+		}
+	}
+
+	console.log(`findPlaylistUnderParent: "${playlistName}" not found under parent`);
+	return null;
+}
+
+/**
+ * Create a new playlist under a specified parent (or root if null).
+ * Uses MM5's newPlaylist() and commitAsync() methods.
+ *
+ * @async
+ * @param {string} playlistName - Name for the new playlist
+ * @param {object|null} parentPlaylist - Parent playlist node, or null for root
+ * @returns {Promise<object|null>} Created playlist object or null on failure
+ */
+async function createPlaylist(playlistName, parentPlaylist = null) {
+	if (!playlistName || String(playlistName).trim().length === 0) {
+		console.error('createPlaylist: Invalid playlist name');
+		return null;
+	}
+
+	if (typeof app === 'undefined' || !app.playlists?.root) {
+		console.error('createPlaylist: app.playlists.root not available');
+		return null;
+	}
+
+	const name = String(playlistName).trim();
+	const targetNode = parentPlaylist || app.playlists.root;
+
+	try {
+		// Create new playlist using MM5's newPlaylist() method
+		const playlist = targetNode.newPlaylist();
+		if (!playlist) {
+			console.error('createPlaylist: newPlaylist() returned null');
+			return null;
+		}
+
+		// Set the name
+		playlist.name = name;
+
+		// Commit to database using commitAsync()
+		await playlist.commitAsync();
+
+		console.log(`createPlaylist: Created "${name}"${parentPlaylist ? ' under parent' : ' at root'}`);
+		return playlist;
+
 	} catch (e) {
-		console.error('findPlaylist error: ' + e.toString());
+		console.error('createPlaylist error:', e);
 		return null;
 	}
 }
 
 /**
- * Get or create a playlist, preferring to find existing if available.
- *
- * Attempts to find an existing playlist by name. If not found, creates
- * a new one, optionally under a parent.
+ * Clear all tracks from a playlist using clearTracksAsync().
  *
  * @async
- * @function getOrCreatePlaylist
- * @param {string} playlistName - Name of the playlist
- * @param {string} [parentName=''] - Name of parent playlist (empty for root)
- * @returns {Promise<object|null>} Playlist object or null on failure
+ * @param {object} playlist - Playlist object to clear
+ * @returns {Promise<boolean>} True if cleared successfully
  */
-async function getOrCreatePlaylist(playlistName, parentName = '') {
+async function clearPlaylistTracks(playlist) {
+	if (!playlist) {
+		return false;
+	}
+
 	try {
-		// First try to find existing
-		const existing = findPlaylist(playlistName);
-		if (existing) {
-			console.log(`getOrCreatePlaylist: Using existing playlist "${playlistName}"`);
-			return existing;
+		// Use MM5's clearTracksAsync method
+		await playlist.clearTracksAsync();
+		console.log(`clearPlaylistTracks: Cleared "${playlist.name}"`);
+		return true;
+	} catch (e) {
+		console.error('clearPlaylistTracks error:', e);
+		return false;
+	}
+}
+
+/**
+ * Add tracks to a playlist using addTracksAsync().
+ *
+ * @async
+ * @param {object} playlist - Playlist object
+ * @param {object[]} tracks - Array of track objects to add
+ * @returns {Promise<number>} Number of tracks added
+ */
+async function addTracksToPlaylist(playlist, tracks) {
+	if (!playlist || !Array.isArray(tracks) || tracks.length === 0) {
+		return 0;
+	}
+
+	try {
+		// Create a tracklist with all tracks
+		const tracklist = app.utils.createTracklist(true);
+		let validCount = 0;
+
+		for (const track of tracks) {
+			if (track && typeof track === 'object') {
+				tracklist.add(track);
+				validCount++;
+			}
 		}
 
-		// If not found, create new
-		console.log(`getOrCreatePlaylist: Creating new playlist "${playlistName}"`);
-		return await createPlaylist(playlistName, parentName);
+		if (validCount === 0) {
+			return 0;
+		}
+
+		await tracklist.whenLoaded();
+
+		// Use MM5's addTracksAsync method
+		await playlist.addTracksAsync(tracklist);
+
+		console.log(`addTracksToPlaylist: Added ${validCount} tracks to "${playlist.name}"`);
+		return validCount;
+
 	} catch (e) {
-		console.error('getOrCreatePlaylist error: ' + e.toString());
-		return null;
+		console.error('addTracksToPlaylist error:', e);
+		return 0;
 	}
+}
+
+/**
+ * Delete a playlist using deleteAsync().
+ *
+ * @async
+ * @param {object} playlist - Playlist object to delete
+ * @returns {Promise<boolean>} True if deleted successfully
+ */
+async function deletePlaylist(playlist) {
+	if (!playlist) {
+		return false;
+	}
+
+	try {
+		await playlist.deleteAsync();
+		console.log(`deletePlaylist: Deleted "${playlist.name}"`);
+		return true;
+	} catch (e) {
+		console.error('deletePlaylist error:', e);
+		return false;
+	}
+}
+
+/**
+ * Resolve the target playlist based on settings and mode.
+ * 
+ * Handles:
+ * - Parent playlist: finds or creates if specified
+ * - Playlist mode: Create new (with unique naming) or Overwrite existing
+ * - Returns the playlist and whether it should be cleared
+ *
+ * @async
+ * @param {string} playlistName - Desired playlist name
+ * @param {string} parentName - Name of parent playlist (empty for root)
+ * @param {string} playlistMode - 'Create new playlist' or 'Overwrite existing playlist'
+ * @param {object|null} userSelectedPlaylist - User-selected playlist from dialog (overrides auto-creation)
+ * @returns {Promise<{playlist: object|null, shouldClear: boolean}>}
+ */
+async function resolveTargetPlaylist(playlistName, parentName, playlistMode, userSelectedPlaylist = null) {
+	// If user selected a playlist via dialog, use that
+	if (userSelectedPlaylist && !userSelectedPlaylist.autoCreate) {
+		console.log(`resolveTargetPlaylist: Using user-selected playlist`);
+		return {
+			playlist: userSelectedPlaylist,
+			shouldClear: playlistMode.toLowerCase().includes('overwrite'),
+		};
+	}
+
+	// Determine the parent node
+	let parentPlaylist = null;
+	if (parentName && parentName.trim()) {
+		parentPlaylist = findPlaylist(parentName.trim());
+		if (!parentPlaylist) {
+			// Create the parent playlist at root
+			console.log(`resolveTargetPlaylist: Creating parent playlist "${parentName}"`);
+			parentPlaylist = await createPlaylist(parentName.trim(), null);
+		}
+	}
+
+	const isOverwriteMode = playlistMode.toLowerCase().includes('overwrite');
+
+	if (isOverwriteMode) {
+		// Look for existing playlist to overwrite
+		const existing = parentPlaylist
+			? findPlaylistUnderParent(playlistName, parentPlaylist)
+			: findPlaylist(playlistName);
+
+		if (existing) {
+			console.log(`resolveTargetPlaylist: Found existing playlist to overwrite`);
+			return { playlist: existing, shouldClear: true };
+		}
+	}
+
+	// Create new playlist mode - need unique name if playlist exists
+	let finalName = playlistName;
+	if (!isOverwriteMode) {
+		let counter = 1;
+		let testName = playlistName;
+		
+		// Check for existing playlist with same name
+		const checkExists = parentPlaylist
+			? (name) => findPlaylistUnderParent(name, parentPlaylist)
+			: (name) => findPlaylist(name);
+
+		while (checkExists(testName)) {
+			counter++;
+			testName = `${playlistName}_${counter}`;
+			if (counter > 100) break; // Safety limit
+		}
+		finalName = testName;
+	}
+
+	// Create the new playlist
+	const newPlaylist = await createPlaylist(finalName, parentPlaylist);
+	return { playlist: newPlaylist, shouldClear: false };
+}
+
+/**
+ * Get or create a playlist by name at root level.
+ *
+ * @async
+ * @param {string} playlistName - Name of the playlist
+ * @returns {Promise<object|null>} Playlist object or null on failure
+ */
+async function getOrCreatePlaylist(playlistName) {
+	const existing = findPlaylist(playlistName);
+	if (existing) {
+		console.log(`getOrCreatePlaylist: Using existing "${playlistName}"`);
+		return existing;
+	}
+
+	console.log(`getOrCreatePlaylist: Creating new "${playlistName}"`);
+	return await createPlaylist(playlistName, null);
 }
 
 // Export to window namespace for MM5
 window.dbPlaylist = {
-	createPlaylist,
 	findPlaylist,
+	findPlaylistUnderParent,
+	createPlaylist,
+	clearPlaylistTracks,
+	addTracksToPlaylist,
+	deletePlaylist,
+	resolveTargetPlaylist,
 	getOrCreatePlaylist,
 };

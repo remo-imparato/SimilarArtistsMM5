@@ -1,10 +1,12 @@
 ﻿################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
-
 /.vs
 
 # .gitignore for SimilarArtistsMM5
+#/ai_MM
+
+
 # Exclude common Visual Studio, editor, OS, and build artifacts
 
 # Visual Studio

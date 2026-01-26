@@ -64,11 +64,10 @@ window.matchMonkeyOrchestration = {
 				throw new Error('MediaMonkey application not available');
 			}
 
-			// Load configuration - uses user settings without hard overrides
+			// Load configuration
 			let config_;
 
 			if (autoMode) {
-				// Auto-mode uses dedicated settings
 				config_ = {
 					seedLimit: intSetting('AutoModeSeedLimit', 2),
 					similarLimit: intSetting('AutoModeSimilarLimit', 10),
@@ -86,7 +85,6 @@ window.matchMonkeyOrchestration = {
 					discoveryMode,
 				};
 			} else {
-				// Manual mode uses standard settings
 				const maxTracks = intSetting('MaxPlaylistTracks', 0);
 				
 				config_ = {
@@ -113,10 +111,9 @@ window.matchMonkeyOrchestration = {
 				config_.moodActivityValue = _moodActivityContext.value;
 				config_.playlistDuration = _moodActivityContext.duration;
 				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio', 50) / 100.0;
-				console.log(`Match Monkey: ${_moodActivityContext.context}="${_moodActivityContext.value}", blend=${config_.moodActivityBlendRatio}`);
 			}
 
-			console.log(`Match Monkey: Starting ${modeName} (auto=${autoMode}, limits: seed=${config_.seedLimit}, similar=${config_.similarLimit}, total=${config_.totalLimit})`);
+			console.log(`Match Monkey: Starting ${modeName} (auto=${autoMode})`);
 
 			// Step 1: Collect seed tracks
 			updateProgress(`Collecting seed tracks...`, 0.05);
@@ -146,7 +143,7 @@ window.matchMonkeyOrchestration = {
 
 			if (!candidates || candidates.length === 0) {
 				terminateProgressTask(taskId);
-				showToast(`No similar ${modeName.toLowerCase()} found. Try different seeds.`, 'info');
+				showToast(`No similar ${modeName.toLowerCase()} found.`, 'info');
 				return { success: false, error: `No ${modeName.toLowerCase()} found.`, tracksAdded: 0 };
 			}
 
@@ -167,8 +164,8 @@ window.matchMonkeyOrchestration = {
 
 			if (!results || results.length === 0) {
 				terminateProgressTask(taskId);
-				showToast(`No matching tracks in your library. Try different seeds or filters.`, 'info');
-				return { success: false, error: 'No matching tracks found in library.', tracksAdded: 0 };
+				showToast(`No matching tracks in your library.`, 'info');
+				return { success: false, error: 'No matching tracks found.', tracksAdded: 0 };
 			}
 
 			console.log(`Match Monkey: Found ${results.length} library matches`);
@@ -183,8 +180,6 @@ window.matchMonkeyOrchestration = {
 			const finalResults = config_.totalLimit < 100000 
 				? results.slice(0, config_.totalLimit)
 				: results;
-
-			console.log(`Match Monkey: Final ${finalResults.length} tracks (limit: ${config_.totalLimit < 100000 ? config_.totalLimit : 'unlimited'})`);
 
 			// Step 5: Output results
 			updateProgress(`Adding ${finalResults.length} tracks...`, 0.9);
@@ -210,12 +205,11 @@ window.matchMonkeyOrchestration = {
 
 			// Calculate elapsed time
 			const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-			const actualTracksAdded = output?.added ?? finalResults.length;
+			const actualTracksAdded = output?.added ?? output?.trackCount ?? finalResults.length;
 
 			updateProgress(`Complete! ${actualTracksAdded} tracks in ${elapsed}s`, 1.0);
 			terminateProgressTask(taskId);
 
-			// Clear cache after successful run
 			cache?.clear?.();
 
 			showToast(`Added ${actualTracksAdded} ${modeName.toLowerCase()} tracks (${elapsed}s)`, 'success');
@@ -254,7 +248,7 @@ window.matchMonkeyOrchestration = {
 				
 				if (typeof selectedTracks.locked === 'function') {
 					selectedTracks.locked(() => {
-						const count = Math.min(selectedTracks.count, 50); // Limit seeds
+						const count = Math.min(selectedTracks.count, 50);
 						for (let i = 0; i < count; i++) {
 							const track = selectedTracks.getValue(i);
 							if (track) {
@@ -272,7 +266,6 @@ window.matchMonkeyOrchestration = {
 			// Priority 2: Currently playing track
 			if (seeds.length === 0 && app.player?.currentTrack) {
 				const track = app.player.currentTrack;
-				console.log(`Match Monkey: Using current track as seed: "${track.artist} - ${track.title}"`);
 				seeds.push({
 					artist: track.artist || track.artistName || '',
 					title: track.title || track.songTitle || '',
@@ -284,7 +277,6 @@ window.matchMonkeyOrchestration = {
 			if (seeds.length === 0 && app.player?.playlist?.count > 0) {
 				const np = app.player.playlist;
 				const count = Math.min(np.count, 10);
-				console.log(`Match Monkey: Using ${count} track(s) from Now Playing as seeds`);
 				
 				if (typeof np.locked === 'function') {
 					np.locked(() => {
@@ -462,6 +454,12 @@ window.matchMonkeyOrchestration = {
 	/**
 	 * Build a playlist from results.
 	 * 
+	 * Handles:
+	 * 1. Confirmation dialog (if enabled) - lets user select existing playlist
+	 * 2. Parent playlist creation/lookup
+	 * 3. Playlist modes: Create new (with unique naming), Overwrite existing
+	 * 4. Clear existing tracks before adding new ones
+	 * 5. Navigate to playlist after creation
 	 * @param {object} modules - Module dependencies
 	 * @param {Array} tracks - Track objects for playlist
 	 * @param {object} config - Configuration settings
@@ -477,7 +475,7 @@ window.matchMonkeyOrchestration = {
 		const playlistMode = stringSetting('PlaylistMode', 'Create new playlist');
 		const navigateAfter = stringSetting('NavigateAfter', 'Navigate to new playlist');
 
-		// Build playlist name
+		// Build playlist name from template
 		let playlistName = playlistTemplate.replace('%', config.seedName || 'Selection');
 		
 		// Add mode indicator if not artist mode
@@ -485,70 +483,158 @@ window.matchMonkeyOrchestration = {
 			playlistName = playlistName.replace('Similar to', config.modeName + ' -');
 		}
 
-		console.log(`Match Monkey: Creating playlist "${playlistName}" with ${tracks.length} tracks`);
+		console.log(`Match Monkey: Building playlist "${playlistName}" (mode: ${playlistMode})`);
 
-		let playlist = null;
-		let shouldClearTracks = false;
+		// Handle "Do not create playlist" mode
+		if (playlistMode === 'Do not create playlist') {
+			showToast(`Found ${tracks.length} tracks (playlist creation disabled)`, 'info');
+			return { added: 0, playlist: null };
+		}
+
+		let userSelectedPlaylist = null;
+
+		// Show confirmation dialog if enabled
+		if (config.showConfirm) {
+			console.log('Match Monkey: Showing playlist selection dialog');
+			try {
+				const dialogResult = await this.showPlaylistDialog();
+				
+				if (dialogResult === null) {
+					// User cancelled
+					console.log('Match Monkey: User cancelled playlist dialog');
+					return { added: 0, playlist: null, cancelled: true };
+				}
+				
+				if (dialogResult && !dialogResult.autoCreate) {
+					userSelectedPlaylist = dialogResult;
+				}
+			} catch (dialogError) {
+				console.error('Match Monkey: Dialog error:', dialogError);
+				// Continue with auto-creation
+			}
+		}
 
 		try {
-			// Step 1: Handle overwrite mode - find existing playlist and mark for clearing
-			if (playlistMode === 'Overwrite existing playlist') {
-				playlist = db.findPlaylist(playlistName);
-				if (playlist) {
-					console.log(`Match Monkey: Found existing playlist "${playlistName}", will clear tracks`);
-					shouldClearTracks = true;
-				}
+			// Resolve target playlist using db layer
+			const resolution = await db.resolveTargetPlaylist(
+				playlistName,
+				parentName,
+				playlistMode,
+				userSelectedPlaylist
+			);
+
+			const targetPlaylist = resolution.playlist;
+			const shouldClear = resolution.shouldClear;
+
+			if (!targetPlaylist) {
+				throw new Error('Failed to create or find target playlist');
 			}
 
-			// Step 2: If no playlist found (or not in overwrite mode), create new one
-			if (!playlist) {
-				playlist = await db.createPlaylist(playlistName, parentName);
+			console.log(`Match Monkey: Using playlist "${targetPlaylist.name}" (clear: ${shouldClear})`);
+
+			// Clear existing tracks first if needed (overwrite mode or user-selected existing playlist)
+			if (shouldClear) {
+				console.log('Match Monkey: Clearing existing tracks');
+				await db.clearPlaylistTracks(targetPlaylist);
 			}
 
-			if (!playlist) {
-				throw new Error('Failed to create playlist');
+			// Add tracks to playlist
+			const addedCount = await db.addTracksToPlaylist(targetPlaylist, tracks);
+
+			if (addedCount === 0) {
+				console.warn('Match Monkey: No tracks were added to playlist');
+				showToast(`Warning: No tracks could be added to playlist`, 'warning');
 			}
 
-			// Step 3: Clear tracks if in overwrite mode
-			if (shouldClearTracks) {
-				console.log(`Match Monkey: Clearing tracks from existing playlist`);
-				try {
-					if (typeof playlist.clear === 'function') {
-						playlist.clear();
-					}
-				} catch (clearError) {
-					console.warn(`Match Monkey: Error clearing playlist:`, clearError);
-				}
-			}
+			// Navigate based on user settings
+			this.navigateAfterCreation(navigateAfter, targetPlaylist);
 
-			// Step 4: Add tracks to playlist
-			await db.addTracksToPlaylist(playlist, tracks);
+			console.log(`Match Monkey: Playlist "${targetPlaylist.name}" complete with ${addedCount} tracks`);
 
-			// Step 5: Commit changes
-			if (typeof playlist.commitAsync === 'function') {
-				await playlist.commitAsync();
-			}
-
-			// Step 6: Navigate if requested
-			if (navigateAfter === 'Navigate to new playlist' && playlist) {
-				try {
-					app.uiTools?.showNode?.(playlist);
-				} catch (_) { /* ignore navigation errors */ }
-			} else if (navigateAfter === 'Navigate to now playing') {
-				try {
-					app.uiTools?.showNowPlaying?.();
-				} catch (_) { /* ignore navigation errors */ }
-			}
-
-			console.log(`Match Monkey: Playlist "${playlistName}" created with ${tracks.length} tracks`);
+			return { added: addedCount, playlist: targetPlaylist };
 
 		} catch (e) {
 			console.error('Match Monkey: Error creating playlist:', e);
 			showToast(`Failed to create playlist: ${e.message}`, 'error');
 			return { added: 0, playlist: null };
 		}
+	},
 
-		return { added: tracks.length, playlist };
+	/**
+	 * Show the playlist selection dialog.
+	 * Returns the selected playlist, {autoCreate: true}, or null if cancelled.
+	 */
+	async showPlaylistDialog() {
+		return new Promise((resolve) => {
+			try {
+				if (typeof uitools === 'undefined' || !uitools.openDialog) {
+					console.log('Match Monkey: uitools.openDialog not available');
+					resolve({ autoCreate: true });
+					return;
+				}
+
+				const dlg = uitools.openDialog('dlgSelectPlaylist', {
+					modal: true,
+					showNewPlaylist: false
+				});
+
+				if (!dlg) {
+					console.log('Match Monkey: Dialog failed to open');
+					resolve({ autoCreate: true });
+					return;
+				}
+
+				const handleClose = () => {
+					if (dlg.modalResult !== 1) {
+						// User cancelled (clicked Cancel or closed dialog)
+						resolve(null);
+						return;
+					}
+
+					// User clicked OK - get selected playlist
+					const selectedPlaylist = dlg.getValue?.('getPlaylist')?.();
+					if (selectedPlaylist) {
+						resolve(selectedPlaylist);
+					} else {
+						// No playlist selected, auto-create
+						resolve({ autoCreate: true });
+					}
+				};
+
+				// Listen for dialog close
+				app.listen(dlg, 'closed', handleClose);
+
+			} catch (e) {
+				console.error('showPlaylistDialog error:', e);
+				resolve({ autoCreate: true });
+			}
+		});
+	},
+
+	/**
+	 * Navigate to playlist or now playing based on user settings.
+	 */
+	navigateAfterCreation(navigateAfter, playlist) {
+		try {
+			if (navigateAfter === 'Navigate to new playlist' && playlist) {
+				// Use MM5's navigationHandlers system
+				if (typeof navigationHandlers !== 'undefined' && 
+					navigationHandlers['playlist']?.navigate) {
+					navigationHandlers['playlist'].navigate(playlist);
+					console.log('Match Monkey: Navigated to playlist via navigationHandlers');
+				}
+			} else if (navigateAfter === 'Navigate to now playing') {
+				// Navigate to Now Playing
+				if (typeof navigationHandlers !== 'undefined' && 
+					navigationHandlers['nowPlaying']?.navigate) {
+					navigationHandlers['nowPlaying'].navigate();
+					console.log('Match Monkey: Navigated to Now Playing');
+				}
+			}
+			// 'Stay in current view' - do nothing
+		} catch (navError) {
+			console.warn('Match Monkey: Navigation error (non-fatal):', navError);
+		}
 	},
 
 	/**

@@ -1,2 +1,46 @@
+
+
 GET https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&api_key=7fd988db0c4e9d8b12aed27d0a91a932&format=json&artist=Tegan+and+Sara&track=Downtown&autocorrect=1&limit=22
 ###
+
+# search for artist name
+GET https://api.reccobeats.com/v1/artist/search?searchText=Moby&page=2&size=500
+
+###
+
+# find all artist ids by artist name
+GET https://api.reccobeats.com/v1/artist/32f29f28-26fa-4f14-8e53-b2c8476ea880/album?page=0&size=50
+
+###
+GET https://api.reccobeats.com/v1/artist/7a133fa4-1256-4066-a394-adeb381bbbd6/album?page=0&size=50
+
+###
+
+# search for all albums by the artist ids and find the one you want
+
+GET https://api.reccobeats.com/v1/album/8b613288-a804-43ab-b420-9ee751b01926/track?page=0&size=50
+
+###
+
+# finally get all tracks by album id find the one you want, and get audio features
+GET https://api.reccobeats.com/v1/audio-features?ids=395fd9da-55a9-4e7a-9fab-86905c98caa5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
