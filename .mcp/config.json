@@ -1,0 +1,265 @@
+{
+  "name": "MatchMonkey MediaMonkey 5 Add-on",
+  "version": "2.0.0",
+  "description": "MCP configuration for MatchMonkey - a MediaMonkey 5 add-on that generates playlists from similar artists/tracks/genres using Last.fm",
+  
+  "project": {
+    "type": "mediamonkey-addon",
+    "platform": "MediaMonkey 5.0+",
+    "language": "javascript",
+    "runtime": "mediamonkey-scripting-engine",
+    "targetApplication": {
+      "name": "MediaMonkey",
+      "minVersion": "5.0.0",
+      "apiVersion": "5.x"
+    }
+  },
+  
+  "structure": {
+    "rootFiles": [
+      "info.json",
+      "init.js",
+      "actions_add.js",
+      "matchMonkey.js",
+      "MatchMonkey.png",
+      "README.md",
+      "license-mit.txt",
+      "license-commercial.txt"
+    ],
+    "directories": {
+      "modules": {
+        "description": "Core functionality modules",
+        "subdirectories": {
+          "api": "Last.fm API integration and caching",
+          "core": "Discovery strategies, orchestration, auto-mode",
+          "db": "Database operations (library, playlist, queue)",
+          "settings": "Configuration and storage management",
+          "ui": "User interface notifications",
+          "utils": "Helper functions, normalization, SQL utilities"
+        }
+      },
+      "dialogs": {
+        "description": "MediaMonkey UI dialogs and options panels",
+        "files": [
+          "dlgOptions_add.js",
+          "dlgOptions/pnl_MatchMonkey.html",
+          "dlgOptions/pnl_MatchMonkey.js"
+        ]
+      },
+      ".github": {
+        "description": "GitHub Actions workflows and templates",
+        "subdirectories": {
+          "workflows": "CI/CD for building .mmip packages"
+        }
+      }
+    }
+  },
+  
+  "architecture": {
+    "patterns": [
+      "modular-design",
+      "async-await",
+      "event-driven"
+    ],
+    "moduleDependencies": {
+      "init.js": "Entry point - initializes configuration and registers actions",
+      "matchMonkey.js": "Main entry point - invoked by toolbar/menu actions",
+      "actions_add.js": "Registers MediaMonkey actions (toolbar buttons, menu items, hotkeys)",
+      "modules/index.js": "Module aggregator - exports all modules",
+      "modules/config.js": "Configuration management and defaults",
+      "modules/core/orchestration.js": "Main orchestration logic for discovery and playlist creation",
+      "modules/core/discoveryStrategies.js": "Artist/Title/Genre discovery modes",
+      "modules/core/autoMode.js": "Auto-queue functionality for continuous playback",
+      "modules/api/lastfm.js": "Last.fm API client",
+      "modules/api/cache.js": "Last.fm response caching",
+      "modules/db/library.js": "MediaMonkey library queries",
+      "modules/db/playlist.js": "Playlist creation and management",
+      "modules/db/queue.js": "Now Playing queue operations",
+      "modules/ui/notifications.js": "User notifications and progress tracking",
+      "modules/utils/normalization.js": "Track matching and fuzzy search",
+      "modules/utils/helpers.js": "Utility functions"
+    }
+  },
+  
+  "features": {
+    "core": [
+      "Last.fm integration for similar artist discovery",
+      "Multi-mode discovery: Artist, Title, Genre",
+      "3-pass fuzzy track matching algorithm",
+      "Intelligent deduplication (artist|title with bitrate/rating prioritization)",
+      "Artist name prefix handling (\"The Beatles\" vs \"Beatles, The\")",
+      "Playlist creation and management",
+      "Now Playing queue integration",
+      "Auto-queue mode for continuous playback"
+    ],
+    "userInterface": [
+      "Toolbar button integration",
+      "Tools menu registration",
+      "Context menu (right-click) integration",
+      "Options panel in MediaMonkey settings",
+      "Real-time progress indicators",
+      "Confirmation dialogs for playlist creation"
+    ],
+    "configuration": [
+      "Custom Last.fm API key support",
+      "Discovery mode selection",
+      "Seed limits and tracks per artist",
+      "Playlist naming templates",
+      "Rating and ranking filters",
+      "Randomization options",
+      "Auto-queue thresholds"
+    ]
+  },
+  
+  "apis": {
+    "mediamonkey": {
+      "version": "5.x",
+      "modules": [
+        "app",
+        "uitools",
+        "backgroundTasks",
+        "app.listen (event system)",
+        "app.utils.storage (persistent storage)",
+        "app.activePlaylist",
+        "app.activeTrack"
+      ],
+      "database": "SQLite (MediaMonkey.db)",
+      "asyncPatterns": true
+    },
+    "external": {
+      "lastfm": {
+        "endpoint": "https://ws.audioscrobbler.com/2.0/",
+        "methods": [
+          "artist.getSimilar",
+          "artist.getTopTracks",
+          "track.getSimilar",
+          "tag.getTopArtists"
+        ],
+        "authentication": "API key based"
+      }
+    }
+  },
+  
+  "build": {
+    "packageFormat": ".mmip (ZIP with .mmip extension)",
+    "localBuild": "build-local.ps1 (PowerShell)",
+    "ciBuild": ".github/workflows/build-mmip.yml (GitHub Actions)",
+    "outputs": {
+      "package": "MatchMonkey-{version}.mmip",
+      "checksum": "MatchMonkey-{version}.mmip.sha256",
+      "update": "update.json"
+    },
+    "versionStrategy": {
+      "local": "Fixed version (0.0.1)",
+      "ci": "From info.json or git tag"
+    }
+  },
+  
+  "testing": {
+    "manual": true,
+    "automated": false,
+    "testEnvironment": "MediaMonkey 5 desktop application",
+    "testScenarios": [
+      "Single track selection",
+      "Multiple track selection",
+      "No selection (current track)",
+      "Artist-based discovery",
+      "Title-based discovery",
+      "Genre-based discovery",
+      "Auto-queue mode",
+      "Playlist creation",
+      "Queue operations"
+    ]
+  },
+  
+  "deployment": {
+    "method": "GitHub Releases",
+    "installationPath": "MediaMonkey/Scripts/auto/MatchMonkey/",
+    "updateMechanism": {
+      "updateURL": "https://raw.githubusercontent.com/remo-imparato/SimilarArtistsMM5/updateMatchMonkey/update.json",
+      "autoUpdate": "Supported via MM5 update system"
+    }
+  },
+  
+  "licensing": {
+    "type": "dual-license",
+    "licenses": [
+      {
+        "name": "MIT License",
+        "file": "license-mit.txt",
+        "scope": "Personal and non-commercial use"
+      },
+      {
+        "name": "Commercial EULA",
+        "file": "license-commercial.txt",
+        "scope": "Commercial and business use"
+      }
+    ],
+    "author": "Remo Imparato",
+    "copyright": "2026"
+  },
+  
+  "codingConventions": {
+    "style": "ES6+ JavaScript",
+    "async": "Prefer async/await over callbacks",
+    "modules": "ES6 module exports",
+    "naming": {
+      "files": "camelCase for JS files",
+      "functions": "camelCase",
+      "classes": "PascalCase",
+      "constants": "UPPER_SNAKE_CASE"
+    },
+    "comments": "JSDoc style for public functions",
+    "errorHandling": "try-catch blocks with user-friendly notifications"
+  },
+  
+  "developmentGuidelines": {
+    "mm5Integration": [
+      "Use MM5 native APIs (app.listen, uitools, backgroundTasks)",
+      "Avoid legacy MM4 patterns",
+      "Use persistent track references",
+      "Implement proper error handling and user feedback",
+      "Use MM5's storage API for configuration persistence"
+    ],
+    "codeOrganization": [
+      "Keep modules focused and single-purpose",
+      "Maintain clear separation between API, DB, UI, and core logic",
+      "Use centralized configuration management",
+      "Document complex algorithms (especially fuzzy matching)"
+    ],
+    "performance": [
+      "Cache Last.fm responses",
+      "Use efficient SQL queries",
+      "Implement progress tracking for long operations",
+      "Avoid blocking the UI thread"
+    ]
+  },
+  
+  "knownIssues": [],
+  
+  "roadmap": [
+    "Automated testing framework",
+    "Enhanced genre discovery",
+    "User-defined matching rules",
+    "Integration with other music services",
+    "Performance optimizations",
+	"Build playlists based on mood or activity""
+  ],
+  
+  "resources": {
+    "repository": "https://github.com/remo-imparato/SimilarArtistsMM5",
+    "releases": "https://github.com/remo-imparato/SimilarArtistsMM5/releases",
+    "issues": "https://github.com/remo-imparato/SimilarArtistsMM5/issues",
+    "documentation": {
+      "readme": "README.md",
+      "moduleReadme": "modules/README.md",
+      "lastfmApi": "https://www.last.fm/api",
+      "mm5Api": "https://www.mediamonkey.com/forum/"
+    },
+    "contact": {
+      "email": "rimparato@hotmail.com",
+      "kofi": "https://ko-fi.com/remoimparato",
+      "github": "https://github.com/remo-imparato/"
+    }
+  }
+}
