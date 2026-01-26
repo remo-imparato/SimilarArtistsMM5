@@ -1,0 +1,10 @@
+{
+    "title": "Lyrics sources",
+    "id": "lyricsSources",
+    "description": "Core addon for lyrics lookups.",
+    "type": "metadata",
+    "author": "Ventis Media, Inc.",
+    "version": "1.1.2",
+    "icon": "lyrics.svg",
+    "required": true
+}

@@ -1,0 +1,11 @@
+{
+    "title": "Image Search",
+    "id": "imageSearch",
+    "description": "Core addon for image lookups.",
+    "version": "1.0.8",
+    "minAppVersion": "5.0.4.2690",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "googleImg.svg",
+    "required": true
+}

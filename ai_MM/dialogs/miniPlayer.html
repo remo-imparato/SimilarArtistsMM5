@@ -1,0 +1,79 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html>
+
+<head>
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+    
+    <script src="file:///mminit.js"></script>
+    <script type="module" src="miniPlayer.js"></script>
+    
+</head>
+
+<style>
+    body {
+        background: rgba(0, 0, 0, 255) !important;
+    }
+
+</style>
+
+<body data-posSaveName='miniPlayer' data-defaultSize='33em, 6em'>
+    <div class="fill flex column miniPlayerFrame">
+        <div class="fill flex row" data-id="pnlPlayer" data-control-class="Player" style="max-height: 5em; min-height: 5em;">
+
+            <div data-id="player-albumArt" class="imageSquare border" data-player-control="albumArt" style="width: 4.5em; max-height: 4em">
+                <div data-id="player-noaa" data-icon="unknownAA" class="allinside autosize box autoMargin"></div>
+                <img data-id="player-artworkImg" class="allinside autosize box autoMargin">
+            </div>
+
+            <div class="flex column verticalCenter paddingLeft">
+                <div data-control-class="Slider" data-init-params="{orientation: 'vertical', invert: true, min: 0, max:100, tickPlacement: 'topLeft', tickInterval: 50, wheelStep: 5}" data-id="player-volumebar" data-player-control="volume"></div>
+            </div>
+            
+            <!-- Player -->
+            <div class="flex fill column">
+                <div class="flex row fillWidth paddingLeftLarge verticalTop right">
+                    <div class="flex row dynamic" data-control-class="AnimatedContainer">
+                        <label data-id="player-title" class="textCenter" data-player-control="trackSummary" data-optional></label>
+                    </div>
+                    
+                    <div class="flex row paddingLeft static">
+                        <label data-player-control="time">00:00:00</label>
+                    </div>
+
+                    <div class="flex row static paddingSmallx">
+                        <div data-id="restore" class="clickable playerMiniButton paddingSmall paddingColumn" data-icon="restoreFromMiniPlayer" style="padding-top: 0; height: 1.3em; width: 1.3em"></div>
+                        <div data-id="close" class="clickable playerMiniButton paddingSmall paddingColumn" data-icon="close" style="padding-top: 0; height: 1.3em; width: 1.3em"></div>
+                    </div>
+                </div>
+
+                <div class="flex row fillWidth paddingTop verticalCenter">
+                    <div class="paddingColumnSmall fillWidth alignright" data-control-class="Slider" data-init-params="{orientation: 'horizontal', invert: false, min: 0, max: 0}" data-player-control="seek" data-id="player-seekbar"></div>
+                </div>
+
+                <div class="flex row fill verticalCenter paddingTop">
+                    <div data-id="player-rating" data-control-class="Rating" data-init-params="{starWidth: '1.3em', starMargin: '0.15em'}" data-player-control="rating" data-optional></div>
+                    <div class="flex row alignright paddingSmall verticalCenter">
+                        <div class="playerButton playerMiniButton" data-icon="player_prev" data-player-control="previous" data-id="player-prev" data-optional></div>
+                        <div class="playerButton playerMiniButton" data-icon="player_play" data-player-control="play"></div>
+                        <div class="playerButton playerMiniButton" data-icon="player_pause" data-player-control="pause" data-id="player-pause" data-optional></div>
+                        <div class="playerButton playerMiniButton" data-icon="player_stop" data-player-control="stop" data-id="player-stop" data-optional></div>
+                        <div class="playerButton playerMiniButton" data-icon="player_next" data-player-control="next" data-id="player-next" data-optional></div>
+                        <div data-id="npwindow" class="clickable playerButton playerMiniButton paddingSmall paddingColumn" data-icon="listview"></div>
+                    </div>
+
+                </div>
+            </div>
+            
+        </div>
+
+        <div data-id="npList" data-control-class="NowplayingListView" data-init-params="{statusInHeader: true, registerDeletion: true}" style="display: none; position: absolute; left: 1em; right: 1em; top: 6em; bottom: 1em"></div>
+    </div>
+
+</body>
+
+</html>

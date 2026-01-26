@@ -1,0 +1,9 @@
+{
+    "title": "Sync to folder",
+    "id": "syncToFolder",
+    "description": "Adds ability to set up a local storage (or folder) as sync target",
+    "version": "1.0.0",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "folder.svg"
+}

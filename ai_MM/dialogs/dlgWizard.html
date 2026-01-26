@@ -1,0 +1,30 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script type="module" src="dlgWizard.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName="dlgWizard" data-defaultSize="850,550">
+    <div class="fill flex column">
+        <div class="fill flex row">
+            <div data-id="left-box" class="flex column verticalPanelNarrow">
+                <div data-id="lvPanelList" class="transparentList fill" data-control-class="WizardPanelListView"></div>
+            </div>
+            <div data-id="right-box" class="fill flex column padding scrollable">
+
+            </div>
+        </div>
+        <div data-id="bottom">
+            <div data-id="buttons" data-control-class="Buttons">
+                <div data-id="btnCustomOptions" data-position="opposite" data-add-dots>Options</div>
+                <div data-id="btnPrev">Previous</div>
+                <div data-id="btnNext" data-default="1">Next</div>
+                <div data-id="btnDone" data-default="1">Done</div>
+                <div data-id="btnCancelWizard">Cancel</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

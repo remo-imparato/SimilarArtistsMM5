@@ -1,0 +1,179 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="uiRows" data-help="Adding Existing Files to the Library">
+    <div class="flex row">
+        <label data-add-colon>When adding files to the Library</label>
+        <div class="fill"></div>
+        <div data-control-class="Button" data-id="btnAddRescan" data-add-dots>Add/Scan settings</div>
+    </div>
+    <div>
+        <label data-add-colon>Add</label>
+    </div>
+    <div>
+        <table>
+            <tr data-control-class="Control">
+                <td width="20%">
+                    <label class="left-indent" data-add-colon>Audio</label>
+                </td>
+                <td width="50%">
+                    <input data-id="edtAudioFormats" class="stretchWidth" readonly/>
+                </td>
+                <td>
+                    <div data-id="btnSetAudioFormats" data-control-class="Button" data-add-dots>Set formats</div>
+                </td>
+            </tr>
+
+            <tr data-id="lineInferFrom" data-control-class="Control">
+                <td width="20%">
+                    <label class="left-indent" data-add-colon>Video</label>
+                </td>
+                <td width="50%">
+                    <input data-id="edtVideoFormats" class="stretchWidth" readonly/>
+                </td>
+                <td>
+                    <div data-id="btnSetVideoFormats" data-control-class="Button" data-add-dots>Set formats</div>
+                </td>
+            </tr>
+
+            <tr data-id="lineInferFrom" data-control-class="Control">
+                <td width="20%">
+                    <label class="left-indent" data-add-colon>Playlists</label>
+                </td>
+                <td width="50%">
+                    <input data-id="edtPlaylistFormats" class="stretchWidth" readonly/>
+                </td>
+                <td>
+                    <div data-id="btnSetPlaylistFormats" data-control-class="Button" data-add-dots>Set formats</div>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+
+    <div class="noWrap" data-tip="This prevents tracks that are less than a specified size (KB) or time (seconds) from being added to the Library, since it's unlikely that you really want such files to appear in your Library.">
+        <div data-id="chbIgnoreShorterKB" data-control-class="Checkbox">Ignore files smaller than</div>
+        <div data-id="edtIgnoreShorterKB" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:0, max:5000}"></div>
+        <label data-id="lblIgnoreShorterKB">KB</label>
+    </div>
+    <div class="noWrap" data-tip="This prevents tracks that are less than a specified size (KB) or time (seconds) from being added to the Library, since it's unlikely that you really want such files to appear in your Library.">
+        <div data-id="chbIgnoreShorterSec" data-control-class="Checkbox">Ignore files shorter than</div>
+        <div data-id="edtIgnoreShorterSec" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:0, max:5000}"></div>
+        <label data-id="lblIgnoreShorterSec">Seconds</label>
+    </div>
+
+    <div data-tip="This causes all files that are re-added (either manually by clicking 'Add files...' or automatically via the File Monitor) to be updated--even those that already exist in the database. The effect is that if other applications have been used to modify tags, the Library will update based on information gleaned from the tags. The downside to this is that up-to-date file properties can be overwritten with out-of-date information from tags (this would only occur if tags are not kept up-to-date and in synch with the Library).">
+        <div data-id="chbUpdateFromTagsOnReScan" data-control-class="Checkbox">Update file info from tags when rescanning files</div>
+    </div>
+    <div data-tip="Enabling this option speeds up all scans subsequent to the initial one by only re-adding files that have changed in size or timestamp.">
+        <div data-id="chbUpdateFromTagsOnReScanOnlyNew" class="left-indent" data-control-class="Checkbox">Only for files with changed timestamp or size</div>
+    </div>
+
+    <div data-tip="This creates a digital signature, for the audio content of each track (tags are ignored), so that each track can be uniquely identified. If any two tracks are duplicates (i.e. they have matching signatures) they will appear in the Files to Edit - Duplicate Content view.">
+        <div data-id="chbAnalyzeDuplicates" data-control-class="Checkbox">Analyze files for duplicates (takes extra time)</div>
+    </div>
+
+    <div data-tip="Enable this if you wish the library to be pruned of any files that have been moved or deleted from a monitored folder. This is extremely useful, but should only be enabled if you're confident that you'll never move files to a folder that isn't monitored, as doing so would result in the file being removed from the Library entirely.">
+        <div data-id="chbRemoveDeadlinks" data-control-class="Checkbox">Remove unavailable items</div>
+    </div>
+
+    <div data-tip="Automatically removes attributes (e.g. Artist) that are no longer associated with any files from the Library.">
+        <div data-id="chbRemoveUnusedAttrib" data-control-class="Checkbox">Remove unused Attributes (Artist, Album, Composer, ...)</div>
+    </div>
+
+    <div data-tip="Show scan results dialog when scan is done.">
+        <div data-id="chbShowScanResults" data-control-class="Checkbox">Show scan results dialog</div>
+    </div>
+
+    <div data-id="chbInferAudioProps" data-control-class="Checkbox" data-tip="In cases where the tags do not contain much information, MediaMonkey can get some information such as Artist, Title, or Album from the Filename if this option is enabled. Note that the inferred properties are saved in the database, but not saved to the file tags (in case the information is incorrect). Once you've verified the data, you can update the tags manually--see Synchronizing Your Tags.">Infer properties:</div>
+    <table>
+        <tr data-id="lineInferAudioType" data-control-class="Control" data-tip="It is possible to specify whether to use 'Tags and then inferred properties', or vice versa. Generally, Tags contain more accurate information, so choosing 'Tags and then inferred properties' will import properties from Tags, and then any missing information will be imported from inferred properties. The only time one would want to use 'Inferred Properties and then Tags' is if it is known in advance that tags are inaccurate, and filenames contain more accurate data.">
+            <td>
+                <label class="left-indent" data-add-colon>Use</label>
+            </td>
+            <td>
+                <div data-id="cbInferAudioPropsType" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>Tags then inferred properties</option>
+                    <option>Inferred properties then tags</option>
+                </div>
+            </td>
+        </tr>
+
+        <tr data-id="lineInferAudioFrom" data-control-class="Control" data-tip="Properties can be inferred from 'Filename' or 'Filename + Path'. Generally, it is better to infer from Filenames only, unless files are arranged in a highly organized directory structure, in which case 'Filename + Path' will yield better results.">
+            <td>
+                <label class="left-indent">Infer properties from:</label>
+            </td>
+            <td>
+                <div data-id="cbInferAudioPropsFrom" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>Filenames</option>
+                    <option>Filenames + Path</option>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <label>Get Album titles and Track Numbers from:</label>
+            </td>
+        </tr>
+        <tr data-tip="This setting defines how Album titles and Track Number properties are added to the Library. Options are 'Tags only', 'Tags then Playlists', and 'Playlists then Tags'. 'Tags only' should always be used, except in cases where a music collection is arranged in such a manner that each collection of tracks has an associated playlist that defines the Album.">
+            <td/>
+            <td>
+                <div data-id="cbInferAudioPlaylistMetadata" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>Tags then Playlists</option>
+                    <option>Playlists (M3U, XSPF) then Tags</option>
+                    <option>Tags only</option>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div data-id="chbInferVideoProps" data-control-class="Checkbox" data-tip="In cases where the tags do not contain much information, MediaMonkey can get some information such as Artist, Title, or Album from the Filename if this option is enabled. Note that the inferred properties are saved in the database, but not saved to the file tags (in case the information is incorrect). Once you've verified the data, you can update the tags manually--see Synchronizing Your Tags.">Video properties:</div>
+    <table data-id="tblVideoProps">
+        <tr data-id="lineInferVideoType" data-control-class="Control" data-tip="It is possible to specify whether to use 'Tags and then inferred properties', or vice versa. Generally, Tags contain more accurate information, so choosing 'Tags and then inferred properties' will import properties from Tags, and then any missing information will be imported from inferred properties. The only time one would want to use 'Inferred Properties and then Tags' is if it is known in advance that tags are inaccurate, and filenames contain more accurate data.">
+            <td>
+                <label class="left-indent" data-add-colon>Use</label>
+            </td>
+            <td>
+                <div data-id="cbInferVideoPropsType" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>Tags then inferred properties</option>
+                    <option>Inferred properties then tags</option>
+                </div>
+            </td>
+        </tr>
+
+        <tr data-id="lineInferVideoFrom" data-control-class="Control" data-tip="Properties can be inferred from 'Filename' or 'Filename + Path'. Generally, it is better to infer from Filenames only, unless files are arranged in a highly organized directory structure, in which case 'Filename + Path' will yield better results.">
+            <td>
+                <label class="left-indent">Infer properties from:</label>
+            </td>
+            <td>
+                <div data-id="cbInferVideoPropsFrom" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>.nfo files</option>
+                    <option>Filenames</option>
+                    <option>Filenames + Path</option>
+                    <option>.nfo files, Path and Filenames</option>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <label>Get Album titles and Track Numbers from:</label>
+            </td>
+        </tr>
+        <tr data-tip="This setting defines how Album titles and Track Number properties are added to the Library. Options are 'Tags only', 'Tags then Playlists', and 'Playlists then Tags'. 'Tags only' should always be used, except in cases where a music collection is arranged in such a manner that each collection of tracks has an associated playlist that defines the Album.">
+            <td/>
+            <td>
+                <div data-id="cbInferVideoPlaylistMetadata" class="wideControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>Tags then Playlists</option>
+                    <option>Playlists (M3U, XSPF) then Tags</option>
+                    <option>Tags only</option>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div data-tip="This setting determines whether MediaMonkey searches file directories for artwork and links it to tracks as they are added to the Library.">
+        <div data-id="chbScanForArtwork" data-control-class="Checkbox">Scan file directories for Artwork</div>
+    </div>
+    <div data-tip="Generates thumbnails automatically for videos that don't have any artwork.">
+        <div data-id="chbGenerateThumbnails" data-control-class="Checkbox">Generate thumbnails for videos</div>
+    </div>
+</div>

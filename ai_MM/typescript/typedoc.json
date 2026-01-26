@@ -1,0 +1,43 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        // "src/types/Native.ts", // Just for testing
+        "src/types/*.ts",
+        "src/mminit.ts",
+        "src/actions.ts",
+        "src/uitools.ts",
+        "src/viewHandlers.ts",
+        // "src/animationTools.ts",
+        
+        // --- currently not used ---
+        // "src/controls/nowplayingview.ts",
+        // "src/*.ts",
+        // "src/controls/*.ts",
+        // "src/dialogs/*.ts",
+        // "src/helpers/*.ts",
+    ],
+    "out": "../../docs",
+    "titleLink": "https://mediamonkey.com",
+    "name": "MediaMonkey API Docs",
+    "visibilityFilters": {
+        "inherited": false,
+        "private": false,
+        "@undocumented": false,
+    },
+    "navigationLinks": {
+        "Download": "https://www.mediamonkey.com/download",
+        "Forum": "https://www.mediamonkey.com/forum",
+        "Support": "https://www.mediamonkey.com/support/knowledge-base",
+        "Addons": "https://www.mediamonkey.com/addons",
+        "Develop": "https://www.mediamonkey.com/develop"
+    },
+    // The three below fields (theme, plugin, and customCSS) are necessary to load our new styling.
+    //  "plugin" loads the JS file which registers the "mediamonkey" theme, but the JS doesn't load our custom CSS on its own.
+    "theme": "mediamonkey",
+    "plugin": ["./typedoc-theme/dist/index.js"],
+    "customCss": "./typedoc-theme/assets/custom.css",
+    // "sourceLinkTemplate": "https://vcs.example.com/{path}?at={gitRevision}#line={line}",
+    // "disableSources": false,
+    // "tsconfig": "./typedoc/tsconfig.json"
+    "preserveWatchOutput": true,
+}

@@ -1,0 +1,139 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+input, textarea {
+	.grindEdge;
+    background-color: @controlColor;
+    color: @textColor;
+    padding: @textVerticalPadding @textHorizontalPadding;
+    border: 1px solid @borderColor;
+}
+
+.focused {
+    box-shadow: none;
+}
+
+*:focus {
+    outline: none;   // To get rid of the Chrome default orange rectangle
+    .focused;
+}
+
+div:focus {
+    box-shadow: none !important;
+}
+
+a {
+    color: inherit;
+}
+
+.controlBase {
+    background: @controlColor;
+}
+
+.controlDisabledSelected {
+    background: @disabledSelectedColor;
+}
+
+.controlSelected {
+    background: @selectedColor;
+}
+
+.controlHover {
+    background: @hoverBgColor;
+}
+
+.controlHoveredSelected {
+    background: @hoverBgColor;
+}
+
+.hoverHightlight:hover {
+    .controlHover;
+}
+
+[contenteditable] {
+    cursor: text;
+}
+
+[contenteditable]:focus {
+    .focused;
+    overflow: visible;
+    border: 1px inset @borderColor;
+    padding: @textVerticalPadding @textHorizontalPadding;
+    background-color: @controlColor;
+    min-width: @units1_0;
+    display: inline-block; // needed here, otherwise cursor could disappear at the end of the text
+    margin-top: 0px;
+}
+
+.inlineEdit {
+    margin: 0px;
+    padding: 0px;
+}
+
+.inlineEdit input {
+    vertical-align: baseline;
+    min-width: 0px;
+    .stretchHeight; // to solve #15081
+}
+
+.scoreBar {
+    .grindEdge;
+    background-color: @highlightBgColor;
+}
+
+.controlInfo {
+    padding-left: 10%;
+    padding-right: 10%;
+    text-align: center;
+    font-style: italic;
+}
+
+.shadowedText {
+    text-shadow: 0px 0px @units1_0 @baseColor, 0px 0px @units0_8 @baseColor, 0px 0px @units0_5 @baseColor;
+}
+
+.largeShadowedText {
+    text-shadow: 0px 0px @units1_5 @baseColor, 0px 0px @units1_2 @baseColor, 0px 0px @units1_0 @baseColor, 0px 0px @units0_5 @baseColor;
+    font-size: @units2_0;
+}
+
+.veryLargeShadowedText {
+    text-shadow: 0px 0px @units1_2 @baseColor, 0px 0px @units2_0 @baseColor, 0px 0px @units1_5 @baseColor, 0px 0px @units1_5 @baseColor, 0px 0px @units1_0 @baseColor;
+    font-size: @units3_5;
+}
+
+.basevis {
+    --visPeaksColor: @highlightColor; // color of peaks in visualization
+    --visTextShadowColor: @highlightColor;
+    --visTextColor: @textColor;
+}
+
+.headerColumnsContainer {
+    .paddingTopLarge;
+    .paddingBottomLarge;
+    & p:first-child {
+        margin-block-start: 0;
+    }
+}
+
+.oneRowControl {
+    .noOverflow;
+    .flex;
+    .blockTitleMarginFirst;
+    flex-flow: column;
+    & .oneRowControlHeader {
+        min-height: 4px + 2px + max(@fontSize, @es-select-width) + 4px + 1px; // 4px dropdown margin, 2px dropdown border, 2px padding, 1px reserve for rounding;
+        position: relative;
+        display: flex;
+        flex-flow: row wrap;
+        align-items: baseline;
+        align-content: stretch;
+        justify-content: space-between;
+        & > h3 {
+            margin-block-end: 0.5em;
+        }
+    }
+}
+
+.showIfVisibleChild:not(.showIfVisibleChild:has(> *:not([style*="display: none;"]))) {
+    display: none;
+}

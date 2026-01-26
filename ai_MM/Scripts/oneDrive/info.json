@@ -1,0 +1,9 @@
+{
+    "title": "OneDrive",
+    "id": "oneDrive",
+    "description": "Adds ability to manipulate and sync OneDrive content",
+    "version": "1.1.1",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "cloud.svg"
+}

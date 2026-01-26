@@ -1,0 +1,97 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-help="Editing_Track_Properties#Tagging_Settings">
+    <fieldset>
+        <legend>Tags</legend>
+        <table>
+            <tr data-tip="You are given the option of choosing what version of ID3 tags to use: v1, v2, or both. Generally, 'both' is usually best as it ensures compatibility with devices that only support v1 tags, and allows for the much richer set of data that can be stored in v2 tags.">
+                <td>
+                    <label>Store MP3 file properties using:</label>
+                </td>
+                <td>
+                    <div data-id="cbID3Tag" class="stretchWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                        <option>ID3v1 tags</option>
+                        <option>ID3v2.3 tags</option>
+                        <option>ID3v2.4 tags</option>
+                        <option>ID3v1 and v2.3 tags</option>
+                        <option>ID3v1 and v2.4 tags</option>
+                    </div>
+                </td>
+            </tr>
+            <tr data-tip="If you have files with non-English characters, you'll want to enable ascii + Unicode, which saves tags in ascii except in cases where non-latin characters appear. Some players may have trouble reading Unicode tags, though.">
+                <td>
+                    <label>ID3v2 text encoding:</label>
+                </td>
+                <td>
+                    <div data-id="cbID3Enc" class="stretchWidth" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <div class="uiRows">
+            <div data-tip="Causes Tags to be updated immediately, as soon as changes to file properties are made.">
+                <div data-id="ChBStoreID3AfterEdit" data-control-class="Checkbox">Update tags when editing properties</div>
+            </div>
+            <div data-tip="This causes MediaMonkey to update the file's timestamp whenever a tag is updated. This should be enabled so that other applications reading the file are aware that a change has been made.">
+                <div data-id="ChBModifyTimeOnTag" data-control-class="Checkbox">Modify timestamp when updating tags</div>
+            </div>
+        </div>
+    </fieldset>
+    <div class="hSeparator"></div>
+    <fieldset>
+        <legend>Playlists</legend>
+        <div class="uiRows">
+            <div data-tip="This causes MediaMonkey to save .m3u files in a format that preserves non-English characters. Note that some players may not support unicode .m3u playlists.">
+                <div data-id="chbStoreM3UinUTF8" data-control-class="Checkbox">Use Unicode (UTF-8 encoding) for M3U playlists</div>
+            </div>
+            <div>
+                <div data-id="chbPlstRelPaths" data-control-class="Checkbox" data-tip=" Relative paths store file links in a playlist in relation to playlist's location, allowing the playlist and content to be moved to other locations without breaking the links.">Force relative paths</div>
+            </div>
+            <div>
+                <div data-id="chbLinuxSeparator" data-control-class="Checkbox" data-tip="This format is used by some devices">Use Linux folder separator ('/' instead of '\')</div>
+            </div>
+            <div>
+                <div data-id="chbExtendedM3U" data-control-class="Checkbox" data-tip="This format is used by some newer devices">Use extended M3U</div>
+            </div>
+            <div data-tip="This option is useful if you wish to automatically create playlists of newly added files to your library. The main use of this is if you wish to export playlists of newly added files to a portable device.">
+                <div data-id="chbCreateAddedPlst" data-control-class="Checkbox">Create playlists of tracks newly added to the library</div>
+            </div>
+            <div data-tip="If enabled, a warning is provided whenever duplicate files are added to a playlist.">
+                <div data-id="chbWarnPlstDups" data-control-class="Checkbox">Warn when duplicate files are added</div>
+            </div>
+        </div>
+    </fieldset>
+    <div class="hSeparator"></div>
+    <fieldset>
+        <legend>Artwork</legend>
+        <div class="flex row uiRow" data-tip="This sets the default location where associated artwork is stored.">
+            <label data-add-colon>Image location</label>
+            <div data-id="cbImgLocation" class="fill" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                <option>Save image to tag (if possible) otherwise save to file folder</option>
+                <option>Save image to file folder</option>
+                <option>Save image to tag (if possible) and to file folder</option>
+            </div>
+        </div>
+        <div class="uiRows">
+            <div>
+                <label data-add-colon>Image filename</label>
+            </div>
+            <div class="flex row left-indent" data-control-class="Control" data-tip="This is the filename for the first image, as long as only a single Album, Series, or Movie is contained within the folder.">
+                <div class="middleControl">
+                    <label>First image per Album/Series:</label>
+                </div>
+                <div class="fill">
+                    <div data-id="cbImgFilename1" data-control-class="MaskEdit"></div>
+                </div>
+            </div>
+            <div class="flex row left-indent" data-control-class="Control" data-tip="This filename is used whenever more than one image is stored to a folder. It is used a) for images other than the first image, when only a single Album/Series/Movie is contained within a folder b) for all images when multiple Albums/Series/Movies are contained within a folder.">
+                <div class="middleControl">
+                    <label>Format for multiple images:</label>
+                </div>
+                <div class="fill">
+                    <div data-id="cbImgFilename2" data-control-class="MaskEdit"></div>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+</div>

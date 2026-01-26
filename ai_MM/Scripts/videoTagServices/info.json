@@ -1,0 +1,10 @@
+{
+    "title": "Video Tagging Services",
+    "id": "videoTagServices",
+    "description": "Core addon for metadata lookup via OMDB.",
+    "version": "1.0.0",
+    "type": "metadata",
+    "author": "Ventis Media, Inc.",
+    "icon": "tvdb.svg",
+    "required": true
+}

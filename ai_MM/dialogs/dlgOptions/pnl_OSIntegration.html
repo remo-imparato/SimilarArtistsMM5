@@ -1,0 +1,62 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div>
+    <fieldset>
+        <table data-control-class="Control" class="uiRows">
+            <tr>
+                <td colspan="1">Default action for files:</td>
+                <td colspan="3">
+                    <div data-id="edtDefaultAction" data-control-class="Dropdown" data-init-params="{readOnly: true}" class="stretchWidth">
+                        <option>Play now</option>
+                        <option>Queue next</option>
+                        <option>Queue last</option>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table data-control-class="Control" class="uiRows" data-tip="Determines which actions are presented when a disk is inserted">
+            <tr>
+                <td colspan="4">Show AutoPlay actions for:</td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div class="left-indent-small" data-id="chbAudioCDPlaybck" data-control-class="Checkbox">Audio CD playback</div>
+                </td>
+                <td colspan="2">
+                    <div data-id="chbVideoPlayback" data-control-class="Checkbox">DVD video playback</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div class="left-indent-small" data-id="chbAudioRipping" data-control-class="Checkbox">Audio CD ripping</div>
+                </td>
+                <!--
+                <td colspan="2">
+                    <div data-id="chbDiscBurning" data-control-class="Checkbox">CD/DVD Disc Burning</div>
+                </td>
+                -->
+            </tr>
+        </table>
+        <table data-control-class="Control" class="uiRows" data-tip="Determines which actions are available in the Explorer context-menu">
+            <tr>
+                <td colspan="4">Show context-menu actions for:</td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <div class="left-indent-small" data-id="chbPlayInMediaMonkey" data-control-class="Checkbox"></div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <div class="left-indent-small" data-id="chbPlayNextInMediaMonkey" data-control-class="Checkbox"></div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <div class="left-indent-small" data-id="chbPlayLastInMediaMonkey" data-control-class="Checkbox"></div>
+                </td>
+            </tr>
+        </table>
+    </fieldset>
+    <div data-id="btnReassociate" data-control-class="Button">Associate file types with MediaMonkey...</div>
+</div>

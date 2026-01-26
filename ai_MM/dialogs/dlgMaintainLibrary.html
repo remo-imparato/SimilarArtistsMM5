@@ -1,0 +1,50 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="file:///commonControls.js" type="module"></script>
+<script src="dlgMaintainLibrary.js"></script>
+
+<body data-posSaveName="dlgMaintainLibrary" data-help="Backing up the Library">
+    <div class="flex column padding nonGreedy">
+        <div class="wideControl hSeparator">
+            <div class="hSeparatorTiny">
+                <label data-id="lblChoose" class="textWrap" data-add-colon>Maintenance</label>
+                <div data-id="selectionDiv" class="padding controlBase uiRows"></div>
+            </div>
+            <div>
+                <label data-id="lblChoose" class="textWrap" data-add-colon>Backup and Restore</label>
+                <div class="flex column padding controlBase uiRows">
+                    <div class="flex row ">
+                        <div data-id="chbSchedule" data-control-class="Checkbox" data-add-colon>Scheduled backup</div>
+                        <div data-id="cbScheduleInterval" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                    </div>
+                    <div class="flex row ">
+                        <div data-id="edtBackupLocation" data-control-class="Edit" class="fill"></div>
+                        <div data-id="btnSelectBackupFolder" data-control-class="Button" data-add-dots>Browse</div>
+                    </div>
+                    <div class="flex row hSeparatorTiny">
+                        <label>Retain backups:</label>
+                        <div data-id="cbRetainBackups" data-control-class="Edit" data-init-params="{type: 'number', min: 1, max: 50}"></div>
+                    </div>
+                    
+                    <div><label data-add-colon>Add</label></div>
+                    <div data-id="chbBackupSettings" class="left-indent" data-control-class="Checkbox">Settings</div>
+                    <div data-id="chbBackupAddons" class="left-indent hSeparatorTiny" data-control-class="Checkbox">Addons</div>
+
+                    <div><label data-id="lblBackup" class="hotlink" data-add-dots>Backup</label></div>
+                    <div><label data-id="lblRestore" class="hotlink" data-add-dots>Restore from backup</label></div>
+                    <div><label data-id="lblClear" class="hotlink" data-add-dots>Clear database</label></div>
+                    <div><label data-id="lblResetSettings" class="hotlink" data-add-dots>Reset settings</label></div>
+                </div>
+            </div>
+        </div>
+        <div data-id="dlgButtons" data-control-class="Buttons">
+            <div data-id="btnSave">Save</div>
+            <div data-default="1" data-id="btnOK"></div>
+            <div data-id="btnCancel"></div>
+        </div>
+    </div>
+</body>
+
+</html>

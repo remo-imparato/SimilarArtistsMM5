@@ -1,0 +1,27 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+.progressLine {
+    position: relative;
+    overflow: visible;
+    width: 100%;
+    top: -3px;
+    height: 2px;
+}
+
+.progressLine .backLine {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    right: 0px;
+    bottom: 0px;
+    background-color: @sliderColor;
+}
+
+.progressLine .frontLine {
+    position: absolute;
+    overflow: hidden;
+    top: 0px;
+    left: 0px;
+    height: 100%;
+    background-color: @sliderColorHighlight;
+}

@@ -1,0 +1,9 @@
+{
+    "title": "Export all Playlists",
+    "id": "exportPlaylists",
+    "description": "Exports all Playlists to .m3u files",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "exportM3U.svg"
+}

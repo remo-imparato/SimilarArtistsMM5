@@ -1,0 +1,30 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="fill flex column noOverflow">
+    <div class="fill flex row" data-control-class="Control">
+        <div data-id="sidebar" class="animate flex column allinside noOverflow verticalPanelNarrow" data-control-class="Control" data-dock data-dock-left data-dock-title="Left panel" data-hideInFullWindowMode style="min-width: 220px">
+            <div data-id="mediaTree" data-control-class="MediaTree" class="fill middleControl middleHighControl" data-control-default-focus data-dockable data-dock-support="left,right" data-dock-title="Media Tree" data-hideInFullWindowMode>
+            </div>
+        </div>
+        <div data-control-class="Splitter"></div>
+        <div data-id="mainview" class="dynamic flex column" data-hideInFullWindowMode>
+            <div class="fill flex row" data-control-class="Control" data-hideInFullWindowMode>
+                <div data-id="contentContainer" class="dynamic flex column">
+                    <!-- e.g. Main content (views) are shown here-->
+                    <div data-id="viewFilterEditor" data-control-class="FilterEditor" class="flex column animate hSeparatorTiny"></div>
+                    <div data-id="multiview" data-control-class="Multiview" class="fill flex column middleControl nonTransparent"></div>
+                    <div data-id="footerBar">
+                        <div data-control-class="Statusbar" data-id="contentStatus" data-init-params="{listener: 'contentContainer'}" class="animate"></div>
+                    </div>
+                </div>
+                <div data-id="plstEditSpotSplitter" data-control-class="Splitter"></div>
+                <div data-id="plstEditSpot" class="flex row animate verticalPanel" data-control-class="PlaylistEditorsContainer" data-plstEditSpot>
+                    <!-- Playlist editors are shown here-->
+                </div>
+                <div class="animate stretchHeight flex column noOverflow" data-dockableDialogSpot style="display: none;">
+                </div>
+            </div>
+            <div data-id="bottomDock" data-dock data-dock-middle-bottom data-dock-enabled data-dock-title="Main panel (bottom)" data-control-class="Control"></div>
+        </div>
+    </div>
+</div>

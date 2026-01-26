@@ -1,0 +1,52 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-id="mainSearchEditorDiv">
+    <div class="flex column bgColorBase">
+        <div data-id="vtRules" class="flex column">
+            <div data-id='boxCollection' class="flex row uiRow">
+                <label for="cbCollection" data-add-colon>Search</label>
+                <div data-id="cbCollection" data-control-class="Dropdown" class="middleControl" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'collection'}, readOnly: true, preload: true}"></div>
+            </div>
+            <div data-id="mainRow" class="flex row uiRowCenter matchCriteriaRow">
+                <label>Match</label>
+                <div data-id="cbMatch" class="thinControl" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                    <option>All</option>
+                    <option>Any</option>
+                </div>
+                <label class="labelLeftPadding textEllipsis" data-add-colon>of the following criteria</label>
+                <div data-id="aAddRule" data-icon="add" tabindex="0" data-control-class="MenuButton"></div>
+                <div class="fill"></div>
+            </div>
+            <div data-id="harbor" style="display:none">
+                <div data-id="cbField" class="fieldEditControl" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                <div data-id="cbOperator" class="operatorControl" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                <div data-id="cbValue" class="valueControl fill" data-control-class="Edit"></div>
+                <div data-id="cbFrom" class="thinControl vSeparatorTiny" data-control-class="Edit"></div>
+                <div data-id="cbTo" class="thinControl" data-control-class="Edit"></div>
+                <div data-id="cbRating" class="valueControl" class="verticalCenter" data-control-class="Rating" data-init-params="{starMargin: 1, paddingLeft: 5, position: 'left', tabbable: true}"></div>
+                <div data-id="cbCheckList" class="valueControl fill" data-control-class="Dropdown" data-init-params="{checkboxes: true, readOnly: true, autoWidth: false}"></div>
+            </div>
+        </div>
+        <div data-id='boxSearchLimits' class="uiRows">
+            <div data-id="chbLimit" data-control-class="Checkbox"></div>
+            <label data-id="lblLimit" data-add-colon>Limit to</label>
+            <div data-id="edtLimitCount" data-control-class="Edit" class="thinControl" data-init-params="{type: 'number'}"></div>
+            <div data-id="cbLimitType" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+                <option>files</option>
+                <option>megabytes</option>
+                <option>minutes</option>
+            </div>            
+            <div class="inline left-indent">
+                <label data-id="lblLimitOrder" data-add-colon>Selected by</label>
+                <div data-id="cbLimitOrder" data-control-class="Dropdown" data-init-params="{readOnly: true, autoWidth: true}"> </div>            
+            </div>    
+        </div>
+        <div data-id='boxSortOrders' class="hSeparator">
+            <div class="flex row uiRowCenter">
+                <label data-add-colon>Sort by</label>
+                <div data-id="vtSortRules" class="flex row"></div>
+                <div data-id="aAddSortRule" class="toolButton floatRight" data-icon="add"></div>
+            </div>
+        </div>
+    </div>
+</div>

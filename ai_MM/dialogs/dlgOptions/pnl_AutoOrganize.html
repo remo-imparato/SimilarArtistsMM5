@@ -1,0 +1,21 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-id="pnlAutoOrganizeRoot" class="dynamic flex column" data-help="Changing Filenames#Auto-Organize as a Background Process">
+    <div class="uiRow" data-tip="Set the default directory / filename format for specified files.">
+        <label class="noLeftPadding">Organize files according to the following rules</label>
+    </div>
+    <div data-id="lvAutoOrganizeRulesList" class="fill flex column hSeparatorTiny" data-control-class="GridView"></div>
+    <div class="hSeparator">
+        <div data-id="editButtons" data-control-class="ListEditButtons" class="hSeparator" data-init-params="{buttonsOrder: 'new,edit,delete,up,down'}"></div>
+        <div class="hSeparator" data-tip='Do not apply to files in the specified folders ("C:\Directory\","C:\directory 2")'>
+            <label>Exclude folders:</label>
+            <div data-id="edtAutoOrganizeExludedFolders" class="wideControl" data-control-class="Edit"></div>
+        </div>
+        <div data-tip="Organize library files based on the above rules whenever files are scanned or edited. To fully automate, enable File Monitoring to scan directories in the background." class="hSeparatorTiny">
+            <div data-id="chbAutoOrganizeEnableOrganize" data-control-class="Checkbox" data-init-params="{}"></div>
+        </div>
+        <div>
+            <div data-id="chbAutoOrganizeDeleteEmptiedFolders" data-control-class="Checkbox" class="left-indent" data-init-params="{}">Delete emptied folders</div>
+        </div>
+    </div>
+</div>

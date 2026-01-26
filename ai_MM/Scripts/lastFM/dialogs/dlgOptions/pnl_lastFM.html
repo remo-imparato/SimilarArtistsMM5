@@ -1,0 +1,37 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div data-id='lastFMSettings'>
+    <fieldset>
+        <legend>Scrobbler submission state</legend>
+        <div class="left-indent uiRow">
+            <div data-id="chbScrobblerOn" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'ModeOn', name: 'ScrobblerMode'}">On</div>
+            <label data-id="loggedUser" class="inline" data-tip="User"></label>
+        </div>
+        <div class="left-indent uiRow">
+            <div data-id="chbScrobblerOff" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'ModeOff', name: 'ScrobblerMode'}">Off</div>
+            <div data-control-class="Button" data-id="btnLogout" class="inline" data-tip="Logout from last.fm service">Logout</div>
+        </div>
+        <div class="left-indent uiRow">
+            <div data-id="chbScrobblerCache" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'ModeCache', name: 'ScrobblerMode'}">Cache</div>
+        </div>
+    </fieldset>
+    <div class="uiRows">
+        <div>
+            <div data-id="chbShowNowplaying" data-control-class="Checkbox">Notify last.fm about playing tracks</div>
+        </div>
+        <div>
+            <div data-id="chbSendAlbumArtist" data-control-class="Checkbox">Send also Album Artist field, if different from Artist</div>
+        </div>
+        <div>
+            <div data-id="chbScrobbleStreams" data-control-class="Checkbox">Submit tracks from Radio streams</div>
+        </div>
+        <div>
+            <div data-id="chbScrobbleOnlyLibrary" data-control-class="Checkbox">Only submit tracks that are part of the Library</div>
+        </div>
+    </div>
+    <br>
+    <fieldset>
+        <legend>Scrobble content that</legend>
+        <div data-id="submCriteria" data-control-class="SearchEditor"></div>
+    </fieldset>
+</div>

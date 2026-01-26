@@ -1,0 +1,41 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgRegisterGold.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgRegisterGold'>
+    <div class="flex column padding nonGreedy">
+        <div class="fill flex column paddingRow">
+            <div>
+                <center>
+                    <label>To unlock Gold features, please enter license registration information:</label>
+                </center>
+            </div>
+            <div class="padding flex row verticalCenter">
+                <label class="narrowControl" data-add-colon>Username</label>
+                <input data-id="ChbUsername" type="text" class="fill">
+            </div>
+            <div class="padding flex row verticalCenter">
+                <label class="narrowControl" data-add-colon>License key</label>
+                <input data-id="ChbLicenseKey" type="text" class="fill">
+            </div>
+            <center>
+                <div data-control-class="Buttons" data-init-params="{position: 'center'}">
+                    <div data-id="btnOK" data-default="1">OK</div>
+                    <div data-id="btnCancel">Cancel</div>
+                </div>
+            </center>
+        </div>
+
+        <div>
+            <center>
+                <label>If you don't have a license key, you can</label>
+                <label data-id="lblRegLink" class="hotlink" data-localize>purchase MediaMonkey Gold here</label>
+            </center>
+        </div>
+    </div>
+</body>
+
+</html>

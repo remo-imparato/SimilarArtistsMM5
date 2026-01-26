@@ -1,0 +1,53 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="uiRows" data-help="Settings General">
+    <div class="noWrap">
+        <label>Interface language:</label>
+        <div data-id="cbLanguage" data-control-class="Dropdown" data-init-params="{readOnly: true, dbFunc:'getStringList', dbFuncParams: {category: 'Languages'}, preload: true}" style="min-width: 20em" data-tip="Allows you to choose MediaMonkey's language. Close and restart MediaMonkey for the change to take effect."></div>
+    </div>
+    <div>
+        <div data-id="chbCheckForNewVersion" data-control-class="Checkbox" data-tip="If enabled, MediaMonkey will check (over the internet) whether a newer version exists.">Check for updates (when connected)</div>
+    </div>
+    <div>
+        <div data-id="chbCheckForNewBetaVersion" class="left-indent" data-control-class="Checkbox" data-tip="Also checks for new beta builds.">Include beta builds</div>
+    </div>
+    <div>
+        <div data-id="chbCheckForAddonsUpdate" class="left-indent" data-control-class="Checkbox" data-tip="Also checks for addon updates.">Include addons</div>
+    </div>
+    <div style="display: none"> <!--not used yet-->
+        <div data-id="chbTelemetry" data-control-class="Checkbox" >Submit anonymous usage statistics to help improve the software</div>
+    </div>
+    <div>
+        <div data-id="chbShowSplashScreen" data-control-class="Checkbox">Show splash screen at startup</div>
+    </div>
+    <div>
+        <div data-id="chbStartJustOneInstance" data-control-class="Checkbox" data-tip="This option forces a maximum of one MediaMonkey window to be open at any time.">Allow just one instance of MediaMonkey</div>
+    </div>
+    <div>
+        <div data-id="chbShowTrayIcon" data-control-class="Checkbox" data-tip="Shows the MediaMonkey icon in the system tray">Always show tray icon</div>
+    </div>
+    <div>
+        <div data-tip="By default, MediaMonkey minimizes to the taskbar. 'Minimize to MicroPlayer' causes it to appear as a toolbar next to the System tray when minimized. 'Minimize to MiniPlayer', displays 'Playing' list files even when the main application is minimized.">
+            <label>Minimization settings:</label>
+        </div>
+        <div class="left-indent uiRows">
+            <div data-tip="Minimizes to the Taskbar">
+                <div data-id="rbMinimizeTaskBar" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'MinimizeTaskBar', name: 'MinimizeSett'}">Minimize to taskbar</div>
+            </div>
+            <div data-tip="Minimizes to the MicroPlayer if it is enabled (right-click on the System Task bar, and click 'Toolbars').">
+                <div data-id="rbMinimizeMicro" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'MinimizeMicro', name: 'MinimizeSett'}">Minimize to MicroPlayer</div>
+            </div>
+            <div data-tip="Minimizes to the MiniPlayer">
+                <div data-id="rbMinimizeMini" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'MinimizeMini', name: 'MinimizeSett'}">Minimize to MiniPlayer</div>
+            </div>
+        </div>
+    </div>
+    <div data-tip="This option causes MediaMonkey to never truly close--it always runs in the background, and is always accessible via the system tray.">
+        <div data-id="chbCloseToTray" data-control-class="Checkbox">Close to tray</div>
+    </div>    
+    <div class="flex row">
+        <label>Temporary directory:</label>
+        <div data-id="edtTempDir" class="fill" data-control-class="Edit" data-init-params="{type: 'text'}"></div>
+        <div data-control-class="Button" data-id="btnTempDir" data-add-dots>Browse</div>
+    </div>
+</div>

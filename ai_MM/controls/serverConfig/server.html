@@ -1,0 +1,28 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="fill flex column">
+    <div class="flex row">
+        <div class="fill flex column">
+            <div class="flex row uiRow">
+                <label data-tip="The server name as it appears to other DLNA devices" data-add-colon>Server name</label>
+                <div data-id="edtServerName" class="wideControl" data-control-class="Edit"></div>
+            </div>
+            <div class="flex row uiRow">
+                <label data-add-colon>IP address</label>
+                <div data-id="edtIPAddress" class="middleControl" data-control-class="Dropdown" data-init-params="{readOnly: true, autoWidth: false}"></div>
+                <div class="vSeparator"></div>
+                <label data-tip="A randomly generated IP port" data-add-colon>Port</label>
+                <div data-id="edtIPPort" class="thinControl" data-control-class="Edit" data-init-params="{type: 'number', min:1024, max:65535}"></div>
+                <div data-id="btnCheckServer" data-control-class="Button" class="rowButton" data-add-dots>Check</div>
+            </div>
+        </div>
+        <div class="flex column vSeparator">
+            <div data-id="QRCode" class="imageSquare"></div>
+        </div>
+    </div>
+    <div class="uiRow">
+        <label data-add-colon>Status</label>
+    </div>
+    <div data-id="lvConnectionsListView" class="fill flex column hSeparatorTiny" data-control-class="GridView"></div>
+    <div data-id="chbAcceptExternalIPs" data-tip="Unblocks connections from addresses outside the local network. Not recommended if Wi-Fi sync is enabled." data-control-class="Checkbox">Accept external IP addresses</div>
+</div>

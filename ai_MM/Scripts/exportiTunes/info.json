@@ -1,0 +1,9 @@
+{
+    "title": "Export iTunes.xml",
+    "id": "exportiTunes",
+    "description": "Exports library to iTunes.xml (e.g. for usage with Traktor)",
+    "version": "1.0.4",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "skin/icon/exportToFile.svg"
+}

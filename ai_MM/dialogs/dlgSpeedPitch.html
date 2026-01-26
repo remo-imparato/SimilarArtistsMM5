@@ -1,0 +1,67 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgSpeedPitch.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName="dlgSpeedPitch" data-help="Player#Speed">
+    <div class="padding flex column nonGreedy">
+        <fieldset>
+        <legend data-id="typeInfo"></legend>
+        <div class="uiRow marginTop">
+            <div data-id="chbSpeedEnabled" data-control-class="Checkbox">Enable</div>
+        </div>
+        <label class="uiRow marginTop">Adjust speed</label>
+        <div class="flex column hSeparator">
+            <div class="flex row paddingSides">
+                <div class="button" data-id="speedhistory1">
+                </div>
+                <div class="button" data-id="speedhistory2">
+                </div>
+                <div class="button" data-id="speedhistory3">
+                </div>
+            </div>
+            <div data-id="speed" class="" style="padding: 0.5em; width: 25em" data-control-class="Slider" data-init-params="{min: 0.5, max: 3, step: 0.05, tabbable:true, ticks:[0.5, 1, 1.5, 2, 2.5, 3], tickPlacement: 'bottomRight', fromZero: false, speechDecimals: 2, speechName: 'speed'}"></div>
+            <div class="flex row" style="justify-content:space-between;width:26em">
+                <label data-no-localize>0.5</label>
+                <label data-no-localize>1.0</label>
+                <label data-no-localize>1.5</label>
+                <label data-no-localize>2.0</label>
+                <label data-no-localize>2.5</label>
+                <label data-no-localize>3.0</label>
+            </div>
+        </div>
+
+        <label data-id="lPitch" class="uiRow marginTop"></label>
+        <div class="flex column hSeparator">
+            <label data-id="lPitchSemitones" class="uiRow center">Semitones</label>
+            <div data-id="pitch" class="" style="padding: 0.5em; width: 25em" data-control-class="Slider" data-init-params="{min: -10, max: 10, step: 1, tabbable:true, ticks:[-10, -5, 0, 5, 10], tickPlacement: 'bottomRight', fromZero: false, speechDecimals: 2, speechName: 'pitch'}"></div>
+            <div class="flex row" style="justify-content:space-between;width:26em">
+                <label data-no-localize>-10</label>
+                <label data-no-localize>&nbsp;-5</label>
+                <label data-no-localize>&nbsp;&nbsp;0</label>
+                <label data-no-localize>&nbsp;+5</label>
+                <label data-no-localize>+10</label>
+            </div>
+        </div>
+        <div class="flex column hSeparator">
+            <label data-id="lPitchCents" class="uiRow center">Cents</label>
+            <div data-id="pitchCents" class="" style="padding: 0.5em; width: 25em" data-control-class="Slider" data-init-params="{min: -50, max: 50, step: 1, tabbable:true, ticks:[-50, -25, 0, 25, 50], tickPlacement: 'bottomRight', fromZero: false, speechDecimals: 2, speechName: 'pitch cents'}"></div>
+            <div class="flex row" style="justify-content:space-between;width:26em">
+                <label data-no-localize>-50</label>
+                <label data-no-localize>&nbsp;-25</label>
+                <label data-no-localize>&nbsp;&nbsp;0</label>
+                <label data-no-localize>&nbsp;+25</label>
+                <label data-no-localize>+50</label>
+            </div>
+        </div>
+        </fieldset>
+        <div data-control-class="Buttons">
+            <div data-id="btnReset">Reset</div>
+            <div data-id="btnClose">Close</div>
+        </div>
+    </div>
+</body>
+
+</html>

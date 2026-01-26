@@ -1,0 +1,9 @@
+{
+    "title": "Case Checker",
+    "id": "casechecker",
+    "description": "Checks for correct capitalization. Based on original VBScript written by Risser",
+    "version": "1.0.2",
+    "author": "Ventis Media, Inc.",
+    "type": "general",
+    "icon": "caseChecker.svg"
+}

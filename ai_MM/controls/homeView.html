@@ -1,0 +1,29 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="fill" data-control-class="Scroller">
+    <div data-id="nodesGridView" class="listview flex column padding viewControl showInline" data-control-class="NodeListView" data-init-params="{isHorizontal: false, dynamicSize: true, smallItemSize: true, multiselect: false}"></div>
+
+    <!-- Artists -->
+    <div data-id="artists" class="marginTop showIfVisibleChild">
+        <span data-id="artistsLabel" class="clickable left-indent-small">
+                <span class="largeText titleMargin" data-localize>Artists</span> <span data-localize>(see all)</span>
+        </span>
+        <div data-id="artistsView" class="showInline marginBottomLarge" data-control-class="ArtistGrid" data-init-params="{isHorizontal: false, dynamicSize: true}"></div>
+    </div>
+
+    <!-- Albums -->
+    <div data-id="albums" class="marginTopLarge showIfVisibleChild">
+        <span data-id="albumsLabel" class="clickable left-indent-small">
+                <span class="largeText titleMargin" data-localize>Albums</span> <span data-localize>(see all)</span>
+        </span>
+        <div data-id="albumsView" class="showInline" data-control-class="AlbumListView" data-init-params="{isHorizontal: false, dynamicSize: true}"></div>
+    </div>
+
+    <!-- Pinned items -->
+    <div data-id="pinned" class="marginTopLarge showIfVisibleChild">
+        <span data-id="pinnedLabel">
+                <span class="largeText titleMargin left-indent-small" data-localize>Pinned</span>
+        </span>
+        <div data-id="pinnedView" class="showInline" data-control-class="PinnedListView" data-init-params="{isHorizontal: false, dynamicSize: true}"></div>
+    </div>
+</div>

@@ -1,0 +1,9 @@
+{
+    "title": "Line fade",
+    "id": "vis_linefade",
+    "description": "Visualization plugin.",
+    "version": "1.0.0",
+    "type": "visualization",
+    "author": "Ventis Media, Inc.",
+    "icon": "thumb.png"
+}

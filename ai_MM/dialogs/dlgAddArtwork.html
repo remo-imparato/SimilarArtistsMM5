@@ -1,0 +1,54 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+
+<script src="file:///mminit.js"></script>
+<script src="dlgAddArtwork.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-id="body" data-posSaveName='dlgAddArtwork' data-control-class="Control">
+    <div class="flex column nonGreedy">
+        <div class="innerDlg flex column">
+            <div class="flex fill row">
+                <div data-id="artworkBox" class="gridItemSquare imageItem standardItem">
+                    <div class="fill gridItemInner imageSquare">
+                      <div class="fill padding">
+                        <img data-id="artwork" class="allinside box autoMargin ignoreMouse autosize" />
+                        <div data-id="unknownAA" class="fill largeIconColor" data-icon="unknownAA"></div>
+                      </div><label data-id="sizeLbl" class="sizeLabel"></label>
+                    </div>
+                </div>
+                <div class="flex fill column padding">
+                    <label data-add-colon>Image type</label>
+                    <div data-id="cbImageType" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                    <div class="hSeparatorTiny"></div>
+                    <label data-add-colon>Description</label>
+                    <textarea rows="6" data-id="boxDescription" class="fill noresize"></textarea>
+                </div>
+            </div>
+            <div class="flex fill column padding">
+                <div class="flex fill row verticalBaseline hSeparatorTiny">
+                    <div class="griditemWidth" data-localize data-add-colon>Image location</div>
+                    <div data-id="cbImageLocation" data-control-class="Dropdown" data-init-params="{readOnly: true}"></div>
+                </div>
+                <div class="flex fill row verticalBaseline hSeparatorTiny">
+                    <div class="griditemWidth" data-localize data-add-colon>Image filename</div>
+                    <div data-id="edtImageFilename" class="fill" data-control-class="Edit"></div>
+                </div>
+            </div>
+            <div class="hSeparatorTiny uiRows">
+                <div data-control-class="Checkbox" data-id="chbAlbum">Apply to all files in the Album/Series</div><br />
+                <div data-control-class="Checkbox" data-id="chbReplace">Replace existing image</div>
+            </div>
+        </div>
+        <div data-id="bottom">
+            <div data-control-class="Buttons">
+                <div data-id='btnCustomOptions' data-position='opposite'>Options</div>
+                <div data-id="btnOK" data-default></div>
+                <div data-id="btnCancel"></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

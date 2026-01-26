@@ -1,0 +1,9 @@
+{
+    "title": "Last.FM service",
+    "id": "lastFM",
+    "description": "Adds ability to send scrobbles to Last.fm",
+    "version": "1.0.2",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "last-fm.svg"
+}

@@ -1,0 +1,38 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgNewVersion.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-defaultSize='40em,35em'>
+    <div class="padding fill flex column">
+        <label class="padding">There is a new version of MediaMonkey available.</label>
+        <div class="flex columns padding">
+            <div class="uiRows">
+                <div><label data-add-colon>Installed version</label></div>
+                <div><label data-add-colon>New version</label></div>
+            </div>
+            <div class="uiRows">
+                <div><label data-id="lblInstalledVersion" class="hSeparatorTiny"></label></div>
+                <div><label data-id="lblNewVersion" class="hSeparatorTiny"></label></div>
+            </div>
+        </div>
+        <label data-id="lblNewVersionDesc" class="padding">Description of the new version:</label>
+        <div class="fill marginsRow hSeparatorTiny">
+            <div data-id="aboutTxtScroller" class="fill padding border" data-control-class="Scroller">
+                <div data-id="newVerDesc"></div>
+            </div>
+        </div>
+        <div id="bottom">
+            <div data-control-class="Buttons">
+                <div data-id='btnBuy' data-position='opposite'>Info/Buy</div>
+                <div data-id='btnOK' data-default="1">Download</div>
+                <div data-id='btnDismiss'>Dismiss</div>
+                <div data-id='btnClose'></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

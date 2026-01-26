@@ -1,0 +1,6 @@
+div[data-id=slider] {
+    height: 15em; 
+}
+label[data-id=lblBitrate] {
+    min-width: 6em;
+}

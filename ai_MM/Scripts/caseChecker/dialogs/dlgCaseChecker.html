@@ -1,0 +1,75 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+
+<head>
+    <title>MediaMonkey Music Library Statistics</title>
+    <script src="file:///mminit.js"></script>
+    <script src="dlgCaseChecker.js"></script>
+</head>
+
+<body data-posSaveName='dlgCaseChecker' data-defaultSize='800,600'>
+    <style type="text/css">
+        body .ccContainer {font-family:'Verdana',sans-serif; background-color:#FFFFFF; font-size:9pt; color:#000000;}
+        .ccContainer H1{font-family:'Verdana',sans-serif; font-size:13pt; font-weight:bold; color:#AAAAAA; text-align:left}
+        .ccContainer P{font-family:'Verdana',sans-serif; font-size:9pt; color:#000000;}
+        .ccContainer TH{font-family:'Verdana',sans-serif; font-size:10pt; font-weight:bold; color:#000000; border-color:#000000; border-style: solid; border-left-width:0px; border-right-width:0px; border-top-width:0px; border-bottom-width:3px;}
+        .ccContainer TD{font-family:'Verdana',sans-serif; font-size:9pt; color:#000000; border-color:#000000; border-style: solid; border-left-width:0px; border-right-width:0px; border-top-width:0px; border-bottom-width:1px;}
+        .ccContainer TD.highlight{font-family:'Verdana',sans-serif; font-size:8pt; background-color:#FFFF77; color:#000000; border-color:#000000; border-style: solid; border-left-width:0px; border-right-width:0px; border-top-width:0px; border-bottom-width:1px;}
+        .ccContainer TR.dark{background-color:#EEEEEE}
+        .ccContainer TR.aleft TH{text-align:left}
+    </style>    
+    <div class="flex column fill">
+        <div data-id="dropdownHeader">
+            <h2 class="margins nonGreedy">
+				<span data-localize>Recommended changes to capitalization</span>
+				<span> - </span>
+				<span data-localize data-add-colon>Choose which files to update</span>
+			</h2>
+            <div class="floatRight clickable flex row navbar">
+                <div class="button_container flex row" data-control-class="ToolButton" data-icon="options" data-id="btnDropdown"></div>
+            </div>
+        </div>
+        <div data-id="optionsDropdown" style="height: 0px;" class="noOverflow">
+            <div class="uiRows">
+                <div class="flex row margins">
+                    <table>
+                        <tr>
+                            <td><div data-id="chbLittleWords" data-control-class="Checkbox">Lowercase common short words</div></td>
+                            <td><div data-id="chbForceCaps" data-control-class="Checkbox">Capitalize common abbreviations</div></td>
+                            <td><div data-id="chbFixQuotes" data-control-class="Checkbox">Fix quotes and apostrophes</div></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="flex row margins">
+                    <label data-add-colon>Customize case for these phrases</label>
+                    <div data-id="edtCustomForceCaps" class="fill" data-control-class="Edit" data-init-params="{type: 'text'}"></div>
+                </div>
+                <div class="flex row margins">
+                    <label data-add-colon>Customize case for these phrases mid-string</label>
+                    <div data-id="edtCustomLittleStrings" class="fill" data-control-class="Edit" data-init-params="{type: 'text'}"></div>
+                </div>
+                <div class="margins">
+                    <label data-add-colon>Fields</label>
+                    <table>
+                        <tbody class="uiRows" data-id="selectedFields"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div data-control-class="Buttons">
+                <div data-id="btnReset">Reset changes</div>
+            </div>
+        </div>
+        <div data-id="ccContainer" class="transparentList fill listview flex column canScrollHoriz" data-control-class="CaseCheckerTracklist">
+        </div>
+        <div class="fill flex column" data-id="ccProgress" style="display: none">
+            <div class="toolbutton" data-icon="progress"></div>
+        </div>
+        <div data-control-class="Buttons">
+            <div data-id="btnOK" data-default="1"></div>
+            <div data-id="btnCancel"></div>
+        </div>
+    </div>
+</body>
+
+</html>

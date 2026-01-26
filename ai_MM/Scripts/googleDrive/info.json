@@ -1,0 +1,9 @@
+{
+    "title": "Google Drive",
+    "id": "googleDrive",
+    "description": "Adds ability to manipulate and sync Google Drive content",
+    "version": "1.0.3",
+    "type": "sync",
+    "author": "Ventis Media, Inc.",
+    "icon": "googleDrive.svg"
+}

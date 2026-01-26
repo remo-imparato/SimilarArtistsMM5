@@ -1,0 +1,22 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgProgressWindow.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-defaultSize='600,200'>
+    <div class="flex fill column">
+        <div class="fill uiRows padding">
+            <div class="hSeparator textCenter">
+                <label data-id='lblProgressMessage' class="textWrap"></label>
+            </div>
+            <div data-id="progress" data-control-class="ProgressBar" data-init-params="{transition: true}"></div>
+        </div>
+        <div data-control-class="Buttons">
+            <div data-id="btnCancel">Cancel</div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+{
+    "title": "Export subscribed podcasts",
+    "id": "exportPodcasts",
+    "description": "Exports subscribed podcasts to an OPML file.",
+    "version": "1.0.0",
+    "type": "general",
+    "author": "Ventis Media, Inc.",
+    "icon": "skin/icon/export.svg"
+}

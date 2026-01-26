@@ -1,0 +1,24 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgSelectPlaylist.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgSelectPlaylist' data-defaultSize='400,400'>
+    <div class="flex fill column">
+        <div class="flex fill column padding">
+            <div class="flex row uiRow hSeparatorTiny">
+                <label class="fill" data-add-colon>Select playlist</label>
+                <div data-id="btnNew" data-control-class="Button" data-add-dots>New playlist</div>
+            </div>
+            <div class="fill" data-id="playlistTree" data-control-class="SelectPlaylistTree"></div>
+        </div>
+        <div data-control-class="Buttons">
+            <div data-id="btnOK" data-default="1"></div>
+            <div data-id="btnCancel"></div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,37 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgSelectFolder.js"></script>
+<script src="file:///commonControls.js" type="module"></script>
+
+<body data-posSaveName='dlgSelectFolder' data-defaultSize='400,400'>
+    <div class="padding flex fill column">
+        <div class="flex fill column padding">
+            <label data-id="lblSubtitle" class="uiRow"></label>
+            <div class="fill hSeparatorTiny" data-id="fldFolders" data-control-class="FolderTree" data-init-params="{rootNode: 'localComputerWithNetwork'}"></div>
+            <div data-id="customPanel">
+                <div data-id="chbHideUnselected" data-control-class="Checkbox">Hide unselected items</div>
+                <div class="flex row verticalBaseline">
+                    <table class="fill">
+                        <tr>
+                            <td>
+                                <div class="stretchWidth" data-id="edtAddFolder" data-control-class="Edit"></div>
+                            </td>
+                            <td align="right">
+                                <div data-control-class="Button" style="margin: 0" data-id="btnAdd">Add</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div data-control-class="Buttons" data-init-params="{samewidth: true}">
+            <div data-id="btnNewFolder" data-position='opposite' data-add-dots>New folder</div>
+            <div data-id="btnOK" data-default="1"></div>
+            <div data-id="btnCancel"></div>
+        </div>
+    </div>
+</body>
+
+</html>

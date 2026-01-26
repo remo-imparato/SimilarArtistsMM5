@@ -1,0 +1,47 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div>
+    <fieldset data-tip="Improve performance of some tasks by utilizing multiple CPU cores">
+        <legend>Use multiple CPU cores (if available)</legend>
+        <table>
+            <tr>
+                <td data-add-colon>Auto-conversion</td>
+                <td>
+                    <div data-id="edtCoresAutoConv" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'CPUCores'},readOnly: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td data-add-colon>Conversion</td>
+                <td>
+                    <div data-id="edtCoresConv" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'CPUCores'},readOnly: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td data-add-colon>Volume analysis</td>
+                <td>
+                    <div data-id="edtCoresVolumeAnal" data-control-class="Dropdown" data-init-params="{dbFunc:'getStringList', dbFuncParams: {category: 'CPUCores'},readOnly: true}"></div>
+                </td>
+            </tr>
+        </table>
+    </fieldset>
+    <div class="hSeparator"></div>
+    <div class="uiRow" data-tip="MediaMonkey performs numerous operations such as CD Ripping, Conversion, Tagging, Volume Leveling, etc. in the background. This option sets the priority of these background tasks. By default it is set to 'Lower' so that these tasks don't slow down other operations.">
+        <label data-add-colon>Priority for background tasks</label>
+        <div data-id="edtThreadPriority" data-control-class="Dropdown" data-init-params="{readOnly: true}">
+            <option>Idle</option>
+            <option>Lowest</option>
+            <option>Lower</option>
+            <option>Normal</option>
+        </div>
+    </div>
+    <div class="hSeparator"></div>
+    <!--
+    <div data-tip="This enables smooth scrolling of lists.">
+        <div data-id="chbSmoothScroll" data-control-class="Checkbox">Enable smooth scrolling</div>
+    </div>    
+    <div class="hSeparator"></div>
+    -->
+    <div data-tip="Hardware acceleration improves performance and battery life, but may cause stability issues on some systems.">
+        <div data-id="chbHWAcceleration" data-control-class="Checkbox"></div>
+    </div>
+</div>

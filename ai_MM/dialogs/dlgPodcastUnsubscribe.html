@@ -1,0 +1,31 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<html class="dialog">
+<script src="file:///mminit.js"></script>
+<script src="dlgPodcastUnsubscribe.js"></script>
+<script type="module" src="file:///commonControls.js"></script>
+
+<body data-posSaveName='dlgPodcastUnsubscribe'>
+    <div class="flex column nonGreedy">
+        <div class="innerDlg">
+            <div class="hSeparator"></div>
+            <div class="hSeparator">
+                <label data-id="lblUnsubscribeText"></label>
+            </div>
+            <div class="left-indent uiRows hSeparator">
+                <div>
+                    <div data-id="rbUnsubscribe" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'unsubscribe', name: 'UnsubscribeRadio'}">Unsubscribe</div>
+                </div>
+                <div>
+                    <div data-id="rbUnsubscribeAndDelete" data-control-class="Checkbox" data-init-params="{type: 'radio', value: 'unsubscribeAndDelete', name: 'UnsubscribeRadio'}">Unsubscribe and delete all episodes</div>
+                </div>
+            </div>
+            <div data-control-class="Buttons">
+                <div data-id='btnYes' data-default="1"></div>
+                <div data-id='btnNo' data-esc></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

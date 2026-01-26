@@ -1,0 +1,36 @@
+/* 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' */
+
+.youtubeIcon {
+    min-width: 30px !important; // given by Google logo guidlines
+    min-height: 20px !important;
+    opacity: 1 !important; // given by Google logo guidlines
+    width: 30px;
+    height: 20px;    
+    margin: 6px;
+}
+.youtubeIcon > .toolbutton {
+    padding: 0px;
+    width: 30px;
+    height: 20px;
+}
+.ytColor1 { fill: if(@darkTheme, #ffffff, #282828)} 
+.ytColor2 { fill: if(@darkTheme, #282828, #ffffff)}
+.ytColor3 { fill: if(@darkTheme, #ffffff, #282828)}
+.youtubeBig[data-selected] .ytColor2 { fill: #ffffff}
+.youtubeBig[data-selected] .ytColor3 { fill: #ff0000}
+.youtubeBig .icon {
+    width: auto;
+    height: 20px;
+    opacity: 1;
+}
+
+.youtubeBig.tabsHeader {
+    padding: 10px;
+    opacity: 1 !important;
+}
+
+.youtubeIconText {
+    .smallText;
+    margin-left: @units0_25;
+    margin-right: @units0_25;
+}

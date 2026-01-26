@@ -1,0 +1,59 @@
+<!-- 'This file is part of MediaMonkey licensed for use under the Ventis Media End User License Agreement, and for the creation of derivative works under the less restrictive Ventis Limited Reciprocal License. See: https://www.mediamonkey.com/sw/mmw/5/Ventis_limited_reciprocal_license.txt' -->
+
+<div class="uiRows" data-help="Protecting Your Library with Party Mode">
+    <div data-tip="If enabled, will prompt for a password when attempting to exit Party Mode.">
+        <div data-id="chbPartyPassword" data-control-class="Checkbox">Secure Party Mode with password:</div>
+        <div data-id="edtPartyPassword" data-control-class="Edit" data-init-params="{type: 'password'}"></div>
+    </div>
+    <div data-tip="Prevents users from making any changes">
+        <div data-id="chbPartyLockdown" class="left-indent" data-control-class="Checkbox">Total lockdown</div>
+    </div>
+    <div data-tip="This option completely hides the menu bar.">
+        <div data-id="chbPartyHideMenu" data-control-class="Checkbox">Hide menu bar</div>
+    </div>
+    <div data-tip="This option causes MediaMonkey to take up the entire screen.">
+        <div data-id="chbPartyFullScreen" data-control-class="Checkbox">Show in full screen mode</div>
+    </div>
+    <div data-tip="This prevents users from exiting MediaMonkey by switching applications.">
+        <div data-id="chbPartyPreventSwitching" class="left-indent" data-control-class="Checkbox">Prevent switching to other application (Alt+Tab, Alt+Esc, Ctrl+Esc)</div>
+    </div>
+    <div data-tip="This locks the current configuration of Party Mode.">
+        <div data-id="chbPartyDisableRepositioning" data-control-class="Checkbox">Disable repositioning of dialogs and controls</div>
+    </div>
+    <div data-tip="This makes MediaMonkey function more like a jukebox, preventing users from stopping or switching tracks; changing volume, balance or equalizer settings; and re-ordering / removing files, or adding multiple files at once.">
+        <div data-id="chbPartyDisableReorder" data-control-class="Checkbox">Disable Player controls and track reordering</div>
+    </div>
+    <div data-tip="Allows music to be lowered/paused for announcements during a party">
+        <div data-id="chbPartyEnablePlayerControl" class="left-indent" data-control-class="Checkbox">Enable volume, play/pause controls</div>
+    </div>
+    <fieldset>
+        <legend>Player controls</legend>
+        <table>
+            <tr>
+                <td colspan="2">Default action</td>
+            </tr>
+            <tr>
+                <td>
+                    <label class="left-indent">When playback is stopped:</label>
+                </td>
+                <td class="stretchWidth" data-tip="This determines what the default behavior is when a file is double-clicked or [enter] is pressed. Options are Play Now, Queue Next, Queue Last, or Edit Properties.">
+                    <div data-id="edtPartyDblClickStopped" data-control-class="Dropdown" data-init-params="{readOnly: true, dbFunc:'getStringList', dbFuncParams: {category: 'PlayActions'}, preload: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label class="left-indent">When files are playing:</label>
+                </td>
+                <td class="stretchWidth" data-tip="This determines what the default behavior is when a file is double-clicked or [enter] is pressed. Options are Play Now, Queue Next, Queue Last, or Edit Properties.">
+                    <div data-id="edtPartyDblClickPlaying" data-control-class="Dropdown" data-init-params="{readOnly: true, dbFunc:'getStringList', dbFuncParams: {category: 'PlayActions'}, preload: true}"></div>
+                </td>
+            </tr>
+            <tr>
+                <td>'Play now' action:</td>
+                <td class="stretchWidth" data-tip="This determines what files are played when the 'Play now' command is run for a single file. It applies only when Party mode is active.">
+                    <div data-id="edtPartyPlayAction" data-control-class="Dropdown" data-init-params="{readOnly: true, dbFunc:'getStringList', dbFuncParams: {category: 'PlayNowActions'}, preload: true}"></div>
+                </td>
+            </tr>
+        </table>
+    </fieldset>
+</div>
