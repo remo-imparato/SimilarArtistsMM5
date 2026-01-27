@@ -167,7 +167,7 @@ async function getTrackId(artist, title) {
 		};
 		
 		// Search for artist
-		const artistSearchUrl = `${RECCOBEATS_API_BASE}/search/artist?q=${encodeURIComponent(artist)}`;
+		const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText?q=${encodeURIComponent(artist)}`;
 		const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
 		
 		if (!artistRes.ok) {
@@ -229,6 +229,269 @@ async function getTrackId(artist, title) {
 }
 
 /**
+ * Get ReccoBeats track IDs for multiple tracks in batch mode (more efficient).
+ * This significantly reduces API calls by batching artist and album lookups.
+ * 
+ * @param {object[]} trackRequests - Array of {artist, title, album?} objects
+ * @returns {Promise<Array<string|null>>} Array of track IDs (or null) in same order as input
+ */
+async function getTrackIdsBatch(trackRequests) {
+	if (!trackRequests || trackRequests.length === 0) {
+		return [];
+	}
+	
+	const cache = window.lastfmCache;
+	
+	// Normalize strings for matching
+	const normalize = (s) =>
+		s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
+	
+	const myHeaders = new Headers();
+	myHeaders.append("Accept", "application/json");
+	myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
+	
+	const requestOptions = {
+		method: "GET",
+		headers: myHeaders,
+		redirect: "follow"
+	};
+	
+	// Check cache for already-resolved tracks
+	const results = new Array(trackRequests.length).fill(undefined);
+	const uncachedIndices = [];
+	
+	for (let i = 0; i < trackRequests.length; i++) {
+		const req = trackRequests[i];
+		if (!req?.artist || !req?.title) {
+			results[i] = null;
+			continue;
+		}
+		
+		const cacheKey = `reccobeats:trackid:${req.artist}:${req.title}`.toUpperCase();
+		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
+			results[i] = cache._reccobeats.get(cacheKey);
+		} else {
+			uncachedIndices.push(i);
+		}
+	}
+	
+	if (uncachedIndices.length === 0) {
+		console.log(`getTrackIdsBatch: All ${trackRequests.length} tracks found in cache`);
+		return results;
+	}
+	
+	console.log(`getTrackIdsBatch: Processing ${uncachedIndices.length}/${trackRequests.length} uncached tracks`);
+	
+	try {
+		// Step 1: Deduplicate and fetch artist IDs
+		const uniqueArtists = [...new Set(uncachedIndices.map(i => trackRequests[i].artist))];
+		const artistMap = {}; // artist name -> artist ID
+		
+		console.log(`getTrackIdsBatch: Fetching ${uniqueArtists.length} unique artists`);
+		
+		for (const artist of uniqueArtists) {
+			try {
+				const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText?q=${encodeURIComponent(artist)}`;
+				const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
+				
+				if (artistRes.ok) {
+					const artistJson = await artistRes.json();
+					const best = artistJson?.data?.[0];
+					if (best) {
+						artistMap[artist] = best.id;
+					}
+				}
+			} catch (e) {
+				console.warn(`getTrackIdsBatch: Error fetching artist "${artist}":`, e.message);
+			}
+		}
+		
+		// Step 2: For requests with album info, fetch albums in batch
+		const albumMap = {}; // artist name -> { normalized album name -> album ID }
+		const requestsWithAlbums = uncachedIndices.filter(i => trackRequests[i].album);
+		
+		if (requestsWithAlbums.length > 0) {
+			const artistsWithAlbums = [...new Set(requestsWithAlbums.map(i => trackRequests[i].artist))];
+			console.log(`getTrackIdsBatch: Fetching albums for ${artistsWithAlbums.length} artists`);
+			
+			for (const artist of artistsWithAlbums) {
+				const artistId = artistMap[artist];
+				if (!artistId) continue;
+				
+				try {
+					const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/albums`;
+					const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
+					
+					if (albumsRes.ok) {
+						const albumsJson = await albumsRes.json();
+						albumMap[artist] = {};
+						
+						for (const album of albumsJson?.data || []) {
+							const albumTitle = album.albumTitle || album.title || '';
+							if (albumTitle) {
+								albumMap[artist][normalize(albumTitle)] = album.id;
+							}
+						}
+					}
+				} catch (e) {
+					console.warn(`getTrackIdsBatch: Error fetching albums for "${artist}":`, e.message);
+				}
+			}
+		}
+		
+		// Step 3: Collect unique album IDs that we need
+		const albumIds = new Set();
+		for (const idx of uncachedIndices) {
+			const req = trackRequests[idx];
+			if (!req.album) continue;
+			
+			const artistAlbums = albumMap[req.artist];
+			if (!artistAlbums) continue;
+			
+			const albumId = artistAlbums[normalize(req.album)];
+			if (albumId) albumIds.add(albumId);
+		}
+		
+		// Step 4: Fetch tracks for all albums using batch endpoint (if available)
+		const albumTracks = {}; // album ID -> { normalized track name -> track ID }
+		
+		if (albumIds.size > 0) {
+			const albumIdArray = Array.from(albumIds);
+			console.log(`getTrackIdsBatch: Fetching tracks for ${albumIdArray.length} albums in batch`);
+			
+			try {
+				// Try batch endpoint first
+				const batchUrl = `${RECCOBEATS_API_BASE}/albums?ids=${albumIdArray.join(',')}`;
+				const batchRes = await rateLimitedFetch(batchUrl, requestOptions);
+				
+				if (batchRes.ok) {
+					const batchJson = await batchRes.json();
+					
+					for (const album of batchJson?.data || []) {
+						const map = {};
+						for (const track of album.tracks || []) {
+							const trackTitle = track.trackTitle || track.title || '';
+							if (trackTitle) {
+								map[normalize(trackTitle)] = track.id;
+							}
+						}
+						albumTracks[album.id] = map;
+					}
+				} else {
+					// Fallback: fetch albums individually
+					console.log('getTrackIdsBatch: Batch endpoint failed, falling back to individual requests');
+					for (const albumId of albumIdArray) {
+						try {
+							const albumUrl = `${RECCOBEATS_API_BASE}/album/${albumId}`;
+							const albumRes = await rateLimitedFetch(albumUrl, requestOptions);
+							
+							if (albumRes.ok) {
+								const albumJson = await albumRes.json();
+								const map = {};
+								for (const track of albumJson?.data?.tracks || []) {
+									const trackTitle = track.trackTitle || track.title || '';
+									if (trackTitle) {
+										map[normalize(trackTitle)] = track.id;
+									}
+								}
+								albumTracks[albumId] = map;
+							}
+						} catch (e) {
+							console.warn(`getTrackIdsBatch: Error fetching album ${albumId}:`, e.message);
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('getTrackIdsBatch: Error in batch album fetch:', e.message);
+			}
+		}
+		
+		// Step 5: For tracks without album info, fetch from artist's tracks
+		const artistTracks = {}; // artist name -> { normalized track name -> track ID }
+		const requestsWithoutAlbums = uncachedIndices.filter(i => !trackRequests[i].album);
+		
+		if (requestsWithoutAlbums.length > 0) {
+			const artistsWithoutAlbums = [...new Set(requestsWithoutAlbums.map(i => trackRequests[i].artist))];
+			console.log(`getTrackIdsBatch: Fetching tracks for ${artistsWithoutAlbums.length} artists (no album info)`);
+			
+			for (const artist of artistsWithoutAlbums) {
+				const artistId = artistMap[artist];
+				if (!artistId) continue;
+				
+				try {
+					const tracksUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/tracks`;
+					const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
+					
+					if (tracksRes.ok) {
+						const tracksJson = await tracksRes.json();
+						const map = {};
+						
+						for (const track of tracksJson?.data || []) {
+							const trackTitle = track.trackTitle || track.title || '';
+							if (trackTitle) {
+								map[normalize(trackTitle)] = track.id;
+							}
+						}
+						artistTracks[artist] = map;
+					}
+				} catch (e) {
+					console.warn(`getTrackIdsBatch: Error fetching tracks for "${artist}":`, e.message);
+				}
+			}
+		}
+		
+		// Step 6: Resolve final track IDs for uncached requests
+		for (const idx of uncachedIndices) {
+			const req = trackRequests[idx];
+			let trackId = null;
+			
+			// Try album-based lookup first if album is provided
+			if (req.album) {
+				const artistAlbums = albumMap[req.artist];
+				if (artistAlbums) {
+					const albumId = artistAlbums[normalize(req.album)];
+					if (albumId) {
+						const tracks = albumTracks[albumId];
+						if (tracks) {
+							trackId = tracks[normalize(req.title)] || null;
+						}
+					}
+				}
+			}
+			
+			// Fallback to artist tracks if not found via album
+			if (!trackId) {
+				const tracks = artistTracks[req.artist];
+				if (tracks) {
+					trackId = tracks[normalize(req.title)] || null;
+				}
+			}
+			
+			results[idx] = trackId;
+			
+			// Cache the result
+			if (cache?.isActive?.()) {
+				if (!cache._reccobeats) cache._reccobeats = new Map();
+				const cacheKey = `reccobeats:trackid:${req.artist}:${req.title}`.toUpperCase();
+				cache._reccobeats.set(cacheKey, trackId);
+			}
+		}
+		
+		const foundCount = results.filter(r => r !== null && r !== undefined).length;
+		console.log(`getTrackIdsBatch: Successfully resolved ${foundCount}/${trackRequests.length} track IDs`);
+		
+	} catch (e) {
+		console.error('getTrackIdsBatch: Batch processing error:', e.message);
+		// Fill remaining undefined results with null
+		for (let i = 0; i < results.length; i++) {
+			if (results[i] === undefined) results[i] = null;
+		}
+	}
+	
+	return results;
+}
+
+/**
  * Fetch audio features for a specific track using its ReccoBeats ID.
  * 
  * @param {string} trackId - ReccoBeats track ID
@@ -255,7 +518,7 @@ async function fetchTrackAudioFeatures(trackId) {
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
 		
-		const url = `${RECCOBEATS_API_BASE}/track/${encodeURIComponent(trackId)}/audio-features`;
+		const url = `${RECCOBEATS_API_BASE}/audio-features?ids=${encodeURIComponent(trackId)}/audio-features`;
 		console.log(`fetchTrackAudioFeatures: GET ${url}`);
 		
 		const res = await rateLimitedFetch(url, {
@@ -396,26 +659,21 @@ async function fetchTrackRecommendations(seedIds, audioFeatures = {}, limit = 10
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
 		
-		// Build URL with required parameters
-		const params = new URLSearchParams();
-		params.set('size', String(Math.min(limit, 100)));
+		// Build request URL with query parameters
+		const url = new URL(`${RECCOBEATS_API_BASE}/track/recommendation`);
+		url.searchParams.append('seedIds', limitedSeeds.join(','));
+		url.searchParams.append('limit', limit);
 		
-		// Add seed track IDs
-		for (const seedId of limitedSeeds) {
-			params.append('seeds', seedId);
-		}
-		
-		// Add optional audio feature parameters
-		for (const [feature, value] of Object.entries(audioFeatures)) {
-			if (value !== undefined && value !== null && AUDIO_FEATURE_NAMES.includes(feature)) {
-				params.set(feature, String(value));
+		// Add audio feature target parameters
+		for (const [key, value] of Object.entries(audioFeatures)) {
+			if (AUDIO_FEATURE_NAMES.includes(key) && value != null) {
+				url.searchParams.append(key, value);
 			}
 		}
 		
-		const url = `${RECCOBEATS_API_BASE}/track/recommendation?${params.toString()}`;
-		console.log(`fetchTrackRecommendations: GET ${url}`);
+		console.log(`fetchTrackRecommendations: GET ${url.toString()}`);
 		
-		const res = await rateLimitedFetch(url, {
+		const res = await rateLimitedFetch(url.toString(), {
 			method: "GET",
 			headers: myHeaders,
 			redirect: "follow"
@@ -427,148 +685,364 @@ async function fetchTrackRecommendations(seedIds, audioFeatures = {}, limit = 10
 		}
 		
 		const data = await res.json();
+		const trackData = data?.data || [];
 		
-		// Handle response structure - API returns { content: [...] }
-		const tracks = data?.content || data?.data || [];
-		
-		if (!tracks.length) {
-			console.log(`fetchTrackRecommendations: No recommendations returned`);
-			return [];
-		}
-		
-		// Extract and normalize track data
-		const recommendations = tracks.map(track => {
-			// Handle artists array
-			let artistName = '';
-			if (track.artists && Array.isArray(track.artists) && track.artists.length > 0) {
-				artistName = track.artists.map(a => a.artistName || a.name || '').filter(Boolean).join(', ');
-			} else {
-				artistName = String(track.artistName || track.artist || '').trim();
-			}
-			
-			return {
-				artist: artistName,
-				title: String(track.trackTitle || track.title || '').trim(),
-				trackId: track.id || track.trackId,
-				isrc: track.isrc || '',
-				durationMs: track.durationMs || 0,
-				popularity: track.popularity || 0,
-				// Audio features may not be included in recommendation response
-				acousticness: Number(track.acousticness) || 0,
-				danceability: Number(track.danceability) || 0,
-				energy: Number(track.energy) || 0,
-				instrumentalness: Number(track.instrumentalness) || 0,
-				liveness: Number(track.liveness) || 0,
-				loudness: Number(track.loudness) || 0,
-				mode: Number(track.mode) || 0,
-				speechiness: Number(track.speechiness) || 0,
-				tempo: Number(track.tempo) || 0,
-				valence: Number(track.valence) || 0,
-			};
-		}).filter(t => t.artist && t.title);
-		
-		console.log(`fetchTrackRecommendations: Retrieved ${recommendations.length} tracks`);
-		
-		// Cache results
+		// Cache the results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
-			cache._reccobeats.set(cacheKey, recommendations);
+			cache._reccobeats.set(cacheKey, trackData);
 		}
 		
-		return recommendations;
+		return trackData;
 		
 	} catch (e) {
-		if (e.name === 'AbortError') {
-			console.error('fetchTrackRecommendations: Request timed out');
-		} else {
-			console.error('fetchTrackRecommendations error:', e.message);
-		}
+		console.error('fetchTrackRecommendations error:', e.message);
 		return [];
 	}
 }
 
 /**
- * Calculate how well a track matches the target audio features for a mood/activity.
+ * Fetch recommendations based on seed tracks using ReccoBeats track/recommendation API.
  * 
- * @param {object} track - Track with audio features
- * @param {object} targets - Target audio feature values
- * @returns {number} Match score 0.0-1.0 (higher is better match)
+ * Strategy:
+ * 1. Look up ReccoBeats track IDs for each seed using batch mode
+ * 2. Fetch audio features for each seed track
+ * 3. Calculate min/max ranges from seed audio features (or use mood/activity defaults if no seeds)
+ * 4. Call /v1/track/recommendation with seeds and audio feature parameters
+ * 5. Return up to 100 recommended tracks for library matching
+ * 
+ * @param {object[]} seeds - Array of seed objects [{artist, title}, ...]
+ * @param {string} context - 'mood' or 'activity'
+ * @param {string} value - Mood or activity name
+ * @param {number} limit - Maximum recommendations (default 100)
+ * @returns {Promise<object[]>} Array of recommended tracks
  */
-function calculateAudioFeatureMatch(track, targets) {
-	if (!track || !targets) return 0;
+async function fetchSeedBasedRecommendations(seeds, context, value, limit = 100) {
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 	
-	let totalWeight = 0;
-	let weightedScore = 0;
+	// Validate inputs
+	if (!seeds || seeds.length === 0) {
+		console.log('fetchSeedBasedRecommendations: No seeds provided, using default targets');
+		return fetchRecommendationsWithDefaults(context, value, limit);
+	}
 	
-	// Weight each feature by its importance in the targets
-	const features = ['energy', 'valence', 'danceability', 'acousticness', 'instrumentalness', 'speechiness', 'tempo'];
+	// Limit seeds to 5 as per API spec
+	const seedLimit = Math.min(seeds.length, 5);
+	const limitedSeeds = seeds.slice(0, seedLimit);
 	
-	for (const feature of features) {
-		if (targets[feature] !== undefined) {
-			const target = targets[feature];
-			const actual = track[feature] || 0;
-			
-			// For tempo, normalize to 0-1 scale (assuming 60-180 BPM range)
-			let normalizedTarget = target;
-			let normalizedActual = actual;
-			
-			if (feature === 'tempo') {
-				normalizedTarget = (target - 60) / 120; // 60-180 -> 0-1
-				normalizedActual = (actual - 60) / 120;
-			}
-			
-			// Calculate similarity (1 - absolute difference, clamped to 0-1)
-			const diff = Math.abs(normalizedTarget - normalizedActual);
-			const similarity = Math.max(0, 1 - diff);
-			
-			// Weight by how extreme the target is (more extreme = more important)
-			const weight = Math.abs(normalizedTarget - 0.5) + 0.5;
-			
-			totalWeight += weight;
-			weightedScore += similarity * weight;
+	updateProgress(`Looking up ${seedLimit} seed tracks on ReccoBeats (batch mode)...`, 0.1);
+	
+	// Step 1: Get track IDs using efficient batch mode
+	const trackIds = await getTrackIdsBatch(limitedSeeds);
+	
+	// Filter out null results and keep track of valid seeds
+	const seedTrackIds = [];
+	const validSeeds = [];
+	
+	for (let i = 0; i < trackIds.length; i++) {
+		if (trackIds[i]) {
+			seedTrackIds.push(trackIds[i]);
+			validSeeds.push(limitedSeeds[i]);
 		}
 	}
 	
-	return totalWeight > 0 ? weightedScore / totalWeight : 0;
+	// If we couldn't find any seeds, fall back to defaults
+	if (seedTrackIds.length === 0) {
+		console.log('fetchSeedBasedRecommendations: No valid seed tracks found, using default targets');
+		return fetchRecommendationsWithDefaults(context, value, limit);
+	}
+	
+	console.log(`fetchSeedBasedRecommendations: Found ${seedTrackIds.length}/${seedLimit} seed track(s)`);
+	
+	// Step 2: Fetch audio features for each seed track
+	updateProgress(`Getting audio features for ${seedTrackIds.length} tracks...`, 0.3);
+	
+	const seedAudioFeatures = [];
+	
+	for (let i = 0; i < seedTrackIds.length; i++) {
+		const trackId = seedTrackIds[i];
+		const seed = validSeeds[i];
+		
+		const features = await fetchTrackAudioFeatures(trackId);
+		if (features) {
+			seedAudioFeatures.push(features);
+		}
+	}
+	
+	// Step 3: Calculate audio feature ranges from seeds
+	let audioFeatureTargets = {};
+	
+	if (seedAudioFeatures.length > 0) {
+		// Use audio features from seed tracks
+		audioFeatureTargets = calculateAudioFeatureRanges(seedAudioFeatures);
+		console.log(`fetchSeedBasedRecommendations: Using audio features from ${seedAudioFeatures.length} seed track(s)`);
+	} else {
+			// Fall back to mood/activity defaults if we couldn't get audio features
+			const defaults = context === 'mood' 
+				? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
+				: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
+			
+			if (defaults) {
+				audioFeatureTargets = { ...defaults };
+				console.log(`fetchSeedBasedRecommendations: Using ${context} "${value}" default audio targets`);
+			}
+	}
+	
+	// Step 4: Fetch recommendations using the API
+	updateProgress(`Fetching ${limit} recommendations from ReccoBeats...`, 0.5);
+	
+	const recommendations = await fetchTrackRecommendations(seedTrackIds, audioFeatureTargets, limit);
+	
+	console.log(`fetchSeedBasedRecommendations: Retrieved ${recommendations.length} tracks from ${seedTrackIds.length} seed(s)`);
+	
+	return recommendations;
 }
 
 /**
- * Filter and sort tracks by how well they match mood/activity audio targets.
+ * Fetch recommendations using default mood/activity audio targets when no seeds are available.
+ * This creates a "virtual" recommendation by searching for tracks matching the audio profile.
  * 
- * @param {object[]} tracks - Array of tracks with audio features
  * @param {string} context - 'mood' or 'activity'
  * @param {string} value - Mood or activity name
- * @param {number} limit - Maximum tracks to return
- * @returns {object[]} Filtered and sorted tracks
+ * @param {number} limit - Maximum recommendations
+ * @returns {Promise<object[]>} Array of recommended tracks
  */
-function filterTracksByAudioFeatures(tracks, context, value, limit = 50) {
-	if (!tracks || tracks.length === 0) return [];
+async function fetchRecommendationsWithDefaults(context, value, limit = 100) {
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 	
-	// Get target audio features
-	const targets = context === 'mood' 
-		? MOOD_AUDIO_TARGETS[value.toLowerCase()] 
-		: ACTIVITY_AUDIO_TARGETS[value.toLowerCase()];
+	// Get default audio targets for the mood/activity
+	const defaults = context === 'mood' 
+		? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
+		: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
 	
-	if (!targets) {
-		console.warn(`filterTracksByAudioFeatures: Unknown ${context} "${value}", returning unfiltered`);
-		return tracks.slice(0, limit);
+	if (!defaults) {
+		console.warn(`fetchRecommendationsWithDefaults: Unknown ${context} "${value}"`);
+		return [];
 	}
 	
-	// Calculate match score for each track
-	const scoredTracks = tracks.map(track => ({
-		...track,
-		matchScore: calculateAudioFeatureMatch(track, targets)
-	}));
+	console.log(`fetchRecommendationsWithDefaults: Using ${context} "${value}" defaults:`, defaults);
+	updateProgress(`Searching for "${value}" ${context} tracks...`, 0.3);
 	
-	// Sort by match score (highest first)
-	scoredTracks.sort((a, b) => b.matchScore - a.matchScore);
+	// The ReccoBeats API requires at least one seed track
+	// Since we don't have seeds, we need to use the mood/activity endpoints if available
+	// or return empty and let the caller handle it
 	
-	// Filter out poor matches (below 0.4 threshold)
-	const filtered = scoredTracks.filter(t => t.matchScore >= 0.4);
+	// For now, log that we need seeds and return empty
+	// The hybrid discovery function should provide seeds from the library
+	console.log('fetchRecommendationsWithDefaults: ReccoBeats recommendation API requires seed tracks');
+	console.log('fetchRecommendationsWithDefaults: Default audio targets available for filtering:', defaults);
 	
-	console.log(`filterTracksByAudioFeatures: ${filtered.length}/${tracks.length} tracks match "${value}" ${context} (threshold 0.4)`);
+	return [];
+}
+
+/**
+ * Fetch recommendations based on user-selected seed tracks.
+ * 
+ * This function:
+ * 1. Takes user-selected seed tracks (artist/album/track)
+ * 2. Looks up ReccoBeats track ID for each seed using batch mode
+ * 3. Fetches audio features for each seed track
+ * 4. Calculates min/max ranges from all seed audio features
+ * 5. Fetches 100 track recommendations using those ranges
+ * 6. Returns recommendations for local library matching
+ * 
+ * @param {object[]} userSeeds - Array of user-selected tracks: [{artist, title, album?}, ...]
+ * @param {number} limit - Maximum recommendations to fetch (default 100)
+ * @returns {Promise<object>} Object with { recommendations: [], seedFeatures: [], audioRanges: {} }
+ */
+async function fetchReccobeatsRecommendations(userSeeds, limit = 100) {
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
 	
-	return filtered.slice(0, limit);
+	// Validate inputs
+	if (!userSeeds || userSeeds.length === 0) {
+		console.warn('fetchReccobeatsRecommendations: No seed tracks provided');
+		return { recommendations: [], seedFeatures: [], audioRanges: {} };
+	}
+	
+	const cache = window.lastfmCache;
+	const cacheKey = `reccobeats:userseeds:${userSeeds.map(s => `${s.artist}:${s.title}`).sort().join('|')}:${limit}`.toUpperCase();
+	
+	// Check cache first
+	if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
+		const cached = cache._reccobeats.get(cacheKey);
+		console.log(`fetchReccobeatsRecommendations: Cache hit (${cached?.recommendations?.length || 0} recommendations)`);
+		return cached;
+	}
+	
+	console.log(`fetchReccobeatsRecommendations: Processing ${userSeeds.length} user-selected seed track(s)`);
+	
+	// Limit seeds to 5 as per API spec
+	const seedLimit = Math.min(userSeeds.length, 5);
+	const limitedSeeds = userSeeds.slice(0, seedLimit);
+	
+	updateProgress(`Looking up ${seedLimit} tracks on ReccoBeats (batch mode)...`, 0.1);
+	
+	// Step 1: Get track IDs using efficient batch mode
+	const trackIds = await getTrackIdsBatch(limitedSeeds);
+	
+	// Filter out null results and keep track of valid seeds
+	const seedTrackIds = [];
+	const validSeeds = [];
+	
+	for (let i = 0; i < trackIds.length; i++) {
+		if (trackIds[i]) {
+			seedTrackIds.push(trackIds[i]);
+			validSeeds.push(limitedSeeds[i]);
+		}
+	}
+	
+	// Verify we have at least one valid seed
+	if (seedTrackIds.length === 0) {
+		console.error('fetchReccobeatsRecommendations: No valid seed tracks found on ReccoBeats');
+		updateProgress('No seed tracks found on ReccoBeats', 0.5);
+		return { recommendations: [], seedFeatures: [], audioRanges: {} };
+	}
+	
+	console.log(`fetchReccobeatsRecommendations: Successfully found ${seedTrackIds.length}/${seedLimit} seed track(s)`);
+	
+	// Step 2: Fetch audio features for valid seed tracks
+	updateProgress(`Getting audio features for ${seedTrackIds.length} tracks...`, 0.4);
+	
+	const seedAudioFeatures = [];
+	
+	for (let i = 0; i < seedTrackIds.length; i++) {
+		const trackId = seedTrackIds[i];
+		const seed = validSeeds[i];
+		
+		const features = await fetchTrackAudioFeatures(trackId);
+		if (features) {
+			seedAudioFeatures.push(features);
+			console.log(`fetchReccobeatsRecommendations: Retrieved audio features for "${seed.artist} - ${seed.title}"`);
+		} else {
+			console.warn(`fetchReccobeatsRecommendations: Could not get audio features for "${seed.artist} - ${seed.title}"`);
+		}
+	}
+	
+	if (seedAudioFeatures.length === 0) {
+		console.error('fetchReccobeatsRecommendations: No audio features available');
+		updateProgress('No audio features available', 0.5);
+		return { recommendations: [], seedFeatures: [], audioRanges: {} };
+	}
+	
+	console.log(`fetchReccobeatsRecommendations: Successfully processed ${seedAudioFeatures.length} seed track(s)`);
+	
+	// Step 3: Calculate audio feature ranges from seed features
+	updateProgress('Calculating audio feature ranges...', 0.5);
+	
+	const audioRanges = calculateAudioFeatureRanges(seedAudioFeatures);
+	console.log(`fetchReccobeatsRecommendations: Calculated audio ranges from ${seedAudioFeatures.length} seed(s)`);
+	
+	// Step 4: Fetch recommendations using seed IDs and audio ranges
+	updateProgress(`Fetching ${limit} recommendations from ReccoBeats...`, 0.6);
+	
+	const recommendations = await fetchTrackRecommendations(seedTrackIds, audioRanges, limit);
+	
+	console.log(`fetchReccobeatsRecommendations: Retrieved ${recommendations.length} recommendation(s) for library matching`);
+	
+	// Prepare result object
+	const result = {
+		recommendations,
+		seedFeatures: seedAudioFeatures,
+		audioRanges,
+		seedCount: seedTrackIds.length
+	};
+	
+	// Cache the result
+	if (cache?.isActive?.()) {
+		if (!cache._reccobeats) cache._reccobeats = new Map();
+		cache._reccobeats.set(cacheKey, result);
+	}
+	
+	updateProgress(`Ready to match ${recommendations.length} tracks to library...`, 0.8);
+	
+	return result;
+}
+
+/**
+ * Hybrid discovery: Combine ReccoBeats mood/activity with Last.fm similarity.
+ * 
+ * This function:
+ * 1. Gets seed tracks from options or finds them based on mood/activity
+ * 2. Fetches track recommendations from ReccoBeats using seed IDs and audio features
+ * 3. Returns recommended tracks for library matching
+ * 
+ * @param {string} context - Context type: 'mood' or 'activity'
+ * @param {string} value - Mood name or activity name
+ * @param {object} options - Additional options
+ * @param {string[]} options.genres - Genre preferences
+ * @param {number} options.duration - Activity duration in minutes
+ * @param {number} options.limit - Maximum recommendations
+ * @param {object[]} options.seeds - Seed tracks for track-based recommendations
+ * @returns {Promise<object[]>} Recommended tracks for library matching
+ */
+async function fetchHybridRecommendations(context, value, options = {}) {
+	try {
+		const { genres = [], duration = 60, limit = 100, seeds = [] } = options;
+		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
+		
+		updateProgress(`Fetching ${context}-based recommendations...`, 0.1);
+		
+		let reccoTracks = [];
+		
+		// Use seed-based recommendations (primary approach)
+		if (seeds.length > 0) {
+			console.log(`fetchHybridRecommendations: Using ${seeds.length} seed track(s) for ReccoBeats`);
+			reccoTracks = await fetchSeedBasedRecommendations(seeds, context, value, limit);
+		}
+		
+		// If we have results, return them directly for library matching
+		if (reccoTracks.length > 0) {
+			console.log(`fetchHybridRecommendations: Returning ${reccoTracks.length} tracks for library matching`);
+			return reccoTracks;
+		}
+		
+		// Fall back: Try to expand using Last.fm if no ReccoBeats results
+		console.log('fetchHybridRecommendations: No ReccoBeats results, attempting Last.fm expansion');
+		
+		// Extract artists from seeds for Last.fm fallback
+		const seedArtists = seeds
+			.filter(s => s?.artist)
+			.map(s => s.artist)
+			.slice(0, 5);
+		
+		if (seedArtists.length === 0) {
+			console.log('fetchHybridRecommendations: No seed artists available for fallback');
+			return [];
+		}
+		
+		const lastfmApi = window.matchMonkeyLastfmAPI;
+		if (!lastfmApi) {
+			console.warn('fetchHybridRecommendations: Last.fm API not available');
+			return [];
+		}
+		
+		updateProgress(`Expanding with Last.fm similar artists...`, 0.5);
+		
+		// Fetch similar artists for each seed
+		const similarArtists = new Set(seedArtists);
+		
+		for (const artist of seedArtists) {
+			try {
+				const similar = await lastfmApi.fetchSimilarArtists(artist, 10);
+				for (const s of similar) {
+					if (s?.name) {
+						similarArtists.add(s.name);
+					}
+				}
+			} catch (e) {
+				console.warn(`fetchHybridRecommendations: Failed to get similar artists for "${artist}":`, e.message);
+			}
+		}
+		
+		console.log(`fetchHybridRecommendations: Expanded to ${similarArtists.size} artists using Last.fm`);
+		
+		// Return as artist objects for library matching
+		return Array.from(similarArtists).slice(0, limit).map(artist => ({ artist }));
+		
+	} catch (e) {
+		console.error('fetchHybridRecommendations error:', e.message || e.toString());
+		return [];
+	}
 }
 
 /**
@@ -772,216 +1246,152 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 }
 
 /**
- * Fetch recommendations based on seed tracks using ReccoBeats track/recommendation API.
+ * Filter tracks by audio feature criteria.
+ * Useful for post-filtering recommendations to match specific audio profiles.
  * 
- * Strategy:
- * 1. Look up ReccoBeats track IDs for each seed
- * 2. Fetch audio features for each seed track
- * 3. Calculate min/max ranges from seed audio features (or use mood/activity defaults if no seeds)
- * 4. Call /v1/track/recommendation with seeds and audio feature parameters
- * 5. Return up to 100 recommended tracks for library matching
- * 
- * @param {object[]} seeds - Array of seed objects [{artist, title}, ...]
- * @param {string} context - 'mood' or 'activity'
- * @param {string} value - Mood or activity name
- * @param {number} limit - Maximum recommendations (default 100)
- * @returns {Promise<object[]>} Array of recommended tracks
+ * @param {object[]} tracks - Array of track objects with audio features
+ * @param {object} criteria - Audio feature filter criteria
+ * @param {number} [criteria.minEnergy] - Minimum energy (0.0-1.0)
+ * @param {number} [criteria.maxEnergy] - Maximum energy (0.0-1.0)
+ * @param {number} [criteria.minValence] - Minimum valence/happiness (0.0-1.0)
+ * @param {number} [criteria.maxValence] - Maximum valence/happiness (0.0-1.0)
+ * @param {number} [criteria.minTempo] - Minimum tempo (BPM)
+ * @param {number} [criteria.maxTempo] - Maximum tempo (BPM)
+ * @param {number} [criteria.minDanceability] - Minimum danceability (0.0-1.0)
+ * @param {number} [criteria.maxDanceability] - Maximum danceability (0.0-1.0)
+ * @returns {object[]} Filtered array of tracks matching criteria
  */
-async function fetchSeedBasedRecommendations(seeds, context, value, limit = 100) {
-	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-	
-	// Validate inputs
-	if (!seeds || seeds.length === 0) {
-		console.log('fetchSeedBasedRecommendations: No seeds provided, using default targets');
-		return fetchRecommendationsWithDefaults(context, value, limit);
-	}
-	
-	// Limit seeds to 5 as per API spec
-	const seedLimit = Math.min(seeds.length, 5);
-	const seedTrackIds = [];
-	const seedAudioFeatures = [];
-	
-	// Step 1 & 2: Get track IDs and audio features for each seed
-	for (let i = 0; i < seedLimit; i++) {
-		const seed = seeds[i];
-		if (!seed?.artist || !seed?.title) continue;
-		
-		updateProgress(`Looking up "${seed.title}" on ReccoBeats...`, 0.1 + (i / seedLimit) * 0.2);
-		
-		// Get track ID from ReccoBeats
-		const trackId = await getTrackId(seed.artist, seed.title);
-		if (!trackId) {
-			console.log(`fetchSeedBasedRecommendations: Could not find track ID for "${seed.artist} - ${seed.title}"`);
-			continue;
-		}
-		
-		seedTrackIds.push(trackId);
-		
-		// Fetch audio features for this track
-		updateProgress(`Getting audio features for "${seed.title}"...`, 0.15 + (i / seedLimit) * 0.2);
-		const features = await fetchTrackAudioFeatures(trackId);
-		if (features) {
-			seedAudioFeatures.push(features);
-		}
-	}
-	
-	// If we couldn't find any seeds, fall back to defaults
-	if (seedTrackIds.length === 0) {
-		console.log('fetchSeedBasedRecommendations: No valid seed tracks found, using default targets');
-		return fetchRecommendationsWithDefaults(context, value, limit);
-	}
-	
-	// Step 3: Calculate audio feature ranges from seeds
-	let audioFeatureTargets = {};
-	
-	if (seedAudioFeatures.length > 0) {
-		// Use audio features from seed tracks
-		audioFeatureTargets = calculateAudioFeatureRanges(seedAudioFeatures);
-		console.log(`fetchSeedBasedRecommendations: Using audio features from ${seedAudioFeatures.length} seed track(s)`);
-	} else {
-		// Fall back to mood/activity defaults if we couldn't get audio features
-		const defaults = context === 'mood' 
-			? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
-			: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
-		
-		if (defaults) {
-			audioFeatureTargets = { ...defaults };
-			console.log(`fetchSeedBasedRecommendations: Using ${context} "${value}" default audio targets`);
-		}
-	}
-	
-	// Step 4: Fetch recommendations using the API
-	updateProgress(`Fetching ${limit} recommendations from ReccoBeats...`, 0.5);
-	
-	const recommendations = await fetchTrackRecommendations(seedTrackIds, audioFeatureTargets, limit);
-	
-	console.log(`fetchSeedBasedRecommendations: Retrieved ${recommendations.length} tracks from ${seedTrackIds.length} seed(s)`);
-	
-	return recommendations;
-}
-
-/**
- * Fetch recommendations using default mood/activity audio targets when no seeds are available.
- * This creates a "virtual" recommendation by searching for tracks matching the audio profile.
- * 
- * @param {string} context - 'mood' or 'activity'
- * @param {string} value - Mood or activity name
- * @param {number} limit - Maximum recommendations
- * @returns {Promise<object[]>} Array of recommended tracks
- */
-async function fetchRecommendationsWithDefaults(context, value, limit = 100) {
-	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-	
-	// Get default audio targets for the mood/activity
-	const defaults = context === 'mood' 
-		? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
-		: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
-	
-	if (!defaults) {
-		console.warn(`fetchRecommendationsWithDefaults: Unknown ${context} "${value}"`);
+function filterTracksByAudioFeatures(tracks, criteria = {}) {
+	if (!Array.isArray(tracks) || tracks.length === 0) {
 		return [];
 	}
 	
-	console.log(`fetchRecommendationsWithDefaults: Using ${context} "${value}" defaults:`, defaults);
-	updateProgress(`Searching for "${value}" ${context} tracks...`, 0.3);
+	const {
+		minEnergy,
+		maxEnergy,
+		minValence,
+		maxValence,
+		minTempo,
+		maxTempo,
+		minDanceability,
+		maxDanceability,
+		minAcousticness,
+		maxAcousticness,
+		minInstrumentalness,
+		maxInstrumentalness
+	} = criteria;
 	
-	// The ReccoBeats API requires at least one seed track
-	// Since we don't have seeds, we need to use the mood/activity endpoints if available
-	// or return empty and let the caller handle it
-	
-	// For now, log that we need seeds and return empty
-	// The hybrid discovery function should provide seeds from the library
-	console.log('fetchRecommendationsWithDefaults: ReccoBeats recommendation API requires seed tracks');
-	console.log('fetchRecommendationsWithDefaults: Default audio targets available for filtering:', defaults);
-	
-	return [];
+	return tracks.filter(track => {
+		// Skip tracks without audio features
+		if (!track || typeof track !== 'object') return false;
+		
+		// Energy filter
+		if (minEnergy !== undefined && (track.energy || 0) < minEnergy) return false;
+		if (maxEnergy !== undefined && (track.energy || 0) > maxEnergy) return false;
+		
+		// Valence filter
+		if (minValence !== undefined && (track.valence || 0) < minValence) return false;
+		if (maxValence !== undefined && (track.valence || 0) > maxValence) return false;
+		
+		// Tempo filter
+		if (minTempo !== undefined && (track.tempo || 0) < minTempo) return false;
+		if (maxTempo !== undefined && (track.tempo || 0) > maxTempo) return false;
+		
+		// Danceability filter
+		if (minDanceability !== undefined && (track.danceability || 0) < minDanceability) return false;
+		if (maxDanceability !== undefined && (track.danceability || 0) > maxDanceability) return false;
+		
+		// Acousticness filter
+		if (minAcousticness !== undefined && (track.acousticness || 0) < minAcousticness) return false;
+		if (maxAcousticness !== undefined && (track.acousticness || 0) > maxAcousticness) return false;
+		
+		// Instrumentalness filter
+		if (minInstrumentalness !== undefined && (track.instrumentalness || 0) < minInstrumentalness) return false;
+		if (maxInstrumentalness !== undefined && (track.instrumentalness || 0) > maxInstrumentalness) return false;
+		
+		return true;
+	});
 }
 
 /**
- * Hybrid discovery: Combine ReccoBeats mood/activity with Last.fm similarity.
+ * Calculate audio feature match score between a track and target features.
+ * Returns a similarity score from 0.0 (no match) to 1.0 (perfect match).
  * 
- * This function:
- * 1. Gets seed tracks from options or finds them based on mood/activity
- * 2. Fetches track recommendations from ReccoBeats using seed IDs and audio features
- * 3. Returns recommended tracks for library matching
- * 
- * @param {string} context - Context type: 'mood' or 'activity'
- * @param {string} value - Mood name or activity name
- * @param {object} options - Additional options
- * @param {string[]} options.genres - Genre preferences
- * @param {number} options.duration - Activity duration in minutes
- * @param {number} options.limit - Maximum recommendations
- * @param {object[]} options.seeds - Seed tracks for track-based recommendations
- * @returns {Promise<object[]>} Recommended tracks for library matching
+ * @param {object} track - Track with audio features to evaluate
+ * @param {object} target - Target audio features to match against
+ * @param {object} [weights] - Optional custom weights for each feature
+ * @returns {number} Similarity score (0.0-1.0)
  */
-async function fetchHybridRecommendations(context, value, options = {}) {
-	try {
-		const { genres = [], duration = 60, limit = 100, seeds = [] } = options;
-		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-		
-		updateProgress(`Fetching ${context}-based recommendations...`, 0.1);
-		
-		let reccoTracks = [];
-		
-		// Use seed-based recommendations (primary approach)
-		if (seeds.length > 0) {
-			console.log(`fetchHybridRecommendations: Using ${seeds.length} seed track(s) for ReccoBeats`);
-			reccoTracks = await fetchSeedBasedRecommendations(seeds, context, value, limit);
-		}
-		
-		// If we have results, return them directly for library matching
-		if (reccoTracks.length > 0) {
-			console.log(`fetchHybridRecommendations: Returning ${reccoTracks.length} tracks for library matching`);
-			return reccoTracks;
-		}
-		
-		// Fall back: Try to expand using Last.fm if no ReccoBeats results
-		console.log('fetchHybridRecommendations: No ReccoBeats results, attempting Last.fm expansion');
-		
-		// Extract artists from seeds for Last.fm fallback
-		const seedArtists = seeds
-			.filter(s => s?.artist)
-			.map(s => s.artist)
-			.slice(0, 5);
-		
-		if (seedArtists.length === 0) {
-			console.log('fetchHybridRecommendations: No seed artists available for fallback');
-			return [];
-		}
-		
-		const lastfmApi = window.matchMonkeyLastfmAPI;
-		if (!lastfmApi) {
-			console.warn('fetchHybridRecommendations: Last.fm API not available');
-			return [];
-		}
-		
-		updateProgress(`Expanding with Last.fm similar artists...`, 0.5);
-		
-		// Fetch similar artists for each seed
-		const similarArtists = new Set(seedArtists);
-		
-		for (const artist of seedArtists) {
-			try {
-				const similar = await lastfmApi.fetchSimilarArtists(artist, 10);
-				for (const s of similar) {
-					if (s?.name) {
-						similarArtists.add(s.name);
-					}
-				}
-			} catch (e) {
-				console.warn(`fetchHybridRecommendations: Failed to get similar artists for "${artist}":`, e.message);
-			}
-		}
-		
-		console.log(`fetchHybridRecommendations: Expanded to ${similarArtists.size} artists using Last.fm`);
-		
-		// Return as artist objects for library matching
-		return Array.from(similarArtists).slice(0, limit).map(artist => ({ artist }));
-		
-	} catch (e) {
-		console.error('fetchHybridRecommendations error:', e.message || e.toString());
-		return [];
+function calculateAudioFeatureMatch(track, target, weights = null) {
+	if (!track || !target) {
+		return 0;
 	}
+	
+	// Default weights: energy and valence are most important for mood matching
+	const defaultWeights = {
+		energy: 0.25,
+		valence: 0.25,
+		danceability: 0.15,
+		tempo: 0.15,
+		acousticness: 0.1,
+		instrumentalness: 0.1
+	};
+	
+	const w = weights || defaultWeights;
+	let totalWeight = 0;
+	let weightedScore = 0;
+	
+	// Energy match (0.0-1.0 scale)
+	if (track.energy !== undefined && target.energy !== undefined) {
+		const energyDiff = Math.abs(track.energy - target.energy);
+		const energyScore = 1.0 - energyDiff;
+		weightedScore += energyScore * (w.energy || 0);
+		totalWeight += w.energy || 0;
+	}
+	
+	// Valence match (0.0-1.0 scale)
+	if (track.valence !== undefined && target.valence !== undefined) {
+		const valenceDiff = Math.abs(track.valence - target.valence);
+		const valenceScore = 1.0 - valenceDiff;
+		weightedScore += valenceScore * (w.valence || 0);
+		totalWeight += w.valence || 0;
+	}
+	
+	// Danceability match (0.0-1.0 scale)
+	if (track.danceability !== undefined && target.danceability !== undefined) {
+		const danceabilityDiff = Math.abs(track.danceability - target.danceability);
+		const danceabilityScore = 1.0 - danceabilityDiff;
+		weightedScore += danceabilityScore * (w.danceability || 0);
+		totalWeight += w.danceability || 0;
+	}
+	
+	// Tempo match (normalized to 0.0-1.0, assuming typical range 60-180 BPM)
+	if (track.tempo !== undefined && target.tempo !== undefined) {
+		const tempoDiff = Math.abs(track.tempo - target.tempo);
+		const maxTempoDiff = 60; // Allow up to 60 BPM difference
+		const tempoScore = Math.max(0, 1.0 - (tempoDiff / maxTempoDiff));
+		weightedScore += tempoScore * (w.tempo || 0);
+		totalWeight += w.tempo || 0;
+	}
+	
+	// Acousticness match (0.0-1.0 scale)
+	if (track.acousticness !== undefined && target.acousticness !== undefined) {
+		const acousticnessDiff = Math.abs(track.acousticness - target.acousticness);
+		const acousticnessScore = 1.0 - acousticnessDiff;
+		weightedScore += acousticnessScore * (w.acousticness || 0);
+		totalWeight += w.acousticness || 0;
+	}
+	
+	// Instrumentalness match (0.0-1.0 scale)
+	if (track.instrumentalness !== undefined && target.instrumentalness !== undefined) {
+		const instrumentalnessDiff = Math.abs(track.instrumentalness - target.instrumentalness);
+		const instrumentalnessScore = 1.0 - instrumentalnessDiff;
+		weightedScore += instrumentalnessScore * (w.instrumentalness || 0);
+		totalWeight += w.instrumentalness || 0;
+	}
+	
+	// Return normalized score
+	return totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 }
 
 // Export to window namespace for MM5
@@ -991,9 +1401,11 @@ window.matchMonkeyReccoBeatsAPI = {
 	fetchHybridRecommendations,
 	fetchTrackRecommendations,
 	fetchSeedBasedRecommendations,
+	fetchReccobeatsRecommendations,
 	fetchTrackAudioFeatures,
 	fetchRecommendationsWithDefaults,
 	getTrackId,
+	getTrackIdsBatch,
 	filterTracksByAudioFeatures,
 	calculateAudioFeatureMatch,
 	calculateAudioFeatureRanges,

@@ -23,7 +23,7 @@ async function getReccoTrackId(artist, title, apiKey) {
 
   // 1️⃣ Search for artist
   const artistSearchUrl =
-    "https://api.reccobeats.com/v1/search/artist?q=" +
+    "https://api.reccobeats.com/v1/artist/search/artist?q=" +
     encodeURIComponent(artist);
 
   const artistRes = await fetch(artistSearchUrl, requestOptions);

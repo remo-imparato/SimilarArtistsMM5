@@ -435,40 +435,45 @@ async function discoverByMoodActivity(modules, seeds, config) {
 	}
 
 	// -------------------------------------------------------------------------
-	// STEP 2: Get mood/activity-based artists (from ReccoBeats)
+	// STEP 2: Get mood/activity-based tracks (from ReccoBeats)
 	// -------------------------------------------------------------------------
-	const moodArtists = [];
+	const reccoTracks = [];
 	
-	if (blendRatio < 1) {
+	if (blendRatio < 1 && seeds.length > 0) {
 		updateProgress(`Fetching ${context} recommendations from ReccoBeats...`, 0.3);
 		
-		// Pass seeds to fetchHybridRecommendations for track-based recommendations
-		const hybridResults = await reccobeatsApi.fetchHybridRecommendations(
-			context,
-			value,
-			{
-				genres: extractGenresFromSeeds(seeds),
-				duration: config.playlistDuration || 60,
-				limit: Math.max(moodCount * 2, 20), // Request extra for filtering
-				seeds: seeds.slice(0, 5), // Pass seed tracks for ReccoBeats track/recommendation API
-			}
+		// Use the new fetchReccobeatsRecommendations function with seed tracks
+		const result = await reccobeatsApi.fetchReccobeatsRecommendations(
+			seeds.slice(0, 5),
+			Math.max(moodCount * 10, 100) // Request more tracks for better matching
 		);
 		
-		for (const result of hybridResults) {
-			if (result.artist) moodArtists.push(result.artist);
+		if (result?.recommendations?.length > 0) {
+			reccoTracks.push(...result.recommendations);
+			console.log(`discoverByMoodActivity: ${reccoTracks.length} tracks from ReccoBeats`);
+		} else {
+			console.log('discoverByMoodActivity: No ReccoBeats results');
 		}
-		
-		console.log(`discoverByMoodActivity: ${moodArtists.length} artists from ReccoBeats`);
 	}
 	
 	// -------------------------------------------------------------------------
-	// STEP 3: Blend both sources based on ratio
+	// STEP 3: Extract artists from ReccoBeats tracks
+	// -------------------------------------------------------------------------
+	const moodArtists = [];
+	for (const track of reccoTracks) {
+		if (track.artist) moodArtists.push(track.artist);
+	}
+	
+	// Deduplicate mood artists
+	const uniqueMoodArtists = [...new Set(moodArtists)];
+	
+	// -------------------------------------------------------------------------
+	// STEP 4: Blend both sources based on ratio
 	// -------------------------------------------------------------------------
 	updateProgress(`Blending results (${Math.round(blendRatio * 100)}% seeds)...`, 0.5);
 	
-	// Deduplicate each list
+	// Deduplicate seed artists
 	const uniqueSeedArtists = [...new Set(seedSimilarArtists)];
-	const uniqueMoodArtists = [...new Set(moodArtists)];
 	
 	// Take proportional amounts
 	const selectedSeedArtists = uniqueSeedArtists.slice(0, seedCount);
@@ -486,7 +491,7 @@ async function discoverByMoodActivity(modules, seeds, config) {
 	console.log(`discoverByMoodActivity: Blended ${blendedArtists.length} artists (${selectedSeedArtists.length} seed + ${selectedMoodArtists.length} ${context})`);
 	
 	// -------------------------------------------------------------------------
-	// STEP 4: Build candidates and fetch tracks
+	// STEP 5: Build candidates and fetch tracks
 	// -------------------------------------------------------------------------
 	updateProgress(`Building candidate list...`, 0.6);
 	
