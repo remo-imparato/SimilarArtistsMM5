@@ -399,7 +399,8 @@ async function discoverByMoodActivity(modules, seeds, config) {
 	const moodCount = targetLimit - seedCount;
 	
 	updateProgress(`Analyzing ${context}: ${value}...`, 0.1);
-	
+
+	/*
 	// -------------------------------------------------------------------------
 	// STEP 1: Get seed-based similar artists (from Last.fm)
 	// -------------------------------------------------------------------------
@@ -433,7 +434,8 @@ async function discoverByMoodActivity(modules, seeds, config) {
 		
 		console.log(`discoverByMoodActivity: ${seedSimilarArtists.length} artists from seeds`);
 	}
-	
+	*/
+
 	// -------------------------------------------------------------------------
 	// STEP 2: Get mood/activity-based artists (from ReccoBeats)
 	// -------------------------------------------------------------------------

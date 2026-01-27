@@ -56,7 +56,7 @@ localRequirejs('modules/core/orchestration');
 localRequirejs('modules/core/autoMode');
 localRequirejs('modules/core/mm5Integration');
 
-//*
+/*
 //Debuging tools (depend on utils)
 requirejs('helpers/debugTools');
 registerDebuggerEntryPoint.call(this, 'start');
