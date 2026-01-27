@@ -146,12 +146,6 @@ async function getTrackId(artist, title) {
 	}
 	
 	try {
-		// Use the helper function from discoveryStrategies
-		const strategies = window.matchMonkeyDiscoveryStrategies;
-		if (strategies?.getReccoTrackId) {
-			// Note: getReccoTrackId is not exported, so we implement it here
-		}
-		
 		// Implement track ID lookup directly
 		const normalize = (s) =>
 			s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
@@ -166,64 +160,115 @@ async function getTrackId(artist, title) {
 			redirect: "follow"
 		};
 		
-		// Search for artist
-		const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText?q=${encodeURIComponent(artist)}`;
+		// Search for artist - CORRECTED URL
+		const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artist)}`;
 		const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
 		
 		if (!artistRes.ok) {
-			console.warn(`getTrackId: Artist search failed for "${artist}"`);
+			console.warn(`getTrackId: Artist search failed for "${artist}" (HTTP ${artistRes.status})`);
 			return null;
 		}
 		
 		const artistJson = await artistRes.json();
 		
-		if (!artistJson?.data?.length) {
+		if (!artistJson?.content?.length) {
 			console.log(`getTrackId: Artist not found: "${artist}"`);
+			// Cache the null result - lookup succeeded but artist not found
+			if (cache?.isActive?.()) {
+				if (!cache._reccobeats) cache._reccobeats = new Map();
+				cache._reccobeats.set(cacheKey, null);
+			}
 			return null;
 		}
 		
-		const artistId = artistJson.data[0].id;
-		
-		// Get tracks for that artist
-		const tracksUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/tracks`;
-		const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
-		
-		if (!tracksRes.ok) {
-			console.warn(`getTrackId: Tracks fetch failed for artist "${artist}"`);
-			return null;
-		}
-		
-		const tracksJson = await tracksRes.json();
-		
-		if (!tracksJson?.data?.length) {
-			console.log(`getTrackId: No tracks found for artist: "${artist}"`);
-			return null;
-		}
-		
-		// Match title
-		const normalizedTitle = normalize(title);
-		const match = tracksJson.data.find(
-			(t) => normalize(t.trackTitle || t.title || '') === normalizedTitle
+		// Loop through all returned artists to find case-insensitive match
+		const normalizedSearchString = normalize(artist);
+		const artistMatch = artistJson.content.find(
+			a => normalize(a.name) === normalizedSearchString
 		);
 		
-		if (!match) {
-			console.log(`getTrackId: Track title not found: "${title}" by "${artist}"`);
+		if (!artistMatch) {
+			console.log(`getTrackId: No exact match for artist "${artist}" in ${artistJson.content.length} results`);
+			// Cache the null result - lookup succeeded but no exact match found
+			if (cache?.isActive?.()) {
+				if (!cache._reccobeats) cache._reccobeats = new Map();
+				cache._reccobeats.set(cacheKey, null);
+			}
 			return null;
 		}
 		
-		const trackId = match.id;
+		const artistId = artistMatch.id;
 		
-		// Cache the result
-		if (cache?.isActive?.()) {
-			if (!cache._reccobeats) cache._reccobeats = new Map();
-			cache._reccobeats.set(cacheKey, trackId);
+		// Get albums for that artist - CORRECTED URL
+		const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=0&size=50`;
+		const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
+		
+		if (!albumsRes.ok) {
+			console.warn(`getTrackId: Albums fetch failed for artist "${artist}" (HTTP ${albumsRes.status})`);
+			return null;
 		}
 		
-		console.log(`getTrackId: Found track ID "${trackId}" for "${artist} - ${title}"`);
-		return trackId;
+		const albumsJson = await albumsRes.json();
+		
+		if (!albumsJson?.content?.length) {
+			console.log(`getTrackId: No albums found for artist: "${artist}"`);
+			// Cache the null result - lookup succeeded but no albums found
+			if (cache?.isActive?.()) {
+				if (!cache._reccobeats) cache._reccobeats = new Map();
+				cache._reccobeats.set(cacheKey, null);
+			}
+			return null;
+		}
+		
+		// Search through albums for matching track
+		const normalizedTitle = normalize(title);
+		
+		for (const album of albumsJson.content) {
+			try {
+				// Get tracks for this album - CORRECTED URL
+				const tracksUrl = `${RECCOBEATS_API_BASE}/album/${album.id}/track?page=0&size=50`;
+				const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
+				
+				if (tracksRes.ok) {
+					const tracksJson = await tracksRes.json();
+					
+					if (tracksJson?.content?.length) {
+						// Match title
+						const match = tracksJson.content.find(
+							(t) => normalize(t.trackTitle || t.title || '') === normalizedTitle
+						);
+						
+						if (match) {
+							const trackId = match.id;
+							
+							// Cache the result
+							if (cache?.isActive?.()) {
+								if (!cache._reccobeats) cache._reccobeats = new Map();
+								cache._reccobeats.set(cacheKey, trackId);
+							}
+							
+							console.log(`getTrackId: Found track ID "${trackId}" for "${artist} - ${title}"`);
+							return trackId;
+						}
+					}
+				}
+			} catch (e) {
+				console.warn(`getTrackId: Error fetching tracks for album ${album.id}:`, e.message);
+				// Don't cache on error
+			}
+		}
+		
+		console.log(`getTrackId: Track title not found: "${title}" by "${artist}"`);
+		// Cache the null result - lookup succeeded but track not found
+		if (cache?.isActive?.()) {
+			if (!cache._reccobeats) cache._reccobeats = new Map();
+			cache._reccobeats.set(cacheKey, null);
+		}
+		return null;
 		
 	} catch (e) {
 		console.error(`getTrackId error for "${artist} - ${title}":`, e.message);
+		// Don't cache on exception
 		return null;
 	}
 }
@@ -262,7 +307,7 @@ async function getTrackIdsBatch(trackRequests) {
 	
 	for (let i = 0; i < trackRequests.length; i++) {
 		const req = trackRequests[i];
-		if (!req?.artist || !req?.title) {
+		if (!req?.artist || !req?.title || !req?.album) {
 			results[i] = null;
 			continue;
 		}
@@ -282,203 +327,218 @@ async function getTrackIdsBatch(trackRequests) {
 	
 	console.log(`getTrackIdsBatch: Processing ${uncachedIndices.length}/${trackRequests.length} uncached tracks`);
 	
+	// Track which indices had successful lookups (to cache) vs failures (don't cache)
+	const successfulLookups = new Set();
+	
 	try {
 		// Step 1: Deduplicate and fetch artist IDs
 		const uniqueArtists = [...new Set(uncachedIndices.map(i => trackRequests[i].artist))];
 		const artistMap = {}; // artist name -> artist ID
+		const artistLookupSuccess = new Set(); // artists that were successfully looked up
 		
 		console.log(`getTrackIdsBatch: Fetching ${uniqueArtists.length} unique artists`);
 		
 		for (const artist of uniqueArtists) {
 			try {
-				const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText?q=${encodeURIComponent(artist)}`;
+				// CORRECTED URL
+				const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artist)}`;
 				const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
 				
 				if (artistRes.ok) {
 					const artistJson = await artistRes.json();
-					const best = artistJson?.data?.[0];
-					if (best) {
-						artistMap[artist] = best.id;
+					
+					// Loop through all returned artists to find case-insensitive match
+					if (artistJson?.content?.length) {
+						const normalizedSearchString = normalize(artist);
+						const match = artistJson.content.find(
+							a => normalize(a.name) === normalizedSearchString
+						);
+						
+						if (match) {
+							artistLookupSuccess.add(artist);
+							artistMap[artist] = match.id;
+						} else {
+							console.log(`getTrackIdsBatch: No exact match for artist "${artist}" in ${artistJson.content.length} results`);
+						}
 					}
+				} else {
+					console.warn(`getTrackIdsBatch: Artist search failed for "${artist}" (HTTP ${artistRes.status})`);
 				}
 			} catch (e) {
 				console.warn(`getTrackIdsBatch: Error fetching artist "${artist}":`, e.message);
 			}
 		}
 		
-		// Step 2: For requests with album info, fetch albums in batch
+		// Step 2: Fetch albums for each artist
 		const albumMap = {}; // artist name -> { normalized album name -> album ID }
-		const requestsWithAlbums = uncachedIndices.filter(i => trackRequests[i].album);
+		const artistAlbumsCache = {}; // artist name -> array of albums
 		
-		if (requestsWithAlbums.length > 0) {
-			const artistsWithAlbums = [...new Set(requestsWithAlbums.map(i => trackRequests[i].artist))];
-			console.log(`getTrackIdsBatch: Fetching albums for ${artistsWithAlbums.length} artists`);
+		console.log(`getTrackIdsBatch: Fetching albums for ${Object.keys(artistMap).length} artists`);
+		
+		for (const artist of Object.keys(artistMap)) {
+			const artistId = artistMap[artist];
 			
-			for (const artist of artistsWithAlbums) {
-				const artistId = artistMap[artist];
-				if (!artistId) continue;
+			try {
+				// CORRECTED URL
+				const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=0&size=50`;
+				const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
 				
-				try {
-					const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/albums`;
-					const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
+				if (albumsRes.ok) {
+					const albumsJson = await albumsRes.json();
+					albumMap[artist] = {};
+					artistAlbumsCache[artist] = albumsJson?.content || [];
 					
-					if (albumsRes.ok) {
-						const albumsJson = await albumsRes.json();
-						albumMap[artist] = {};
-						
-						for (const album of albumsJson?.data || []) {
-							const albumTitle = album.albumTitle || album.title || '';
-							if (albumTitle) {
-								albumMap[artist][normalize(albumTitle)] = album.id;
-							}
+					for (const album of albumsJson?.content || []) {
+						const albumTitle = album.name || '';
+						const normalizedSearchString = normalize(albumTitle);
+						const match = albumsJson.content.find(
+							a => normalize(a.name) === normalizedSearchString
+						);
+
+						if (match) {
+							albumMap[artist][normalize(normalizedSearchString)] = album.id;
 						}
 					}
-				} catch (e) {
-					console.warn(`getTrackIdsBatch: Error fetching albums for "${artist}":`, e.message);
+				} else {
+					console.warn(`getTrackIdsBatch: Albums fetch failed for "${artist}" (HTTP ${albumsRes.status})`);
+					// Remove from success set if album fetch fails
+					artistLookupSuccess.delete(artist);
 				}
+			} catch (e) {
+				console.warn(`getTrackIdsBatch: Error fetching albums for "${artist}":`, e.message);
+				artistLookupSuccess.delete(artist);
 			}
 		}
 		
 		// Step 3: Collect unique album IDs that we need
 		const albumIds = new Set();
+		const albumTrackRequests = []; // Track which requests need which albums
+		
 		for (const idx of uncachedIndices) {
 			const req = trackRequests[idx];
-			if (!req.album) continue;
-			
 			const artistAlbums = albumMap[req.artist];
-			if (!artistAlbums) continue;
 			
-			const albumId = artistAlbums[normalize(req.album)];
-			if (albumId) albumIds.add(albumId);
+			if (req.album && artistAlbums) {
+				// User provided album name - use it
+				const albumId = artistAlbums[normalize(req.album)];
+				if (albumId) {
+					albumIds.add(albumId);
+					albumTrackRequests.push({ idx, albumId, artist: req.artist });
+				}
+			} else if (artistAlbumsCache[req.artist]) {
+				// No album specified - search all albums for this artist
+				for (const album of artistAlbumsCache[req.artist]) {
+					albumIds.add(album.id);
+					albumTrackRequests.push({ idx, albumId: album.id, artist: req.artist });
+				}
+			}
 		}
 		
-		// Step 4: Fetch tracks for all albums using batch endpoint (if available)
+		// Step 4: Fetch tracks for all albums
 		const albumTracks = {}; // album ID -> { normalized track name -> track ID }
+		const albumFetchSuccess = new Set(); // albums that were successfully fetched
 		
 		if (albumIds.size > 0) {
 			const albumIdArray = Array.from(albumIds);
-			console.log(`getTrackIdsBatch: Fetching tracks for ${albumIdArray.length} albums in batch`);
+			console.log(`getTrackIdsBatch: Fetching tracks for ${albumIdArray.length} albums`);
 			
-			try {
-				// Try batch endpoint first
-				const batchUrl = `${RECCOBEATS_API_BASE}/albums?ids=${albumIdArray.join(',')}`;
-				const batchRes = await rateLimitedFetch(batchUrl, requestOptions);
-				
-				if (batchRes.ok) {
-					const batchJson = await batchRes.json();
-					
-					for (const album of batchJson?.data || []) {
-						const map = {};
-						for (const track of album.tracks || []) {
-							const trackTitle = track.trackTitle || track.title || '';
-							if (trackTitle) {
-								map[normalize(trackTitle)] = track.id;
-							}
-						}
-						albumTracks[album.id] = map;
-					}
-				} else {
-					// Fallback: fetch albums individually
-					console.log('getTrackIdsBatch: Batch endpoint failed, falling back to individual requests');
-					for (const albumId of albumIdArray) {
-						try {
-							const albumUrl = `${RECCOBEATS_API_BASE}/album/${albumId}`;
-							const albumRes = await rateLimitedFetch(albumUrl, requestOptions);
-							
-							if (albumRes.ok) {
-								const albumJson = await albumRes.json();
-								const map = {};
-								for (const track of albumJson?.data?.tracks || []) {
-									const trackTitle = track.trackTitle || track.title || '';
-									if (trackTitle) {
-										map[normalize(trackTitle)] = track.id;
-									}
-								}
-								albumTracks[albumId] = map;
-							}
-						} catch (e) {
-							console.warn(`getTrackIdsBatch: Error fetching album ${albumId}:`, e.message);
-						}
-					}
-				}
-			} catch (e) {
-				console.warn('getTrackIdsBatch: Error in batch album fetch:', e.message);
-			}
-		}
-		
-		// Step 5: For tracks without album info, fetch from artist's tracks
-		const artistTracks = {}; // artist name -> { normalized track name -> track ID }
-		const requestsWithoutAlbums = uncachedIndices.filter(i => !trackRequests[i].album);
-		
-		if (requestsWithoutAlbums.length > 0) {
-			const artistsWithoutAlbums = [...new Set(requestsWithoutAlbums.map(i => trackRequests[i].artist))];
-			console.log(`getTrackIdsBatch: Fetching tracks for ${artistsWithoutAlbums.length} artists (no album info)`);
-			
-			for (const artist of artistsWithoutAlbums) {
-				const artistId = artistMap[artist];
-				if (!artistId) continue;
-				
+			for (const albumId of albumIdArray) {
 				try {
-					const tracksUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/tracks`;
+					// CORRECTED URL
+					const tracksUrl = `${RECCOBEATS_API_BASE}/album/${albumId}/track?page=0&size=50`;
 					const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
 					
 					if (tracksRes.ok) {
+						albumFetchSuccess.add(albumId);
 						const tracksJson = await tracksRes.json();
 						const map = {};
 						
-						for (const track of tracksJson?.data || []) {
+						for (const track of tracksJson?.content || []) {
 							const trackTitle = track.trackTitle || track.title || '';
 							if (trackTitle) {
 								map[normalize(trackTitle)] = track.id;
 							}
 						}
-						artistTracks[artist] = map;
+						albumTracks[albumId] = map;
+					} else {
+						console.warn(`getTrackIdsBatch: Tracks fetch failed for album ${albumId} (HTTP ${tracksRes.status})`);
 					}
 				} catch (e) {
-					console.warn(`getTrackIdsBatch: Error fetching tracks for "${artist}":`, e.message);
+					console.warn(`getTrackIdsBatch: Error fetching tracks for album ${albumId}:`, e.message);
 				}
 			}
 		}
 		
-		// Step 6: Resolve final track IDs for uncached requests
+		// Step 5: Resolve final track IDs for uncached requests
 		for (const idx of uncachedIndices) {
 			const req = trackRequests[idx];
 			let trackId = null;
+			let lookupWasSuccessful = false;
 			
-			// Try album-based lookup first if album is provided
-			if (req.album) {
-				const artistAlbums = albumMap[req.artist];
-				if (artistAlbums) {
-					const albumId = artistAlbums[normalize(req.album)];
-					if (albumId) {
-						const tracks = albumTracks[albumId];
-						if (tracks) {
-							trackId = tracks[normalize(req.title)] || null;
+			const normalizedTitle = normalize(req.title);
+			
+			// Check if the artist lookup was successful
+			if (artistLookupSuccess.has(req.artist)) {
+				lookupWasSuccessful = true;
+				
+				// Try album-based lookup first if album is provided
+				if (req.album) {
+					const artistAlbums = albumMap[req.artist];
+					if (artistAlbums) {
+						const albumId = artistAlbums[normalize(req.album)];
+						if (albumId && albumFetchSuccess.has(albumId)) {
+							const tracks = albumTracks[albumId];
+							if (tracks) {
+								trackId = tracks[normalizedTitle] || null;
+							}
+						} else if (albumId && !albumFetchSuccess.has(albumId)) {
+							// Album fetch failed - don't cache
+							lookupWasSuccessful = false;
 						}
 					}
 				}
-			}
-			
-			// Fallback to artist tracks if not found via album
-			if (!trackId) {
-				const tracks = artistTracks[req.artist];
-				if (tracks) {
-					trackId = tracks[normalize(req.title)] || null;
+				
+				// If not found and no album specified, search all albums for this artist
+				if (!trackId && !req.album && artistAlbumsCache[req.artist]) {
+					let searchedAtLeastOneAlbum = false;
+					for (const album of artistAlbumsCache[req.artist]) {
+						if (albumFetchSuccess.has(album.id)) {
+							searchedAtLeastOneAlbum = true;
+							const tracks = albumTracks[album.id];
+							if (tracks && tracks[normalizedTitle]) {
+								trackId = tracks[normalizedTitle];
+								break;
+							}
+						}
+					}
+					// If we couldn't search any albums successfully, don't cache
+					if (!searchedAtLeastOneAlbum) {
+						lookupWasSuccessful = false;
+					}
 				}
 			}
 			
 			results[idx] = trackId;
 			
-			// Cache the result
-			if (cache?.isActive?.()) {
-				if (!cache._reccobeats) cache._reccobeats = new Map();
+			// Only cache if the lookup was successful (even if result is null)
+			if (lookupWasSuccessful) {
+				successfulLookups.add(idx);
+			}
+		}
+		
+		// Step 6: Cache only successful lookups
+		if (cache?.isActive?.()) {
+			if (!cache._reccobeats) cache._reccobeats = new Map();
+			
+			for (const idx of successfulLookups) {
+				const req = trackRequests[idx];
 				const cacheKey = `reccobeats:trackid:${req.artist}:${req.title}`.toUpperCase();
-				cache._reccobeats.set(cacheKey, trackId);
+				cache._reccobeats.set(cacheKey, results[idx]);
 			}
 		}
 		
 		const foundCount = results.filter(r => r !== null && r !== undefined).length;
-		console.log(`getTrackIdsBatch: Successfully resolved ${foundCount}/${trackRequests.length} track IDs`);
+		console.log(`getTrackIdsBatch: Successfully resolved ${foundCount}/${trackRequests.length} track IDs (cached ${successfulLookups.size} lookups)`);
 		
 	} catch (e) {
 		console.error('getTrackIdsBatch: Batch processing error:', e.message);
@@ -486,6 +546,7 @@ async function getTrackIdsBatch(trackRequests) {
 		for (let i = 0; i < results.length; i++) {
 			if (results[i] === undefined) results[i] = null;
 		}
+		// Don't cache anything on catastrophic error
 	}
 	
 	return results;
@@ -518,7 +579,8 @@ async function fetchTrackAudioFeatures(trackId) {
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
 		
-		const url = `${RECCOBEATS_API_BASE}/audio-features?ids=${encodeURIComponent(trackId)}/audio-features`;
+		// CORRECTED URL - use the correct audio-features endpoint
+		const url = `${RECCOBEATS_API_BASE}/audio-features?ids=${encodeURIComponent(trackId)}`;
 		console.log(`fetchTrackAudioFeatures: GET ${url}`);
 		
 		const res = await rateLimitedFetch(url, {
@@ -529,30 +591,39 @@ async function fetchTrackAudioFeatures(trackId) {
 		
 		if (!res.ok) {
 			console.error(`fetchTrackAudioFeatures: HTTP ${res.status} for track ${trackId}`);
+			// Don't cache on HTTP error
 			return null;
 		}
 		
 		const data = await res.json();
 		
-		if (!data) {
+		// Response is an array when using the batch endpoint
+		const featureData = Array.isArray(data?.content) ? data.content[0] : data?.content;
+		
+		if (!featureData) {
 			console.log(`fetchTrackAudioFeatures: No audio features for track ${trackId}`);
+			// Cache the null result - request succeeded but no features available
+			if (cache?.isActive?.()) {
+				if (!cache._reccobeats) cache._reccobeats = new Map();
+				cache._reccobeats.set(cacheKey, null);
+			}
 			return null;
 		}
 		
 		// Extract and normalize audio features
 		const features = {
-			id: data.id || trackId,
-			acousticness: Number(data.acousticness) || 0,
-			danceability: Number(data.danceability) || 0,
-			energy: Number(data.energy) || 0,
-			instrumentalness: Number(data.instrumentalness) || 0,
-			key: Number(data.key) ?? -1,
-			liveness: Number(data.liveness) || 0,
-			loudness: Number(data.loudness) || 0,
-			mode: Number(data.mode) || 0,
-			speechiness: Number(data.speechiness) || 0,
-			tempo: Number(data.tempo) || 0,
-			valence: Number(data.valence) || 0,
+			id: featureData.id || trackId,
+			acousticness: Number(featureData.acousticness) || 0,
+			danceability: Number(featureData.danceability) || 0,
+			energy: Number(featureData.energy) || 0,
+			instrumentalness: Number(featureData.instrumentalness) || 0,
+			key: Number(featureData.key) ?? -1,
+			liveness: Number(featureData.liveness) || 0,
+			loudness: Number(featureData.loudness) || 0,
+			mode: Number(featureData.mode) || 0,
+			speechiness: Number(featureData.speechiness) || 0,
+			tempo: Number(featureData.tempo) || 0,
+			valence: Number(featureData.valence) || 0,
 		};
 		
 		console.log(`fetchTrackAudioFeatures: Retrieved features for track ${trackId} (energy: ${features.energy}, valence: ${features.valence}, tempo: ${features.tempo})`);
@@ -571,6 +642,7 @@ async function fetchTrackAudioFeatures(trackId) {
 		} else {
 			console.error('fetchTrackAudioFeatures error:', e.message);
 		}
+		// Don't cache on exception
 		return null;
 	}
 }
@@ -690,7 +762,7 @@ async function fetchTrackRecommendations(seedIds, audioFeatures = {}, limit = 10
 		// Cache the results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
-			cache._reccobeats.set(cacheKey, trackData);
+			cache._reccoboosts.set(cacheKey, trackData);
 		}
 		
 		return trackData;

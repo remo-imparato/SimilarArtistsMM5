@@ -86,7 +86,7 @@ window.matchMonkeyOrchestration = {
 				};
 			} else {
 				const maxTracks = intSetting('MaxPlaylistTracks', 0);
-				
+
 				config_ = {
 					seedLimit: intSetting('SimilarArtistsLimit', 20),
 					similarLimit: intSetting('SimilarArtistsLimit', 20),
@@ -104,7 +104,7 @@ window.matchMonkeyOrchestration = {
 					discoveryMode,
 				};
 			}
-			
+
 			// Add mood/activity context if present or from settings
 			if (_moodActivityContext) {
 				// Context explicitly provided (from runMoodActivityPlaylist)
@@ -123,7 +123,7 @@ window.matchMonkeyOrchestration = {
 				}
 				config_.playlistDuration = intSetting('PlaylistDuration', 60);
 				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio') / 100.0;
-				
+
 				console.log(`Match Monkey: Using ${config_.moodActivityContext} "${config_.moodActivityValue}" from settings`);
 			}
 
@@ -191,7 +191,7 @@ window.matchMonkeyOrchestration = {
 			}
 
 			// Apply final limit
-			const finalResults = config_.totalLimit < 100000 
+			const finalResults = config_.totalLimit < 100000
 				? results.slice(0, config_.totalLimit)
 				: results;
 
@@ -256,13 +256,13 @@ window.matchMonkeyOrchestration = {
 		try {
 			// Priority 1: Selected tracks
 			const selectedTracks = uitools?.getSelectedTracklist?.();
-			
+
 			if (selectedTracks && selectedTracks.count > 0) {
 				console.log(`Match Monkey: Using ${selectedTracks.count} selected track(s) as seeds`);
-				
+
 				// Wait for the tracklist to load before accessing it
 				await selectedTracks.whenLoaded();
-				
+
 				if (typeof selectedTracks.locked === 'function') {
 					selectedTracks.locked(() => {
 						const count = Math.min(selectedTracks.count, 50);
@@ -270,9 +270,10 @@ window.matchMonkeyOrchestration = {
 							const track = selectedTracks.getValue(i);
 							if (track) {
 								seeds.push({
-									artist: track.artist || track.artistName || '',
-									title: track.title || track.songTitle || '',
+									artist: track.artist || '',
+									title: track.title || '',
 									genre: track.genre || '',
+									album: track.album || '',
 								});
 							}
 						}
@@ -292,9 +293,11 @@ window.matchMonkeyOrchestration = {
 					if (track) {
 						console.log(`Match Monkey: Using current track as seed: "${track.artist} - ${track.title}"`);
 						seeds.push({
-							artist: track.artist || track.artistName || '',
-							title: track.title || track.songTitle || '',
+							artist: track.artist || '',
+							title: track.title || '',
 							genre: track.genre || '',
+							album: track.album || '',
+
 						});
 					}
 				} catch (e) {
@@ -343,7 +346,7 @@ window.matchMonkeyOrchestration = {
 
 				// If candidate has specific tracks, search for those
 				if (candidate.tracks && candidate.tracks.length > 0) {
-					const titles = candidate.tracks.map(t => 
+					const titles = candidate.tracks.map(t =>
 						typeof t === 'string' ? t : (t.title || '')
 					).filter(Boolean);
 
@@ -437,7 +440,7 @@ window.matchMonkeyOrchestration = {
 			// Add tracks to Now Playing
 			for (const track of tracks) {
 				const trackId = track.id || track.ID;
-				
+
 				if (skipDuplicates && trackId && existingIds.has(trackId)) {
 					continue;
 				}
@@ -490,7 +493,7 @@ window.matchMonkeyOrchestration = {
 
 		// Build playlist name from template with discovery mode indicator
 		let playlistName;
-		
+
 		// If template contains %, replace it with seed name
 		if (playlistTemplate.indexOf('%') >= 0) {
 			playlistName = playlistTemplate.replace('%', seedName);
@@ -533,13 +536,13 @@ window.matchMonkeyOrchestration = {
 			console.log('Match Monkey: Showing playlist selection dialog');
 			try {
 				const dialogResult = await this.showPlaylistDialog();
-				
+
 				if (dialogResult === null) {
 					// User cancelled
 					console.log('Match Monkey: User cancelled playlist dialog');
 					return { added: 0, playlist: null, cancelled: true };
 				}
-				
+
 				if (dialogResult && !dialogResult.autoCreate) {
 					userSelectedPlaylist = dialogResult;
 				}
@@ -653,14 +656,14 @@ window.matchMonkeyOrchestration = {
 		try {
 			if (navigateAfter === 'Navigate to new playlist' && playlist) {
 				// Use MM5's navigationHandlers system
-				if (typeof navigationHandlers !== 'undefined' && 
+				if (typeof navigationHandlers !== 'undefined' &&
 					navigationHandlers['playlist']?.navigate) {
 					navigationHandlers['playlist'].navigate(playlist);
 					console.log('Match Monkey: Navigated to playlist via navigationHandlers');
 				}
 			} else if (navigateAfter === 'Navigate to now playing') {
 				// Navigate to Now Playing
-				if (typeof navigationHandlers !== 'undefined' && 
+				if (typeof navigationHandlers !== 'undefined' &&
 					navigationHandlers['nowPlaying']?.navigate) {
 					navigationHandlers['nowPlaying'].navigate();
 					console.log('Match Monkey: Navigated to Now Playing');

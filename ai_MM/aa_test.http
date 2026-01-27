@@ -4,7 +4,7 @@ GET https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&api_key=7fd988db0
 ###
 
 # search for artist by name name
-GET https://api.reccobeats.com/v1/artist/search?searchText=Moby&page=2&size=500
+GET https://api.reccobeats.com/v1/artist/search?searchText=Moby&page=2&size=50
 
 ###
 
@@ -33,8 +33,13 @@ GET https://api.reccobeats.com/v1/audio-features?ids=395fd9da-55a9-4e7a-9fab-869
 
 
 
-
-
+###
+https://api.reccobeats.com/v1/artist/search?searchText=Red%20Hot%20Chili%20Peppers
+###
+https://api.reccobeats.com/v1/artist/search?searchText=the%20beatles
+###
+https://api.reccobeats.com/v1/album/b1bd3f56-30a7-406c-9433-f8afdaaba772?page=0&size=50
+###
 
 
 

@@ -128,7 +128,7 @@ function start() {
 		DefaultActivity: 'workout',      // Default activity: workout, study, party, sleep, driving
 		PlaylistDuration: 60,            // Target playlist duration in minutes
 		HybridMode: true,                // Combine ReccoBeats + Last.fm (recommended)
-		MoodActivityBlendRatio: 0.5,    // Blend ratio: 0.5 = 50% seeds + 50% mood (0=all mood, 1=all seeds)
+		MoodActivityBlendRatio: 0,    // Blend ratio: 0.5 = 50% seeds + 50% mood (0=all mood, 1=all seeds)
 
 		// === Filters ===
 		ArtistBlacklist: '',            // Comma-separated blacklisted artists
