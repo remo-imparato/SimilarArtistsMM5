@@ -389,7 +389,7 @@ async function discoverByMoodActivity(modules, seeds, config) {
 	// Extract context from config
 	const context = config.moodActivityContext || 'mood';
 	const value = config.moodActivityValue || 'energetic';
-	const blendRatio = config.moodActivityBlendRatio ?? 0.5;
+	const blendRatio = config.moodActivityBlendRatio;
 	const targetLimit = config.similarLimit || 20;
 	
 	console.log(`discoverByMoodActivity: ${context}="${value}", blend=${Math.round(blendRatio * 100)}% seeds`);
@@ -400,7 +400,6 @@ async function discoverByMoodActivity(modules, seeds, config) {
 	
 	updateProgress(`Analyzing ${context}: ${value}...`, 0.1);
 
-	/*
 	// -------------------------------------------------------------------------
 	// STEP 1: Get seed-based similar artists (from Last.fm)
 	// -------------------------------------------------------------------------
@@ -434,7 +433,6 @@ async function discoverByMoodActivity(modules, seeds, config) {
 		
 		console.log(`discoverByMoodActivity: ${seedSimilarArtists.length} artists from seeds`);
 	}
-	*/
 
 	// -------------------------------------------------------------------------
 	// STEP 2: Get mood/activity-based artists (from ReccoBeats)

@@ -111,7 +111,7 @@ window.matchMonkeyOrchestration = {
 				config_.moodActivityContext = _moodActivityContext.context;
 				config_.moodActivityValue = _moodActivityContext.value;
 				config_.playlistDuration = _moodActivityContext.duration;
-				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio', 50) / 100.0;
+				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio') / 100.0;
 			} else if (discoveryMode === 'mood' || discoveryMode === 'activity') {
 				// Context not provided, read from settings
 				if (discoveryMode === 'mood') {
@@ -122,7 +122,7 @@ window.matchMonkeyOrchestration = {
 					config_.moodActivityValue = stringSetting('DefaultActivity', 'workout');
 				}
 				config_.playlistDuration = intSetting('PlaylistDuration', 60);
-				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio', 50) / 100.0;
+				config_.moodActivityBlendRatio = intSetting('MoodActivityBlendRatio') / 100.0;
 				
 				console.log(`Match Monkey: Using ${config_.moodActivityContext} "${config_.moodActivityValue}" from settings`);
 			}

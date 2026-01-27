@@ -127,7 +127,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, 
 		UI.HybridMode.controlClass.checked = cfg.HybridMode !== false; // Default true
 		
 		// Blend ratio: stored as 0.0-1.0, displayed as 0-100%
-		const blendRatioPercent = Math.round((cfg.MoodActivityBlendRatio ?? 0.5) * 100);
+		const blendRatioPercent = Math.round((cfg.MoodActivityBlendRatio) * 100);
 		UI.MoodActivityBlendRatio.controlClass.value = blendRatioPercent;
 
 		// === Auto-Mode Settings ===
@@ -298,7 +298,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 		this.config.HybridMode = UI.HybridMode.controlClass.checked;
 		
 		// Convert slider percentage (0-100) to ratio (0.0-1.0)
-		const blendRatioPercent = parseInt(UI.MoodActivityBlendRatio.controlClass.value, 10) || 50;
+		const blendRatioPercent = parseInt(UI.MoodActivityBlendRatio.controlClass.value, 10);
 		this.config.MoodActivityBlendRatio = Math.max(0, Math.min(100, blendRatioPercent)) / 100.0;
 
 		// === Auto-Mode ===
