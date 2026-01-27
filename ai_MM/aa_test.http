@@ -34,13 +34,13 @@ GET https://api.reccobeats.com/v1/audio-features?ids=395fd9da-55a9-4e7a-9fab-869
 
 
 ###
-https://api.reccobeats.com/v1/artist/search?searchText=Red%20Hot%20Chili%20Peppers
+https://api.reccobeats.com/v1/artist/search?searchText=Red%20Hot%20Chili%20Peppers&page=0&size=50
 ###
 https://api.reccobeats.com/v1/artist/search?searchText=the%20beatles
 ###
-https://api.reccobeats.com/v1/album/b1bd3f56-30a7-406c-9433-f8afdaaba772?page=0&size=50
+https://ws.audioscrobbler.com/2.0/?method=track.getSimilar&api_key=7fd988db0c4e9d8b12aed27d0a91a932&format=json&artist=Fall+Out+Boy&track=Immortals&autocorrect=1&limit=100###
 ###
-
+https://api.reccobeats.com/v1/album/search?searchText=American%20Idiot&page=0&size=50
 
 
 

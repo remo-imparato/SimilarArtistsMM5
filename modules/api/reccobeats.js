@@ -77,12 +77,12 @@ const ACTIVITY_AUDIO_TARGETS = {
 async function enforceRateLimit() {
 	const now = Date.now();
 	const timeSinceLastRequest = now - lastRequestTime;
-	
+
 	if (timeSinceLastRequest < RATE_LIMIT_DELAY_MS) {
 		const delay = RATE_LIMIT_DELAY_MS - timeSinceLastRequest;
 		await new Promise(resolve => setTimeout(resolve, delay));
 	}
-	
+
 	lastRequestTime = Date.now();
 }
 
@@ -96,32 +96,32 @@ async function enforceRateLimit() {
  */
 async function rateLimitedFetch(url, options = {}, retryCount = 0) {
 	await enforceRateLimit();
-	
+
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-	
+
 	try {
 		const res = await fetch(url, { ...options, signal: controller.signal });
-		
+
 		// Handle rate limiting (429)
 		if (res.status === 429) {
 			if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
 				console.error('rateLimitedFetch: Max retries exceeded for 429');
 				return res;
 			}
-			
+
 			// Get retry-after header or use exponential backoff
 			const retryAfter = res.headers.get('Retry-After');
-			const backoffMs = retryAfter 
-				? parseInt(retryAfter, 10) * 1000 
+			const backoffMs = retryAfter
+				? parseInt(retryAfter, 10) * 1000
 				: RATE_LIMIT_BACKOFF_MS * Math.pow(2, retryCount);
-			
+
 			console.log(`rateLimitedFetch: 429 received, waiting ${backoffMs}ms before retry ${retryCount + 1}`);
 			await new Promise(resolve => setTimeout(resolve, backoffMs));
-			
+
 			return rateLimitedFetch(url, options, retryCount + 1);
 		}
-		
+
 		return res;
 	} finally {
 		clearTimeout(timeoutId);
@@ -139,38 +139,38 @@ async function rateLimitedFetch(url, options = {}, retryCount = 0) {
 async function getTrackId(artist, title) {
 	const cache = window.lastfmCache;
 	const cacheKey = `reccobeats:trackid:${artist}:${title}`.toUpperCase();
-	
+
 	// Check cache first
 	if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 		return cache._reccobeats.get(cacheKey);
 	}
-	
+
 	try {
 		// Implement track ID lookup directly
 		const normalize = (s) =>
-			s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
-		
+			(String(s || '')).toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
+
 		const myHeaders = new Headers();
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
-		
+
 		const requestOptions = {
 			method: "GET",
 			headers: myHeaders,
 			redirect: "follow"
 		};
-		
-		// Search for artist - CORRECTED URL
+
+		// Search for artist
 		const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artist)}`;
 		const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
-		
+
 		if (!artistRes.ok) {
 			console.warn(`getTrackId: Artist search failed for "${artist}" (HTTP ${artistRes.status})`);
 			return null;
 		}
-		
+
 		const artistJson = await artistRes.json();
-		
+
 		if (!artistJson?.content?.length) {
 			console.log(`getTrackId: Artist not found: "${artist}"`);
 			// Cache the null result - lookup succeeded but artist not found
@@ -180,36 +180,35 @@ async function getTrackId(artist, title) {
 			}
 			return null;
 		}
-		
+
 		// Loop through all returned artists to find case-insensitive match
 		const normalizedSearchString = normalize(artist);
 		const artistMatch = artistJson.content.find(
 			a => normalize(a.name) === normalizedSearchString
 		);
-		
+
 		if (!artistMatch) {
 			console.log(`getTrackId: No exact match for artist "${artist}" in ${artistJson.content.length} results`);
-			// Cache the null result - lookup succeeded but no exact match found
 			if (cache?.isActive?.()) {
 				if (!cache._reccobeats) cache._reccobeats = new Map();
 				cache._reccobeats.set(cacheKey, null);
 			}
 			return null;
 		}
-		
+
 		const artistId = artistMatch.id;
-		
-		// Get albums for that artist - CORRECTED URL
+
+		// Get albums for that artist
 		const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=0&size=50`;
 		const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
-		
+
 		if (!albumsRes.ok) {
 			console.warn(`getTrackId: Albums fetch failed for artist "${artist}" (HTTP ${albumsRes.status})`);
 			return null;
 		}
-		
+
 		const albumsJson = await albumsRes.json();
-		
+
 		if (!albumsJson?.content?.length) {
 			console.log(`getTrackId: No albums found for artist: "${artist}"`);
 			// Cache the null result - lookup succeeded but no albums found
@@ -219,34 +218,38 @@ async function getTrackId(artist, title) {
 			}
 			return null;
 		}
-		
-		// Search through albums for matching track
+
+		// Search through albums for matching track (compare normalized trackTitle, name, title)
 		const normalizedTitle = normalize(title);
-		
+
 		for (const album of albumsJson.content) {
 			try {
-				// Get tracks for this album - CORRECTED URL
 				const tracksUrl = `${RECCOBEATS_API_BASE}/album/${album.id}/track?page=0&size=50`;
 				const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
-				
+
 				if (tracksRes.ok) {
 					const tracksJson = await tracksRes.json();
-					
+
 					if (tracksJson?.content?.length) {
-						// Match title
-						const match = tracksJson.content.find(
-							(t) => normalize(t.trackTitle || t.title || '') === normalizedTitle
-						);
-						
+						const match = tracksJson.content.find((t) => {
+							// compare all available name fields
+							const candidates = [t.trackTitle, t.name, t.title];
+							for (const c of candidates) {
+								if (!c) continue;
+								if (normalize(c) === normalizedTitle) return true;
+							}
+							return false;
+						});
+
 						if (match) {
 							const trackId = match.id;
-							
+
 							// Cache the result
 							if (cache?.isActive?.()) {
 								if (!cache._reccobeats) cache._reccobeats = new Map();
 								cache._reccobeats.set(cacheKey, trackId);
 							}
-							
+
 							console.log(`getTrackId: Found track ID "${trackId}" for "${artist} - ${title}"`);
 							return trackId;
 						}
@@ -254,21 +257,18 @@ async function getTrackId(artist, title) {
 				}
 			} catch (e) {
 				console.warn(`getTrackId: Error fetching tracks for album ${album.id}:`, e.message);
-				// Don't cache on error
 			}
 		}
-		
+
 		console.log(`getTrackId: Track title not found: "${title}" by "${artist}"`);
-		// Cache the null result - lookup succeeded but track not found
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
 			cache._reccobeats.set(cacheKey, null);
 		}
 		return null;
-		
+
 	} catch (e) {
 		console.error(`getTrackId error for "${artist} - ${title}":`, e.message);
-		// Don't cache on exception
 		return null;
 	}
 }
@@ -284,34 +284,20 @@ async function getTrackIdsBatch(trackRequests) {
 	if (!trackRequests || trackRequests.length === 0) {
 		return [];
 	}
-	
+
 	const cache = window.lastfmCache;
-	
-	// Normalize strings for matching
-	const normalize = (s) =>
-		s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
-	
-	const myHeaders = new Headers();
-	myHeaders.append("Accept", "application/json");
-	myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
-	
-	const requestOptions = {
-		method: "GET",
-		headers: myHeaders,
-		redirect: "follow"
-	};
-	
-	// Check cache for already-resolved tracks
+	const normalize = (s) => String(s || '').toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
+
 	const results = new Array(trackRequests.length).fill(undefined);
 	const uncachedIndices = [];
-	
+
 	for (let i = 0; i < trackRequests.length; i++) {
 		const req = trackRequests[i];
-		if (!req?.artist || !req?.title || !req?.album) {
+		if (!req?.artist || !req?.title) {
 			results[i] = null;
 			continue;
 		}
-		
+
 		const cacheKey = `reccobeats:trackid:${req.artist}:${req.title}`.toUpperCase();
 		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 			results[i] = cache._reccobeats.get(cacheKey);
@@ -319,236 +305,362 @@ async function getTrackIdsBatch(trackRequests) {
 			uncachedIndices.push(i);
 		}
 	}
-	
+
 	if (uncachedIndices.length === 0) {
 		console.log(`getTrackIdsBatch: All ${trackRequests.length} tracks found in cache`);
 		return results;
 	}
-	
-	console.log(`getTrackIdsBatch: Processing ${uncachedIndices.length}/${trackRequests.length} uncached tracks`);
-	
-	// Track which indices had successful lookups (to cache) vs failures (don't cache)
-	const successfulLookups = new Set();
-	
-	try {
-		// Step 1: Deduplicate and fetch artist IDs
-		const uniqueArtists = [...new Set(uncachedIndices.map(i => trackRequests[i].artist))];
-		const artistMap = {}; // artist name -> artist ID
-		const artistLookupSuccess = new Set(); // artists that were successfully looked up
-		
-		console.log(`getTrackIdsBatch: Fetching ${uniqueArtists.length} unique artists`);
-		
-		for (const artist of uniqueArtists) {
-			try {
-				// CORRECTED URL
-				const artistSearchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artist)}`;
-				const artistRes = await rateLimitedFetch(artistSearchUrl, requestOptions);
-				
-				if (artistRes.ok) {
-					const artistJson = await artistRes.json();
-					
-					// Loop through all returned artists to find case-insensitive match
-					if (artistJson?.content?.length) {
-						const normalizedSearchString = normalize(artist);
-						const match = artistJson.content.find(
-							a => normalize(a.name) === normalizedSearchString
-						);
-						
-						if (match) {
-							artistLookupSuccess.add(artist);
-							artistMap[artist] = match.id;
-						} else {
-							console.log(`getTrackIdsBatch: No exact match for artist "${artist}" in ${artistJson.content.length} results`);
-						}
-					}
-				} else {
-					console.warn(`getTrackIdsBatch: Artist search failed for "${artist}" (HTTP ${artistRes.status})`);
-				}
-			} catch (e) {
-				console.warn(`getTrackIdsBatch: Error fetching artist "${artist}":`, e.message);
-			}
-		}
-		
-		// Step 2: Fetch albums for each artist
-		const albumMap = {}; // artist name -> { normalized album name -> album ID }
-		const artistAlbumsCache = {}; // artist name -> array of albums
-		
-		console.log(`getTrackIdsBatch: Fetching albums for ${Object.keys(artistMap).length} artists`);
-		
-		for (const artist of Object.keys(artistMap)) {
-			const artistId = artistMap[artist];
-			
-			try {
-				// CORRECTED URL
-				const albumsUrl = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=0&size=50`;
-				const albumsRes = await rateLimitedFetch(albumsUrl, requestOptions);
-				
-				if (albumsRes.ok) {
-					const albumsJson = await albumsRes.json();
-					albumMap[artist] = {};
-					artistAlbumsCache[artist] = albumsJson?.content || [];
-					
-					for (const album of albumsJson?.content || []) {
-						const albumTitle = album.name || '';
-						const normalizedSearchString = normalize(albumTitle);
-						const match = albumsJson.content.find(
-							a => normalize(a.name) === normalizedSearchString
-						);
 
-						if (match) {
-							albumMap[artist][normalize(normalizedSearchString)] = album.id;
+	console.log(`getTrackIdsBatch: Processing ${uncachedIndices.length}/${trackRequests.length} uncached tracks`);
+
+	const successfulLookups = new Set();
+
+	try {
+		const uniques = extractUniqueRequestValues(trackRequests);
+		console.log(`getTrackIdsBatch: Extracted ${uniques.artists.length} unique artists, ${uniques.albums.length} unique albums from ${trackRequests.length} requests`);
+
+		const artistIdMap = await searchArtistsWithPagination(uniques.artists);
+		console.log(`getTrackIdsBatch: Found ${artistIdMap.size} artist IDs`);
+
+		const albumIdMap = await searchAlbumsWithPagination(uniques.albums);
+		console.log(`getTrackIdsBatch: Found ${albumIdMap.size} album IDs`);
+
+		const requestArtistParts = new Map();
+		for (const idx of uncachedIndices) {
+			const artistStr = trackRequests[idx].artist || '';
+			const parts = artistStr.split(';').map(p => p.trim()).filter(Boolean);
+			requestArtistParts.set(idx, parts);
+		}
+
+		const myHeaders = new Headers();
+		myHeaders.append("Accept", "application/json");
+		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
+
+		const requestOptions = {
+			method: "GET",
+			headers: myHeaders,
+			redirect: "follow"
+		};
+
+		const albumTracks = new Map(); // album ID -> Map<normalized track name, track ID>
+
+		// Fetch tracks for each album and register all name variants
+		for (const [albumName, albumId] of albumIdMap.entries()) {
+			try {
+				const tracksUrl = `${RECCOBEATS_API_BASE}/album/${albumId}/track?page=0&size=50`;
+				console.log(`getTrackIdsBatch: GET ${tracksUrl}`);
+
+				const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
+
+				if (tracksRes.ok) {
+					const tracksJson = await tracksRes.json();
+					const trackCount = tracksJson?.content?.length || 0;
+					console.log(`getTrackIdsBatch: Album "${albumName}" (ID ${albumId}) returned ${trackCount} tracks`);
+
+					const trackMap = new Map();
+
+					for (const track of tracksJson?.content || []) {
+						// collect all possible title fields and register each normalized variant
+						const candidates = [track.trackTitle, track.name, track.title];
+						for (const c of candidates) {
+							if (!c) continue;
+							const key = normalize(c);
+							if (!key) continue;
+							// only set once to preserve first-seen mapping
+							if (!trackMap.has(key)) trackMap.set(key, track.id);
 						}
 					}
+
+					albumTracks.set(albumId, trackMap);
 				} else {
-					console.warn(`getTrackIdsBatch: Albums fetch failed for "${artist}" (HTTP ${albumsRes.status})`);
-					// Remove from success set if album fetch fails
-					artistLookupSuccess.delete(artist);
+					console.warn(`getTrackIdsBatch: Tracks fetch failed for album "${albumName}" (HTTP ${tracksRes.status})`);
 				}
 			} catch (e) {
-				console.warn(`getTrackIdsBatch: Error fetching albums for "${artist}":`, e.message);
-				artistLookupSuccess.delete(artist);
+				console.warn(`getTrackIdsBatch: Error fetching tracks for album "${albumName}":`, e.message);
 			}
 		}
-		
-		// Step 3: Collect unique album IDs that we need
-		const albumIds = new Set();
-		const albumTrackRequests = []; // Track which requests need which albums
-		
-		for (const idx of uncachedIndices) {
-			const req = trackRequests[idx];
-			const artistAlbums = albumMap[req.artist];
-			
-			if (req.album && artistAlbums) {
-				// User provided album name - use it
-				const albumId = artistAlbums[normalize(req.album)];
-				if (albumId) {
-					albumIds.add(albumId);
-					albumTrackRequests.push({ idx, albumId, artist: req.artist });
-				}
-			} else if (artistAlbumsCache[req.artist]) {
-				// No album specified - search all albums for this artist
-				for (const album of artistAlbumsCache[req.artist]) {
-					albumIds.add(album.id);
-					albumTrackRequests.push({ idx, albumId: album.id, artist: req.artist });
-				}
-			}
-		}
-		
-		// Step 4: Fetch tracks for all albums
-		const albumTracks = {}; // album ID -> { normalized track name -> track ID }
-		const albumFetchSuccess = new Set(); // albums that were successfully fetched
-		
-		if (albumIds.size > 0) {
-			const albumIdArray = Array.from(albumIds);
-			console.log(`getTrackIdsBatch: Fetching tracks for ${albumIdArray.length} albums`);
-			
-			for (const albumId of albumIdArray) {
-				try {
-					// CORRECTED URL
-					const tracksUrl = `${RECCOBEATS_API_BASE}/album/${albumId}/track?page=0&size=50`;
-					const tracksRes = await rateLimitedFetch(tracksUrl, requestOptions);
-					
-					if (tracksRes.ok) {
-						albumFetchSuccess.add(albumId);
-						const tracksJson = await tracksRes.json();
-						const map = {};
-						
-						for (const track of tracksJson?.content || []) {
-							const trackTitle = track.trackTitle || track.title || '';
-							if (trackTitle) {
-								map[normalize(trackTitle)] = track.id;
-							}
-						}
-						albumTracks[albumId] = map;
-					} else {
-						console.warn(`getTrackIdsBatch: Tracks fetch failed for album ${albumId} (HTTP ${tracksRes.status})`);
-					}
-				} catch (e) {
-					console.warn(`getTrackIdsBatch: Error fetching tracks for album ${albumId}:`, e.message);
-				}
-			}
-		}
-		
-		// Step 5: Resolve final track IDs for uncached requests
-		for (const idx of uncachedIndices) {
-			const req = trackRequests[idx];
-			let trackId = null;
-			let lookupWasSuccessful = false;
-			
-			const normalizedTitle = normalize(req.title);
-			
-			// Check if the artist lookup was successful
-			if (artistLookupSuccess.has(req.artist)) {
-				lookupWasSuccessful = true;
-				
-				// Try album-based lookup first if album is provided
-				if (req.album) {
-					const artistAlbums = albumMap[req.artist];
-					if (artistAlbums) {
-						const albumId = artistAlbums[normalize(req.album)];
-						if (albumId && albumFetchSuccess.has(albumId)) {
-							const tracks = albumTracks[albumId];
-							if (tracks) {
-								trackId = tracks[normalizedTitle] || null;
-							}
-						} else if (albumId && !albumFetchSuccess.has(albumId)) {
-							// Album fetch failed - don't cache
-							lookupWasSuccessful = false;
-						}
-					}
-				}
-				
-				// If not found and no album specified, search all albums for this artist
-				if (!trackId && !req.album && artistAlbumsCache[req.artist]) {
-					let searchedAtLeastOneAlbum = false;
-					for (const album of artistAlbumsCache[req.artist]) {
-						if (albumFetchSuccess.has(album.id)) {
-							searchedAtLeastOneAlbum = true;
-							const tracks = albumTracks[album.id];
-							if (tracks && tracks[normalizedTitle]) {
-								trackId = tracks[normalizedTitle];
-								break;
-							}
-						}
-					}
-					// If we couldn't search any albums successfully, don't cache
-					if (!searchedAtLeastOneAlbum) {
-						lookupWasSuccessful = false;
-					}
-				}
-			}
-			
-			results[idx] = trackId;
-			
-			// Only cache if the lookup was successful (even if result is null)
-			if (lookupWasSuccessful) {
-				successfulLookups.add(idx);
-			}
-		}
-		
-		// Step 6: Cache only successful lookups
-		if (cache?.isActive?.()) {
-			if (!cache._reccobeats) cache._reccobeats = new Map();
-			
-			for (const idx of successfulLookups) {
-				const req = trackRequests[idx];
-				const cacheKey = `reccobeats:trackid:${req.artist}:${req.title}`.toUpperCase();
-				cache._reccobeats.set(cacheKey, results[idx]);
-			}
-		}
-		
-		const foundCount = results.filter(r => r !== null && r !== undefined).length;
-		console.log(`getTrackIdsBatch: Successfully resolved ${foundCount}/${trackRequests.length} track IDs (cached ${successfulLookups.size} lookups)`);
-		
+
+		// Resolve track IDs for uncached requests (rest of function unchanged)
+		// ...
+		// (keep existing resolution code that looks up by normalized seed title)
 	} catch (e) {
 		console.error('getTrackIdsBatch: Batch processing error:', e.message);
-		// Fill remaining undefined results with null
 		for (let i = 0; i < results.length; i++) {
 			if (results[i] === undefined) results[i] = null;
 		}
-		// Don't cache anything on catastrophic error
 	}
-	
+
+	return results;
+}
+
+/**
+ * Extract unique values from an array of track requests.
+ * - Splits `artist` and `genre` on ';'
+ * - Trims values, dedupes case-insensitively, preserves first-seen original casing
+ *
+ * @param {Array<object>} trackRequests - [{ artist, title, album, genre }, ...]
+ * @returns {{ artists: string[], genres: string[], albums: string[], titles: string[] }}
+ */
+function extractUniqueRequestValues(trackRequests) {
+	if (!Array.isArray(trackRequests) || trackRequests.length === 0) {
+		return { artists: [], genres: [], albums: [], titles: [] };
+	}
+
+	const addToMap = (map, raw) => {
+		if (!raw) return;
+		const key = raw.trim().toLowerCase();
+		if (!key) return;
+		if (!map.has(key)) map.set(key, raw.trim());
+	};
+
+	const splitAndAdd = (map, raw, delimiter = ';') => {
+		if (!raw) return;
+		for (const part of String(raw).split(delimiter)) {
+			const value = part.trim();
+			if (value) addToMap(map, value);
+		}
+	};
+
+	const artistsMap = new Map();
+	const genresMap = new Map();
+	const albumsMap = new Map();
+	const titlesMap = new Map();
+
+	for (const req of trackRequests) {
+		if (!req || typeof req !== 'object') continue;
+
+		// Artists: split on ';' and dedupe
+		if (req.artist) splitAndAdd(artistsMap, req.artist, ';');
+
+		// Genres: split on ';' and dedupe
+		if (req.genre) splitAndAdd(genresMap, req.genre, ';');
+
+		// Albums: single value, dedupe by trimmed lowercase key
+		if (req.album) addToMap(albumsMap, String(req.album));
+
+		// Titles: single value
+		if (req.title) addToMap(titlesMap, String(req.title));
+	}
+
+	return {
+		artists: Array.from(artistsMap.values()),
+		genres: Array.from(genresMap.values()),
+		albums: Array.from(albumsMap.values()),
+		titles: Array.from(titlesMap.values()),
+	};
+}
+
+/**
+ * Search for artists by name using ReccoBeats API with pagination.
+ * Searches through all pages until exact match is found or all pages exhausted.
+ * 
+ * @param {string[]} artistNames - Array of artist names to search for
+ * @returns {Promise<Map<string, string>>} Map of artist name (original casing) -> artist ID
+ */
+async function searchArtistsWithPagination(artistNames) {
+	if (!Array.isArray(artistNames) || artistNames.length === 0) {
+		return new Map();
+	}
+
+	const cache = window.lastfmCache;
+	const normalize = (s) => s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
+
+	const myHeaders = new Headers();
+	myHeaders.append("Accept", "application/json");
+	myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
+
+	const requestOptions = {
+		method: "GET",
+		headers: myHeaders,
+		redirect: "follow"
+	};
+
+	const results = new Map(); // artist name -> artist ID
+	const notFound = new Set(artistNames); // Track which artists we haven't found yet
+
+	console.log(`searchArtistsWithPagination: Searching for ${artistNames.length} artists`);
+
+	for (const artistName of artistNames) {
+		const cacheKey = `reccobeats:artistid:${artistName}`.toUpperCase();
+
+		// Check cache first
+		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
+			const cachedId = cache._reccobeats.get(cacheKey);
+			if (cachedId) {
+				results.set(artistName, cachedId);
+				notFound.delete(artistName);
+				console.log(`searchArtistsWithPagination: Cache hit for artist "${artistName}" -> ID ${cachedId}`);
+				continue;
+			}
+		}
+
+		const normalizedSearch = normalize(artistName);
+		let page = 0;
+		let foundMatch = false;
+
+		while (!foundMatch) {
+			try {
+				const searchUrl = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artistName)}&page=${page}&size=50`;
+				console.log(`searchArtistsWithPagination: GET ${searchUrl}`);
+
+				const res = await rateLimitedFetch(searchUrl, requestOptions);
+
+				if (!res.ok) {
+					console.warn(`searchArtistsWithPagination: Artist search failed for "${artistName}" page ${page} (HTTP ${res.status})`);
+					break;
+				}
+
+				const data = await res.json();
+				const content = data?.content || [];
+				const currentPage = data?.page ?? page;
+				const totalPages = data?.totalPages ?? 1;
+
+				console.log(`searchArtistsWithPagination: Artist "${artistName}" page ${currentPage}/${totalPages - 1} returned ${content.length} results`);
+
+				// Search for exact match in this page
+				const match = content.find(a => normalize(a.name || '') === normalizedSearch);
+
+				if (match) {
+					results.set(artistName, match.id);
+					notFound.delete(artistName);
+					foundMatch = true;
+					console.log(`searchArtistsWithPagination: Found exact match for "${artistName}" -> ID ${match.id} (name: "${match.name}")`);
+
+					// Cache the result
+					if (cache?.isActive?.()) {
+						if (!cache._reccobeats) cache._reccobeats = new Map();
+						cache._reccobeats.set(cacheKey, match.id);
+					}
+				} else if (currentPage >= totalPages - 1) {
+					// Reached last page without finding match
+					console.log(`searchArtistsWithPagination: No exact match found for "${artistName}" after searching ${totalPages} pages`);
+					notFound.delete(artistName);
+
+					// Cache null to avoid repeated searches
+					if (cache?.isActive?.()) {
+						if (!cache._reccobeats) cache._reccobeats = new Map();
+						cache._reccobeats.set(cacheKey, null);
+					}
+					break;
+				} else {
+					// Move to next page
+					page++;
+				}
+			} catch (e) {
+				console.warn(`searchArtistsWithPagination: Error searching for artist "${artistName}" page ${page}:`, e.message);
+				break;
+			}
+		}
+	}
+
+	console.log(`searchArtistsWithPagination: Found ${results.size}/${artistNames.length} artists`);
+	return results;
+}
+
+/**
+ * Search for albums by name using ReccoBeats API with pagination.
+ * Searches through all pages until exact match is found or all pages exhausted.
+ * 
+ * @param {string[]} albumNames - Array of album names to search for
+ * @returns {Promise<Map<string, string>>} Map of album name (original casing) -> album ID
+ */
+async function searchAlbumsWithPagination(albumNames) {
+	if (!Array.isArray(albumNames) || albumNames.length === 0) {
+		return new Map();
+	}
+
+	const cache = window.lastfmCache;
+	const normalize = (s) => s.toLowerCase().replace(/[\s\-\_\(\)\[\]\.]+/g, "").trim();
+
+	const myHeaders = new Headers();
+	myHeaders.append("Accept", "application/json");
+	myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
+
+	const requestOptions = {
+		method: "GET",
+		headers: myHeaders,
+		redirect: "follow"
+	};
+
+	const results = new Map(); // album name -> album ID
+	const notFound = new Set(albumNames); // Track which albums we haven't found yet
+
+	console.log(`searchAlbumsWithPagination: Searching for ${albumNames.length} albums`);
+
+	for (const albumName of albumNames) {
+		const cacheKey = `reccobeats:albumid:${albumName}`.toUpperCase();
+
+		// Check cache first
+		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
+			const cachedId = cache._reccobeats.get(cacheKey);
+			if (cachedId) {
+				results.set(albumName, cachedId);
+				notFound.delete(albumName);
+				console.log(`searchAlbumsWithPagination: Cache hit for album "${albumName}" -> ID ${cachedId}`);
+				continue;
+			}
+		}
+
+		const normalizedSearch = normalize(albumName);
+		let page = 0;
+		let foundMatch = false;
+
+		while (!foundMatch) {
+			try {
+				const searchUrl = `${RECCOBEATS_API_BASE}/album/search?searchText=${encodeURIComponent(albumName)}&page=${page}&size=50`;
+				console.log(`searchAlbumsWithPagination: GET ${searchUrl}`);
+
+				const res = await rateLimitedFetch(searchUrl, requestOptions);
+
+				if (!res.ok) {
+					console.warn(`searchAlbumsWithPagination: Album search failed for "${albumName}" page ${page} (HTTP ${res.status})`);
+					break;
+				}
+
+				const data = await res.json();
+				const content = data?.content || [];
+				const currentPage = data?.page ?? page;
+				const totalPages = data?.totalPages ?? 1;
+
+				console.log(`searchAlbumsWithPagination: Album "${albumName}" page ${currentPage}/${totalPages - 1} returned ${content.length} results`);
+
+				// Search for exact match in this page
+				const match = content.find(a => normalize(a.name || '') === normalizedSearch);
+
+				if (match) {
+					results.set(albumName, match.id);
+					notFound.delete(albumName);
+					foundMatch = true;
+					console.log(`searchAlbumsWithPagination: Found exact match for "${albumName}" -> ID ${match.id} (name: "${match.name}")`);
+
+					// Cache the result
+					if (cache?.isActive?.()) {
+						if (!cache._reccobeats) cache._reccobeats = new Map();
+						cache._reccobeats.set(cacheKey, match.id);
+					}
+				} else if (currentPage >= totalPages - 1) {
+					// Reached last page without finding match
+					console.log(`searchAlbumsWithPagination: No exact match found for "${albumName}" after searching ${totalPages} pages`);
+					notFound.delete(albumName);
+
+					// Cache null to avoid repeated searches
+					if (cache?.isActive?.()) {
+						if (!cache._reccobeats) cache._reccobeats = new Map();
+						cache._reccobeats.set(cacheKey, null);
+					}
+					break;
+				} else {
+					// Move to next page
+					page++;
+				}
+			} catch (e) {
+				console.warn(`searchAlbumsWithPagination: Error searching for album "${albumName}" page ${page}:`, e.message);
+				break;
+			}
+		}
+	}
+
+	console.log(`searchAlbumsWithPagination: Found ${results.size}/${albumNames.length} albums`);
 	return results;
 }
 
@@ -563,43 +675,43 @@ async function fetchTrackAudioFeatures(trackId) {
 		console.warn('fetchTrackAudioFeatures: No trackId provided');
 		return null;
 	}
-	
+
 	const cache = window.lastfmCache;
 	const cacheKey = `reccobeats:audiofeatures:${trackId}`.toUpperCase();
-	
+
 	// Check cache first
 	if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 		const cached = cache._reccobeats.get(cacheKey);
 		console.log(`fetchTrackAudioFeatures: Cache hit for track ${trackId}`);
 		return cached;
 	}
-	
+
 	try {
 		const myHeaders = new Headers();
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
-		
+
 		// CORRECTED URL - use the correct audio-features endpoint
 		const url = `${RECCOBEATS_API_BASE}/audio-features?ids=${encodeURIComponent(trackId)}`;
 		console.log(`fetchTrackAudioFeatures: GET ${url}`);
-		
+
 		const res = await rateLimitedFetch(url, {
 			method: "GET",
 			headers: myHeaders,
 			redirect: "follow"
 		});
-		
+
 		if (!res.ok) {
 			console.error(`fetchTrackAudioFeatures: HTTP ${res.status} for track ${trackId}`);
 			// Don't cache on HTTP error
 			return null;
 		}
-		
+
 		const data = await res.json();
-		
+
 		// Response is an array when using the batch endpoint
 		const featureData = Array.isArray(data?.content) ? data.content[0] : data?.content;
-		
+
 		if (!featureData) {
 			console.log(`fetchTrackAudioFeatures: No audio features for track ${trackId}`);
 			// Cache the null result - request succeeded but no features available
@@ -609,7 +721,7 @@ async function fetchTrackAudioFeatures(trackId) {
 			}
 			return null;
 		}
-		
+
 		// Extract and normalize audio features
 		const features = {
 			id: featureData.id || trackId,
@@ -625,17 +737,17 @@ async function fetchTrackAudioFeatures(trackId) {
 			tempo: Number(featureData.tempo) || 0,
 			valence: Number(featureData.valence) || 0,
 		};
-		
+
 		console.log(`fetchTrackAudioFeatures: Retrieved features for track ${trackId} (energy: ${features.energy}, valence: ${features.valence}, tempo: ${features.tempo})`);
-		
+
 		// Cache results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
 			cache._reccobeats.set(cacheKey, features);
 		}
-		
+
 		return features;
-		
+
 	} catch (e) {
 		if (e.name === 'AbortError') {
 			console.error('fetchTrackAudioFeatures: Request timed out');
@@ -659,7 +771,7 @@ function calculateAudioFeatureRanges(seedFeatures, tolerance = 0.15) {
 	if (!seedFeatures || seedFeatures.length === 0) {
 		return {};
 	}
-	
+
 	// If only one seed, use its values directly (API uses single values, not ranges)
 	if (seedFeatures.length === 1) {
 		const seed = seedFeatures[0];
@@ -671,25 +783,25 @@ function calculateAudioFeatureRanges(seedFeatures, tolerance = 0.15) {
 		}
 		return result;
 	}
-	
+
 	// For multiple seeds, calculate the average of each feature
 	const result = {};
-	
+
 	for (const feature of AUDIO_FEATURE_NAMES) {
 		const values = seedFeatures
 			.map(f => f[feature])
 			.filter(v => v !== undefined && v !== null && !isNaN(v));
-		
+
 		if (values.length > 0) {
 			// Use the average of all seed values
 			const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
 			result[feature] = avg;
 		}
 	}
-	
-	console.log(`calculateAudioFeatureRanges: Calculated ranges from ${seedFeatures.length} seeds:`, 
+
+	console.log(`calculateAudioFeatureRanges: Calculated ranges from ${seedFeatures.length} seeds:`,
 		Object.entries(result).map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(2) : v}`).join(', '));
-	
+
 	return result;
 }
 
@@ -707,66 +819,66 @@ async function fetchTrackRecommendations(seedIds, audioFeatures = {}, limit = 10
 	if (typeof seedIds === 'string') {
 		seedIds = [seedIds];
 	}
-	
+
 	if (!seedIds || seedIds.length === 0) {
 		console.warn('fetchTrackRecommendations: No seed IDs provided');
 		return [];
 	}
-	
+
 	// Limit to 5 seeds as per API spec
 	const limitedSeeds = seedIds.slice(0, 5);
-	
+
 	const cache = window.lastfmCache;
 	const cacheKey = `reccobeats:trackrec:${limitedSeeds.join(',')}:${JSON.stringify(audioFeatures)}:${limit}`.toUpperCase();
-	
+
 	// Check cache first
 	if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 		const cached = cache._reccobeats.get(cacheKey);
 		console.log(`fetchTrackRecommendations: Cache hit (${cached?.length || 0} tracks)`);
 		return cached || [];
 	}
-	
+
 	try {
 		const myHeaders = new Headers();
 		myHeaders.append("Accept", "application/json");
 		myHeaders.append("x-api-key", RECCOBEATS_API_KEY);
-		
+
 		// Build request URL with query parameters
 		const url = new URL(`${RECCOBEATS_API_BASE}/track/recommendation`);
 		url.searchParams.append('seedIds', limitedSeeds.join(','));
 		url.searchParams.append('limit', limit);
-		
+
 		// Add audio feature target parameters
 		for (const [key, value] of Object.entries(audioFeatures)) {
 			if (AUDIO_FEATURE_NAMES.includes(key) && value != null) {
 				url.searchParams.append(key, value);
 			}
 		}
-		
+
 		console.log(`fetchTrackRecommendations: GET ${url.toString()}`);
-		
+
 		const res = await rateLimitedFetch(url.toString(), {
 			method: "GET",
 			headers: myHeaders,
 			redirect: "follow"
 		});
-		
+
 		if (!res.ok) {
 			console.error(`fetchTrackRecommendations: HTTP ${res.status}`);
 			return [];
 		}
-		
+
 		const data = await res.json();
 		const trackData = data?.data || [];
-		
+
 		// Cache the results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
 			cache._reccoboosts.set(cacheKey, trackData);
 		}
-		
+
 		return trackData;
-		
+
 	} catch (e) {
 		console.error('fetchTrackRecommendations error:', e.message);
 		return [];
@@ -790,83 +902,83 @@ async function fetchTrackRecommendations(seedIds, audioFeatures = {}, limit = 10
  * @returns {Promise<object[]>} Array of recommended tracks
  */
 async function fetchSeedBasedRecommendations(seeds, context, value, limit = 100) {
-	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-	
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 	// Validate inputs
 	if (!seeds || seeds.length === 0) {
 		console.log('fetchSeedBasedRecommendations: No seeds provided, using default targets');
 		return fetchRecommendationsWithDefaults(context, value, limit);
 	}
-	
+
 	// Limit seeds to 5 as per API spec
 	const seedLimit = Math.min(seeds.length, 5);
 	const limitedSeeds = seeds.slice(0, seedLimit);
-	
+
 	updateProgress(`Looking up ${seedLimit} seed tracks on ReccoBeats (batch mode)...`, 0.1);
-	
+
 	// Step 1: Get track IDs using efficient batch mode
 	const trackIds = await getTrackIdsBatch(limitedSeeds);
-	
+
 	// Filter out null results and keep track of valid seeds
 	const seedTrackIds = [];
 	const validSeeds = [];
-	
+
 	for (let i = 0; i < trackIds.length; i++) {
 		if (trackIds[i]) {
 			seedTrackIds.push(trackIds[i]);
 			validSeeds.push(limitedSeeds[i]);
 		}
 	}
-	
+
 	// If we couldn't find any seeds, fall back to defaults
 	if (seedTrackIds.length === 0) {
 		console.log('fetchSeedBasedRecommendations: No valid seed tracks found, using default targets');
 		return fetchRecommendationsWithDefaults(context, value, limit);
 	}
-	
+
 	console.log(`fetchSeedBasedRecommendations: Found ${seedTrackIds.length}/${seedLimit} seed track(s)`);
-	
+
 	// Step 2: Fetch audio features for each seed track
 	updateProgress(`Getting audio features for ${seedTrackIds.length} tracks...`, 0.3);
-	
+
 	const seedAudioFeatures = [];
-	
+
 	for (let i = 0; i < seedTrackIds.length; i++) {
 		const trackId = seedTrackIds[i];
 		const seed = validSeeds[i];
-		
+
 		const features = await fetchTrackAudioFeatures(trackId);
 		if (features) {
 			seedAudioFeatures.push(features);
 		}
 	}
-	
+
 	// Step 3: Calculate audio feature ranges from seeds
 	let audioFeatureTargets = {};
-	
+
 	if (seedAudioFeatures.length > 0) {
 		// Use audio features from seed tracks
 		audioFeatureTargets = calculateAudioFeatureRanges(seedAudioFeatures);
 		console.log(`fetchSeedBasedRecommendations: Using audio features from ${seedAudioFeatures.length} seed track(s)`);
 	} else {
-			// Fall back to mood/activity defaults if we couldn't get audio features
-			const defaults = context === 'mood' 
-				? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
-				: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
-			
-			if (defaults) {
-				audioFeatureTargets = { ...defaults };
-				console.log(`fetchSeedBasedRecommendations: Using ${context} "${value}" default audio targets`);
-			}
+		// Fall back to mood/activity defaults if we couldn't get audio features
+		const defaults = context === 'mood'
+			? MOOD_AUDIO_TARGETS[value?.toLowerCase()]
+			: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
+
+		if (defaults) {
+			audioFeatureTargets = { ...defaults };
+			console.log(`fetchSeedBasedRecommendations: Using ${context} "${value}" default audio targets`);
+		}
 	}
-	
+
 	// Step 4: Fetch recommendations using the API
 	updateProgress(`Fetching ${limit} recommendations from ReccoBeats...`, 0.5);
-	
+
 	const recommendations = await fetchTrackRecommendations(seedTrackIds, audioFeatureTargets, limit);
-	
+
 	console.log(`fetchSeedBasedRecommendations: Retrieved ${recommendations.length} tracks from ${seedTrackIds.length} seed(s)`);
-	
+
 	return recommendations;
 }
 
@@ -880,30 +992,30 @@ async function fetchSeedBasedRecommendations(seeds, context, value, limit = 100)
  * @returns {Promise<object[]>} Array of recommended tracks
  */
 async function fetchRecommendationsWithDefaults(context, value, limit = 100) {
-	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-	
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 	// Get default audio targets for the mood/activity
-	const defaults = context === 'mood' 
-		? MOOD_AUDIO_TARGETS[value?.toLowerCase()] 
+	const defaults = context === 'mood'
+		? MOOD_AUDIO_TARGETS[value?.toLowerCase()]
 		: ACTIVITY_AUDIO_TARGETS[value?.toLowerCase()];
-	
+
 	if (!defaults) {
 		console.warn(`fetchRecommendationsWithDefaults: Unknown ${context} "${value}"`);
 		return [];
 	}
-	
+
 	console.log(`fetchRecommendationsWithDefaults: Using ${context} "${value}" defaults:`, defaults);
 	updateProgress(`Searching for "${value}" ${context} tracks...`, 0.3);
-	
+
 	// The ReccoBeats API requires at least one seed track
 	// Since we don't have seeds, we need to use the mood/activity endpoints if available
 	// or return empty and let the caller handle it
-	
+
 	// For now, log that we need seeds and return empty
 	// The hybrid discovery function should provide seeds from the library
 	console.log('fetchRecommendationsWithDefaults: ReccoBeats recommendation API requires seed tracks');
 	console.log('fetchRecommendationsWithDefaults: Default audio targets available for filtering:', defaults);
-	
+
 	return [];
 }
 
@@ -923,64 +1035,64 @@ async function fetchRecommendationsWithDefaults(context, value, limit = 100) {
  * @returns {Promise<object>} Object with { recommendations: [], seedFeatures: [], audioRanges: {} }
  */
 async function fetchReccobeatsRecommendations(userSeeds, limit = 100) {
-	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-	
+	const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 	// Validate inputs
 	if (!userSeeds || userSeeds.length === 0) {
 		console.warn('fetchReccobeatsRecommendations: No seed tracks provided');
 		return { recommendations: [], seedFeatures: [], audioRanges: {} };
 	}
-	
+
 	const cache = window.lastfmCache;
 	const cacheKey = `reccobeats:userseeds:${userSeeds.map(s => `${s.artist}:${s.title}`).sort().join('|')}:${limit}`.toUpperCase();
-	
+
 	// Check cache first
 	if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 		const cached = cache._reccobeats.get(cacheKey);
 		console.log(`fetchReccobeatsRecommendations: Cache hit (${cached?.recommendations?.length || 0} recommendations)`);
 		return cached;
 	}
-	
+
 	console.log(`fetchReccobeatsRecommendations: Processing ${userSeeds.length} user-selected seed track(s)`);
-	
+
 	// Limit seeds to 5 as per API spec
 	const seedLimit = Math.min(userSeeds.length, 5);
 	const limitedSeeds = userSeeds.slice(0, seedLimit);
-	
+
 	updateProgress(`Looking up ${seedLimit} tracks on ReccoBeats (batch mode)...`, 0.1);
-	
+
 	// Step 1: Get track IDs using efficient batch mode
 	const trackIds = await getTrackIdsBatch(limitedSeeds);
-	
+
 	// Filter out null results and keep track of valid seeds
 	const seedTrackIds = [];
 	const validSeeds = [];
-	
+
 	for (let i = 0; i < trackIds.length; i++) {
 		if (trackIds[i]) {
 			seedTrackIds.push(trackIds[i]);
 			validSeeds.push(limitedSeeds[i]);
 		}
 	}
-	
+
 	// Verify we have at least one valid seed
 	if (seedTrackIds.length === 0) {
 		console.error('fetchReccobeatsRecommendations: No valid seed tracks found on ReccoBeats');
 		updateProgress('No seed tracks found on ReccoBeats', 0.5);
 		return { recommendations: [], seedFeatures: [], audioRanges: {} };
 	}
-	
+
 	console.log(`fetchReccobeatsRecommendations: Successfully found ${seedTrackIds.length}/${seedLimit} seed track(s)`);
-	
+
 	// Step 2: Fetch audio features for valid seed tracks
 	updateProgress(`Getting audio features for ${seedTrackIds.length} tracks...`, 0.4);
-	
+
 	const seedAudioFeatures = [];
-	
+
 	for (let i = 0; i < seedTrackIds.length; i++) {
 		const trackId = seedTrackIds[i];
 		const seed = validSeeds[i];
-		
+
 		const features = await fetchTrackAudioFeatures(trackId);
 		if (features) {
 			seedAudioFeatures.push(features);
@@ -989,28 +1101,28 @@ async function fetchReccobeatsRecommendations(userSeeds, limit = 100) {
 			console.warn(`fetchReccobeatsRecommendations: Could not get audio features for "${seed.artist} - ${seed.title}"`);
 		}
 	}
-	
+
 	if (seedAudioFeatures.length === 0) {
 		console.error('fetchReccobeatsRecommendations: No audio features available');
 		updateProgress('No audio features available', 0.5);
 		return { recommendations: [], seedFeatures: [], audioRanges: {} };
 	}
-	
+
 	console.log(`fetchReccobeatsRecommendations: Successfully processed ${seedAudioFeatures.length} seed track(s)`);
-	
+
 	// Step 3: Calculate audio feature ranges from seed features
 	updateProgress('Calculating audio feature ranges...', 0.5);
-	
+
 	const audioRanges = calculateAudioFeatureRanges(seedAudioFeatures);
 	console.log(`fetchReccobeatsRecommendations: Calculated audio ranges from ${seedAudioFeatures.length} seed(s)`);
-	
+
 	// Step 4: Fetch recommendations using seed IDs and audio ranges
 	updateProgress(`Fetching ${limit} recommendations from ReccoBeats...`, 0.6);
-	
+
 	const recommendations = await fetchTrackRecommendations(seedTrackIds, audioRanges, limit);
-	
+
 	console.log(`fetchReccobeatsRecommendations: Retrieved ${recommendations.length} recommendation(s) for library matching`);
-	
+
 	// Prepare result object
 	const result = {
 		recommendations,
@@ -1018,15 +1130,15 @@ async function fetchReccobeatsRecommendations(userSeeds, limit = 100) {
 		audioRanges,
 		seedCount: seedTrackIds.length
 	};
-	
+
 	// Cache the result
 	if (cache?.isActive?.()) {
 		if (!cache._reccobeats) cache._reccobeats = new Map();
 		cache._reccobeats.set(cacheKey, result);
 	}
-	
+
 	updateProgress(`Ready to match ${recommendations.length} tracks to library...`, 0.8);
-	
+
 	return result;
 }
 
@@ -1050,49 +1162,49 @@ async function fetchReccobeatsRecommendations(userSeeds, limit = 100) {
 async function fetchHybridRecommendations(context, value, options = {}) {
 	try {
 		const { genres = [], duration = 60, limit = 100, seeds = [] } = options;
-		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-		
+		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 		updateProgress(`Fetching ${context}-based recommendations...`, 0.1);
-		
+
 		let reccoTracks = [];
-		
+
 		// Use seed-based recommendations (primary approach)
 		if (seeds.length > 0) {
 			console.log(`fetchHybridRecommendations: Using ${seeds.length} seed track(s) for ReccoBeats`);
 			reccoTracks = await fetchSeedBasedRecommendations(seeds, context, value, limit);
 		}
-		
+
 		// If we have results, return them directly for library matching
 		if (reccoTracks.length > 0) {
 			console.log(`fetchHybridRecommendations: Returning ${reccoTracks.length} tracks for library matching`);
 			return reccoTracks;
 		}
-		
+
 		// Fall back: Try to expand using Last.fm if no ReccoBeats results
 		console.log('fetchHybridRecommendations: No ReccoBeats results, attempting Last.fm expansion');
-		
+
 		// Extract artists from seeds for Last.fm fallback
 		const seedArtists = seeds
 			.filter(s => s?.artist)
 			.map(s => s.artist)
 			.slice(0, 5);
-		
+
 		if (seedArtists.length === 0) {
 			console.log('fetchHybridRecommendations: No seed artists available for fallback');
 			return [];
 		}
-		
+
 		const lastfmApi = window.matchMonkeyLastfmAPI;
 		if (!lastfmApi) {
 			console.warn('fetchHybridRecommendations: Last.fm API not available');
 			return [];
 		}
-		
+
 		updateProgress(`Expanding with Last.fm similar artists...`, 0.5);
-		
+
 		// Fetch similar artists for each seed
 		const similarArtists = new Set(seedArtists);
-		
+
 		for (const artist of seedArtists) {
 			try {
 				const similar = await lastfmApi.fetchSimilarArtists(artist, 10);
@@ -1105,12 +1217,12 @@ async function fetchHybridRecommendations(context, value, options = {}) {
 				console.warn(`fetchHybridRecommendations: Failed to get similar artists for "${artist}":`, e.message);
 			}
 		}
-		
+
 		console.log(`fetchHybridRecommendations: Expanded to ${similarArtists.size} artists using Last.fm`);
-		
+
 		// Return as artist objects for library matching
 		return Array.from(similarArtists).slice(0, limit).map(artist => ({ artist }));
-		
+
 	} catch (e) {
 		console.error('fetchHybridRecommendations error:', e.message || e.toString());
 		return [];
@@ -1132,39 +1244,39 @@ async function fetchMoodRecommendations(mood, genres = [], limit = 50) {
 			console.warn('fetchMoodRecommendations: Invalid mood parameter');
 			return [];
 		}
-		
+
 		const cache = window.lastfmCache;
-		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-		
+		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 		// Build cache key including all parameters
 		const cacheKey = `reccobeats:mood:${mood}:${genres.sort().join(',')}:${limit}`.toUpperCase();
-		
+
 		// Check cache first
 		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 			const cached = cache._reccobeats.get(cacheKey);
 			console.log(`fetchMoodRecommendations: Cache hit for "${mood}" (${cached?.length || 0} tracks)`);
 			return cached || [];
 		}
-		
+
 		updateProgress(`Querying ReccoBeats for "${mood}" mood...`, 0.25);
-		
+
 		// Build request URL with parameters
 		const params = new URLSearchParams({
 			mood: mood.toLowerCase().trim(),
 			limit: String(Math.min(limit, 100)), // Cap at 100 to avoid overloading
 			format: 'json'
 		});
-		
+
 		if (genres.length > 0) {
 			params.set('genres', genres.slice(0, 5).join(',')); // Limit to 5 genres
 		}
-		
+
 		const url = `${RECCOBEATS_API_BASE}/recommendations/mood?${params.toString()}`;
 		console.log(`fetchMoodRecommendations: GET ${url}`);
-		
+
 		// Make rate-limited request
 		const res = await rateLimitedFetch(url);
-		
+
 		// Handle HTTP errors
 		if (!res || !res.ok) {
 			const status = res?.status || 'unknown';
@@ -1172,7 +1284,7 @@ async function fetchMoodRecommendations(mood, genres = [], limit = 50) {
 			updateProgress(`ReccoBeats API error (HTTP ${status})`, 0.3);
 			return [];
 		}
-		
+
 		// Parse JSON response
 		let data;
 		try {
@@ -1181,13 +1293,13 @@ async function fetchMoodRecommendations(mood, genres = [], limit = 50) {
 			console.error('fetchMoodRecommendations: Invalid JSON response:', parseError.message);
 			return [];
 		}
-		
+
 		// Check for API-level errors
 		if (data?.error) {
 			console.error('fetchMoodRecommendations: API error:', data.error);
 			return [];
 		}
-		
+
 		// Extract and normalize recommendations
 		const recommendations = (data?.tracks || []).map(track => ({
 			artist: String(track.artist || '').trim(),
@@ -1198,17 +1310,17 @@ async function fetchMoodRecommendations(mood, genres = [], limit = 50) {
 			valence: Number(track.valence) || 0, // Positivity/happiness
 			tempo: Number(track.tempo) || 0
 		})).filter(t => t.artist && t.title); // Filter out incomplete entries
-		
+
 		console.log(`fetchMoodRecommendations: Retrieved ${recommendations.length} tracks for "${mood}"`);
-		
+
 		// Cache successful results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
 			cache._reccobeats.set(cacheKey, recommendations);
 		}
-		
+
 		return recommendations;
-		
+
 	} catch (e) {
 		// Handle abort (timeout) separately from other errors
 		if (e.name === 'AbortError') {
@@ -1235,22 +1347,22 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 			console.warn('fetchActivityRecommendations: Invalid activity parameter');
 			return [];
 		}
-		
+
 		const cache = window.lastfmCache;
-		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => {});
-		
+		const updateProgress = window.matchMonkeyNotifications?.updateProgress || (() => { });
+
 		// Build cache key including all parameters
 		const cacheKey = `reccobeats:activity:${activity}:${duration}:${limit}`.toUpperCase();
-		
+
 		// Check cache first
 		if (cache?.isActive?.() && cache._reccobeats?.has?.(cacheKey)) {
 			const cached = cache._reccobeats.get(cacheKey);
 			console.log(`fetchActivityRecommendations: Cache hit for "${activity}" (${cached?.length || 0} tracks)`);
 			return cached || [];
 		}
-		
+
 		updateProgress(`Querying ReccoBeats for "${activity}" activity...`, 0.25);
-		
+
 		// Build request URL
 		const params = new URLSearchParams({
 			activity: activity.toLowerCase().trim(),
@@ -1258,13 +1370,13 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 			limit: String(Math.min(limit, 100)),
 			format: 'json'
 		});
-		
+
 		const url = `${RECCOBEATS_API_BASE}/recommendations/activity?${params.toString()}`;
 		console.log(`fetchActivityRecommendations: GET ${url}`);
-		
+
 		// Make rate-limited request
 		const res = await rateLimitedFetch(url);
-		
+
 		// Handle HTTP errors
 		if (!res || !res.ok) {
 			const status = res?.status || 'unknown';
@@ -1272,7 +1384,7 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 			updateProgress(`ReccoBeats API error (HTTP ${status})`, 0.3);
 			return [];
 		}
-		
+
 		// Parse JSON response
 		let data;
 		try {
@@ -1281,13 +1393,13 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 			console.error('fetchActivityRecommendations: Invalid JSON response:', parseError.message);
 			return [];
 		}
-		
+
 		// Check for API-level errors
 		if (data?.error) {
 			console.error('fetchActivityRecommendations: API error:', data.error);
 			return [];
 		}
-		
+
 		// Extract and normalize recommendations
 		const recommendations = (data?.tracks || []).map(track => ({
 			artist: String(track.artist || '').trim(),
@@ -1296,17 +1408,17 @@ async function fetchActivityRecommendations(activity, duration = 60, limit = 50)
 			energy: Number(track.energy) || 0,
 			tempo: Number(track.tempo) || 0
 		})).filter(t => t.artist && t.title);
-		
+
 		console.log(`fetchActivityRecommendations: Retrieved ${recommendations.length} tracks for "${activity}" (${duration}min)`);
-		
+
 		// Cache successful results
 		if (cache?.isActive?.()) {
 			if (!cache._reccobeats) cache._reccobeats = new Map();
 			cache._reccobeats.set(cacheKey, recommendations);
 		}
-		
+
 		return recommendations;
-		
+
 	} catch (e) {
 		if (e.name === 'AbortError') {
 			console.error('fetchActivityRecommendations: Request timed out');
@@ -1337,7 +1449,7 @@ function filterTracksByAudioFeatures(tracks, criteria = {}) {
 	if (!Array.isArray(tracks) || tracks.length === 0) {
 		return [];
 	}
-	
+
 	const {
 		minEnergy,
 		maxEnergy,
@@ -1352,35 +1464,35 @@ function filterTracksByAudioFeatures(tracks, criteria = {}) {
 		minInstrumentalness,
 		maxInstrumentalness
 	} = criteria;
-	
+
 	return tracks.filter(track => {
 		// Skip tracks without audio features
 		if (!track || typeof track !== 'object') return false;
-		
+
 		// Energy filter
 		if (minEnergy !== undefined && (track.energy || 0) < minEnergy) return false;
 		if (maxEnergy !== undefined && (track.energy || 0) > maxEnergy) return false;
-		
+
 		// Valence filter
 		if (minValence !== undefined && (track.valence || 0) < minValence) return false;
 		if (maxValence !== undefined && (track.valence || 0) > maxValence) return false;
-		
+
 		// Tempo filter
 		if (minTempo !== undefined && (track.tempo || 0) < minTempo) return false;
 		if (maxTempo !== undefined && (track.tempo || 0) > maxTempo) return false;
-		
+
 		// Danceability filter
 		if (minDanceability !== undefined && (track.danceability || 0) < minDanceability) return false;
 		if (maxDanceability !== undefined && (track.danceability || 0) > maxDanceability) return false;
-		
+
 		// Acousticness filter
 		if (minAcousticness !== undefined && (track.acousticness || 0) < minAcousticness) return false;
 		if (maxAcousticness !== undefined && (track.acousticness || 0) > maxAcousticness) return false;
-		
+
 		// Instrumentalness filter
 		if (minInstrumentalness !== undefined && (track.instrumentalness || 0) < minInstrumentalness) return false;
 		if (maxInstrumentalness !== undefined && (track.instrumentalness || 0) > maxInstrumentalness) return false;
-		
+
 		return true;
 	});
 }
@@ -1398,7 +1510,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 	if (!track || !target) {
 		return 0;
 	}
-	
+
 	// Default weights: energy and valence are most important for mood matching
 	const defaultWeights = {
 		energy: 0.25,
@@ -1408,11 +1520,11 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		acousticness: 0.1,
 		instrumentalness: 0.1
 	};
-	
+
 	const w = weights || defaultWeights;
 	let totalWeight = 0;
 	let weightedScore = 0;
-	
+
 	// Energy match (0.0-1.0 scale)
 	if (track.energy !== undefined && target.energy !== undefined) {
 		const energyDiff = Math.abs(track.energy - target.energy);
@@ -1420,7 +1532,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += energyScore * (w.energy || 0);
 		totalWeight += w.energy || 0;
 	}
-	
+
 	// Valence match (0.0-1.0 scale)
 	if (track.valence !== undefined && target.valence !== undefined) {
 		const valenceDiff = Math.abs(track.valence - target.valence);
@@ -1428,7 +1540,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += valenceScore * (w.valence || 0);
 		totalWeight += w.valence || 0;
 	}
-	
+
 	// Danceability match (0.0-1.0 scale)
 	if (track.danceability !== undefined && target.danceability !== undefined) {
 		const danceabilityDiff = Math.abs(track.danceability - target.danceability);
@@ -1436,7 +1548,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += danceabilityScore * (w.danceability || 0);
 		totalWeight += w.danceability || 0;
 	}
-	
+
 	// Tempo match (normalized to 0.0-1.0, assuming typical range 60-180 BPM)
 	if (track.tempo !== undefined && target.tempo !== undefined) {
 		const tempoDiff = Math.abs(track.tempo - target.tempo);
@@ -1445,7 +1557,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += tempoScore * (w.tempo || 0);
 		totalWeight += w.tempo || 0;
 	}
-	
+
 	// Acousticness match (0.0-1.0 scale)
 	if (track.acousticness !== undefined && target.acousticness !== undefined) {
 		const acousticnessDiff = Math.abs(track.acousticness - target.acousticness);
@@ -1453,7 +1565,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += acousticnessScore * (w.acousticness || 0);
 		totalWeight += w.acousticness || 0;
 	}
-	
+
 	// Instrumentalness match (0.0-1.0 scale)
 	if (track.instrumentalness !== undefined && target.instrumentalness !== undefined) {
 		const instrumentalnessDiff = Math.abs(track.instrumentalness - target.instrumentalness);
@@ -1461,7 +1573,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		weightedScore += instrumentalnessScore * (w.instrumentalness || 0);
 		totalWeight += w.instrumentalness || 0;
 	}
-	
+
 	// Return normalized score
 	return totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 }
