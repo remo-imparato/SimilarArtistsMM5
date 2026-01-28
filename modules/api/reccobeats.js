@@ -171,10 +171,7 @@ const MOOD_AUDIO_TARGETS = {
 		tempo: 100
 	}
 };
-/**
- * Audio feature targets for different activities.
- * Used when generating activity-based playlists without seed tracks.
- */
+
 /**
  * Audio feature targets for different activities.
  * Used when generating activity-based playlists without seed tracks.
@@ -334,12 +331,13 @@ async function rateLimitedFetch(url, options = {}, retryCount = 0) {
 	const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
 	try {
+		console.log(`ReccoBeats API: ${options.method || 'GET'} ${url}`);
 		const res = await fetch(url, { ...options, signal: controller.signal });
 
 		// Handle rate limiting (429)
 		if (res.status === 429) {
 			if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
-				console.error('ReccoBeats: Max retries exceeded for 429');
+				console.error(`ReccoBeats API: Rate limit exceeded after ${RATE_LIMIT_MAX_RETRIES} retries`);
 				return res;
 			}
 
@@ -348,10 +346,19 @@ async function rateLimitedFetch(url, options = {}, retryCount = 0) {
 				? parseInt(retryAfter, 10) * 1000
 				: RATE_LIMIT_BACKOFF_MS * Math.pow(2, retryCount);
 
-			console.log(`ReccoBeats: 429 received, waiting ${backoffMs}ms before retry ${retryCount + 1}`);
+			console.log(`ReccoBeats API: Rate limited (429), waiting ${backoffMs}ms before retry ${retryCount + 1}/${RATE_LIMIT_MAX_RETRIES}`);
+			
+			// Update progress to inform user
+			const updateProgress = getUpdateProgress();
+			updateProgress(`Rate limited, waiting ${Math.ceil(backoffMs / 1000)}s...`, undefined);
+			
 			await new Promise(resolve => setTimeout(resolve, backoffMs));
 
 			return rateLimitedFetch(url, options, retryCount + 1);
+		}
+
+		if (!res.ok) {
+			console.warn(`ReccoBeats API: HTTP ${res.status} ${res.statusText} for ${url}`);
 		}
 
 		return res;
@@ -406,6 +413,7 @@ async function searchArtist(artistName) {
 		return cached;
 	}
 
+	console.log(`searchArtist: Searching for "${artistName}"`);
 	const normalizedSearch = normalize(artistName);
 	const headers = createHeaders();
 	let page = 0;
@@ -414,7 +422,6 @@ async function searchArtist(artistName) {
 	while (page < maxPages) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artistName)}&page=${page}&size=50`;
-			console.log(`searchArtist: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -426,6 +433,8 @@ async function searchArtist(artistName) {
 			const data = await res.json();
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
+
+			console.log(`searchArtist: Page ${page + 1}/${totalPages}, ${content.length} results`);
 
 			const match = content.find(a => normalize(a.name || '') === normalizedSearch);
 
@@ -444,6 +453,7 @@ async function searchArtist(artistName) {
 		}
 	}
 
+	console.log(`searchArtist: No match found for "${artistName}"`);
 	cache?.set(cacheKey, null);
 	return null;
 }
@@ -475,17 +485,15 @@ async function searchAlbum(albumName) {
 		return cached;
 	}
 
+	console.log(`searchAlbum: Searching for "${albumName}"`);
 	const normalizedSearch = normalize(albumName);
 	const headers = createHeaders();
 	let page = 0;
-	let maxPages = 1; // Limit pagination to avoid infinite loops
-
-	console.log(`searchAlbum: Searching for album "${albumName}"`);
+	let maxPages = 1;
 
 	while (page < maxPages) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/album/search?searchText=${encodeURIComponent(albumName)}&page=${page}&size=50`;
-			console.log(`searchAlbum: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -498,9 +506,9 @@ async function searchAlbum(albumName) {
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
 			if (totalPages > maxPages)
-				maxPages = totalPages; // Adjust maxPages if needed
+				maxPages = totalPages;
 
-			console.log(`searchAlbum: Page ${page + 1}/${totalPages} returned ${content.length} results`);
+			console.log(`searchAlbum: Page ${page + 1}/${totalPages}, ${content.length} results`);
 
 			// Find exact match (case-insensitive, normalized)
 			const match = content.find(a => normalize(a.name || '') === normalizedSearch);
@@ -514,7 +522,7 @@ async function searchAlbum(albumName) {
 
 				// Cache result
 				cache?.set(cacheKey, result);
-				console.log(`searchAlbum: Found album "${match.name}" (ID: ${match.id})`);
+				console.log(`searchAlbum: Found "${match.name}" by ${result.artistName} (ID: ${match.id})`);
 				return result;
 			}
 
@@ -1221,6 +1229,8 @@ async function getReccoRecommendations(seeds, limit = 100) {
 
 	// Step 1: Find track IDs
 	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.1);
+	console.log(`getReccoRecommendations: Step 1 - Looking up track IDs`);
+	
 	const trackResults = await findTrackIdsBatch(limitedSeeds);
 
 	// Filter to found tracks
@@ -1231,31 +1241,41 @@ async function getReccoRecommendations(seeds, limit = 100) {
 		return { recommendations: [], seedCount: limitedSeeds.length, foundCount: 0 };
 	}
 
-	console.log(`getReccoRecommendations: Found ${foundTracks.length}/${limitedSeeds.length} tracks`);
+	console.log(`getReccoRecommendations: Found ${foundTracks.length}/${limitedSeeds.length} tracks on ReccoBeats`);
 
 	// Step 2: Fetch audio features
-	updateProgress(`Getting audio features for ${foundTracks.length} tracks...`, 0.35);
+	updateProgress(`Analyzing audio features of ${foundTracks.length} tracks...`, 0.35);
+	console.log(`getReccoRecommendations: Step 2 - Fetching audio features`);
+	
 	const audioFeatures = await getAudioFeatures(foundTracks);
 
 	if (audioFeatures.length === 0) {
-		console.log('getAudioFeatures: No audio features available');
+		console.log('getReccoRecommendations: No audio features available');
 		updateProgress('No audio features available', 0.5);
 		return { recommendations: [], seedCount: limitedSeeds.length, foundCount: foundTracks.length };
 	}
 
+	console.log(`getReccoRecommendations: Retrieved audio features for ${audioFeatures.length} track(s)`);
+
 	// Step 3: Calculate average audio targets
-	updateProgress('Analyzing audio characteristics...', 0.5);
+	updateProgress('Computing audio profile...', 0.5);
+	console.log(`getReccoRecommendations: Step 3 - Calculating average audio features`);
+	
 	const audioTargets = calculateAverageFeatures(audioFeatures);
+	
+	console.log(`getReccoRecommendations: Audio targets - energy: ${audioTargets.energy?.toFixed(2)}, valence: ${audioTargets.valence?.toFixed(2)}, tempo: ${audioTargets.tempo}`);
 
 	// Step 4: Get recommendations
-	updateProgress(`Fetching ${limit} recommendations...`, 0.6);
+	updateProgress(`Requesting ${limit} AI recommendations...`, 0.6);
+	console.log(`getReccoRecommendations: Step 4 - Requesting recommendations (limit: ${limit})`);
+	
 	const seedIds = foundTracks.map(r => r.trackId);
 
 	const recommendations = await fetchRecommendations(seedIds, audioTargets, limit);
 
-	console.log(`getReccoRecommendations: Got ${recommendations.length} recommendations from ${seedIds.length} seeds`);
+	console.log(`getReccoRecommendations: Received ${recommendations.length} recommendations from ReccoBeats`);
 
-	updateProgress(`Found ${recommendations.length} recommendations`, 0.8);
+	updateProgress(`Received ${recommendations.length} recommendations`, 0.8);
 
 	return {
 		recommendations,
@@ -1407,7 +1427,7 @@ function calculateAudioFeatureMatch(track, target, weights = null) {
 		const diff = Math.abs(track.valence - target.valence);
 		weightedScore += (1.0 - diff) * (w.valence || 0);
 		totalWeight += w.valence || 0;
-	}
+}
 
 	// Danceability match
 	if (track.danceability !== undefined && target.danceability !== undefined) {

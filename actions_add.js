@@ -88,10 +88,10 @@ actions.similarGenreRun = {
 
 /**
  * Run Similar Recco action (ReccoBeats AI - requires seed tracks)
- * Uses selected tracks to find AI-powered recommendations
+ * Uses selected tracks to find Similar Audio recommendations
  */
 actions.similarReccoRun = {
-	title: _('&AI-Powered'),
+	title: _('Similar A&udio'),
 	icon: 'analyzeWaveform',
 	hotkeyAble: true,
 	visible: true,

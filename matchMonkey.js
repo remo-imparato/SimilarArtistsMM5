@@ -342,13 +342,13 @@
 				case 'genre':
 					return 'Similar Genre';
 				case 'aipower':
-					return 'AI-Powered';
+					return 'Similar Audio';
 				case 'mood':
 					return 'Mood';
 				case 'activity':
 					return 'Activity';
 				default:
-					return 'Similar Tracks';
+					return 'Similar';
 			}
 		}
 

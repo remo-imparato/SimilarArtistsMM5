@@ -110,7 +110,7 @@ function start() {
 
 		// === Auto-Mode Settings ===
 		AutoModeEnabled: false,         // Enable auto-queue on playlist end
-		AutoModeDiscovery: 'artist',     // Discovery type: artist/track/genre/aipower
+		AutoModeDiscovery: 'Similar Artist',     // Discovery type: artist/track/genre/aipower
 		AutoModeSeedLimit: 2,           // Seeds to process in auto-mode
 		AutoModeSimilarLimit: 10,       // Similar artists per seed in auto-mode
 		AutoModeTracksPerArtist: 5,     // Tracks per artist in auto-mode

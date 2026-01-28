@@ -62,11 +62,12 @@ async function discoverByArtist(modules, seeds, config) {
 	const uniqueArtists = extractSeedArtists(seeds, config.seedLimit || 20);
 	const artistCount = uniqueArtists.length;
 
-	console.log(`discoverByArtist: Processing ${artistCount} seed artist(s), max ${config.similarLimit} similar each`);
+	console.log(`Discovery [Artist]: Processing ${artistCount} seed artist(s), max ${config.similarLimit} similar per artist`);
+	updateProgress(`Finding similar artists (${artistCount} seeds)...`, 0.2);
 
 	for (let i = 0; i < artistCount; i++) {
 		const artistName = uniqueArtists[i];
-		const progress = 0.1 + ((i + 1) / artistCount) * 0.3;
+		const progress = 0.2 + ((i + 1) / artistCount) * 0.25;
 		updateProgress(`Finding artists similar to "${artistName}" (${i + 1}/${artistCount})...`, progress);
 
 		try {
@@ -74,9 +75,11 @@ async function discoverByArtist(modules, seeds, config) {
 			const similar = await fetchSimilarArtists(fixedName, config.similarLimit || 20);
 
 			if (!similar || similar.length === 0) {
-				console.log(`discoverByArtist: No similar artists for "${artistName}"`);
+				console.log(`Discovery [Artist]: No similar artists found for "${artistName}"`);
 				continue;
 			}
+
+			console.log(`Discovery [Artist]: Found ${similar.length} similar artists for "${artistName}"`);
 
 			// Include seed artist if configured
 			if (config.includeSeedArtist) {
@@ -91,15 +94,16 @@ async function discoverByArtist(modules, seeds, config) {
 			}
 
 		} catch (e) {
-			console.error(`discoverByArtist: Error for "${artistName}": ${e.message}`);
+			console.error(`Discovery [Artist]: Error for "${artistName}":`, e.message);
 		}
 	}
 
-	console.log(`discoverByArtist: Found ${candidates.length} candidate artists`);
+	console.log(`Discovery [Artist]: Found ${candidates.length} candidate artists total`);
 
 	// Fetch top tracks for all candidates
 	if (candidates.length > 0) {
-		updateProgress(`Fetching top tracks for ${candidates.length} artists...`, 0.4);
+		updateProgress(`Fetching top tracks for ${candidates.length} artists...`, 0.5);
+		console.log(`Discovery [Artist]: Fetching top tracks for ${candidates.length} artists (${config.tracksPerArtist} per artist)`);
 		await fetchTracksForCandidates(modules, candidates, config);
 	}
 
@@ -130,25 +134,27 @@ async function discoverByTrack(modules, seeds, config) {
 
 	const candidates = [];
 	const seenArtists = new Set();
-	const tracksByArtist = new Map(); // artist -> {artistName, tracks[]}
+	const tracksByArtist = new Map();
 	const blacklist = buildBlacklist(modules);
 
 	// Limit seeds for track-based discovery (more API-intensive)
 	const seedLimit = Math.min(seeds.length, config.seedLimit || 5);
 	const trackSimilarLimit = config.trackSimilarLimit || 100;
 
+	console.log(`Discovery [Track]: Processing ${seedLimit} seed tracks, max ${trackSimilarLimit} similar per track`);
+
 	// If includeSeedArtist is enabled, add seed tracks first
 	if (config.includeSeedArtist) {
 		addSeedTracksToResults(seeds, seedLimit, blacklist, seenArtists, tracksByArtist);
 	}
 
-	console.log(`discoverByTrack: Processing ${seedLimit} seed tracks, max ${trackSimilarLimit} similar each`);
+	updateProgress(`Finding similar tracks (${seedLimit} seeds)...`, 0.2);
 
 	for (let i = 0; i < seedLimit; i++) {
 		const seed = seeds[i];
 		if (!seed?.artist || !seed?.title) continue;
 
-		const progress = 0.1 + ((i + 1) / seedLimit) * 0.4;
+		const progress = 0.2 + ((i + 1) / seedLimit) * 0.3;
 		updateProgress(`Finding tracks similar to "${seed.title}" (${i + 1}/${seedLimit})...`, progress);
 
 		// Split artists by ';' and query each separately
@@ -161,11 +167,11 @@ async function discoverByTrack(modules, seeds, config) {
 				const similarTracks = await fetchSimilarTracks(fixedArtistName, seed.title, trackSimilarLimit);
 
 				if (!similarTracks || similarTracks.length === 0) {
-					console.log(`discoverByTrack: No similar tracks for "${fixedArtistName} - ${seed.title}"`);
+					console.log(`Discovery [Track]: No similar tracks for "${fixedArtistName} - ${seed.title}"`);
 					continue;
 				}
 
-				console.log(`discoverByTrack: Found ${similarTracks.length} similar to "${fixedArtistName} - ${seed.title}"`);
+				console.log(`Discovery [Track]: Found ${similarTracks.length} similar to "${fixedArtistName} - ${seed.title}"`);
 
 				// Group by artist
 				for (const simTrack of similarTracks) {
@@ -195,7 +201,7 @@ async function discoverByTrack(modules, seeds, config) {
 				}
 
 			} catch (e) {
-				console.error(`discoverByTrack: Error for "${fixedArtistName} - ${seed.title}": ${e.message}`);
+				console.error(`Discovery [Track]: Error for "${fixedArtistName} - ${seed.title}":`, e.message);
 			}
 		}
 	}
@@ -214,7 +220,7 @@ async function discoverByTrack(modules, seeds, config) {
 		});
 	}
 
-	console.log(`discoverByTrack: Found ${candidates.length} candidate artists from track similarity`);
+	console.log(`Discovery [Track]: Found ${candidates.length} candidate artists from track similarity`);
 
 	return candidates;
 }
@@ -430,7 +436,7 @@ async function discoverByRecco(modules, seeds, config) {
 	const reccobeatsApi = window.matchMonkeyReccoBeatsAPI;
 
 	if (!reccobeatsApi) {
-		console.error('discoverByRecco: ReccoBeats API not loaded');
+		console.error('Discovery [ReccoBeats]: API module not loaded');
 		return [];
 	}
 
@@ -438,60 +444,30 @@ async function discoverByRecco(modules, seeds, config) {
 	const seenArtists = new Set();
 	const blacklist = buildBlacklist(modules);
 
-	console.log(`discoverByRecco: Processing ${seeds.length} seed track(s)`);
+	console.log(`Discovery [ReccoBeats]: Processing ${seeds.length} seed track(s)`);
 
 	// Step 1: Get ReccoBeats recommendations based on seed tracks
-	updateProgress('Analyzing seed tracks with ReccoBeats AI...', 0.1);
+	updateProgress('Analyzing seeds with ReccoBeats AI...', 0.2);
+	console.log(`Discovery [ReccoBeats]: Requesting AI recommendations (limit: ${config.similarLimit || 100})`);
 
 	const result = await reccobeatsApi.getReccoRecommendations(
-		seeds.slice(0, 5), // Limit to 5 seeds
+		seeds.slice(0, 5),
 		config.similarLimit || 100
 	);
 
 	if (!result.recommendations || result.recommendations.length === 0) {
-		console.log('discoverByRecco: No recommendations from ReccoBeats');
+		console.log('Discovery [ReccoBeats]: No recommendations received');
 		return candidates;
 	}
 
-	console.log(`discoverByRecco: Got ${result.recommendations.length} recommendations from ${result.foundCount} seed(s)`);
+	console.log(`Discovery [ReccoBeats]: Received ${result.recommendations.length} recommendations from ${result.foundCount} seed(s)`);
 
 	// Step 2: Extract artists from recommendations
-	updateProgress(`Processing ${result.recommendations.length} recommendations...`, 0.6);
+	updateProgress(`Processing ${result.recommendations.length} AI recommendations...`, 0.4);
 
 	candidates = buildReccoCandidates(result, blacklist, seenArtists);
 
-	//// Add artists from recommendations
-	//// ReccoBeats returns track objects with artist info
-	//for (const rec of result.recommendations) {
-	//	// Handle different response formats
-	//	const trackTitle = rec.trackTitle;
-	//	for (const artist of rec.artists) {
-	//		let artistName = artist.name;
-	//		if (artistName) {
-	//			const artKey = artistName.toUpperCase();
-	//			if (blacklist.has(artKey)) continue;
-
-	//			if (!seenArtists.has(artKey)) {
-	//				seenArtists.add(artKey);
-	//				candidates.push({
-	//					artist: artistName,
-	//					tracks: trackTitle ? [{ title: trackTitle, match: 1.0 }] : []
-	//				});
-	//			} else if (trackTitle) {
-	//				// Add track to existing candidate
-	//				const existing = candidates.find(c => c.artist.toUpperCase() === artKey);
-	//				if (existing && !existing.tracks.some(t => t.title.toUpperCase() === trackTitle.toUpperCase())) {
-	//					existing.tracks.push({ title: trackTitle, match: 1.0 });
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-
-	console.log(`discoverByRecco: Built ${candidates.length} candidate artists from recommendations`);
-
-	// Step 3: Fetch additional top tracks for candidates that need more
-	updateProgress(`Enriching candidate track lists...`, 0.8);
+	console.log(`Discovery [ReccoBeats]: Built ${candidates.length} candidate artists from AI recommendations`);
 
 	return candidates;
 }
@@ -519,66 +495,75 @@ async function discoverByMood(modules, seeds, config) {
 	const reccobeatsApi = window.matchMonkeyReccoBeatsAPI;
 
 	if (!seeds || seeds.length === 0) {
-		console.warn('discoverByMood: No seed tracks provided');
+		console.warn('Discovery [Mood]: No seed tracks provided');
 		return { recommendations: [], seedCount: 0, foundCount: 0 };
 	}
 
-	//-- - Expand seeds by splitting artists ---
+	const mood = config.moodActivityValue || 'energetic';
+	console.log(`Discovery [Mood]: Processing "${mood}" mood with ${seeds.length} seed track(s)`);
+
+	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
 	//seeds = matchMonkeyHelpers.shuffle(seeds);
-
+	
 	console.log(`discoverByMood: Processing up to 5 of ${seeds.length} seed track(s)`);
 
-	// Limit to 5 seeds per API spec
 	const limitedSeeds = seeds.slice(0, 5);
 
 	// Step 1: Find track IDs
-	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.1);
-	const trackResults = await findTrackIdsBatch(limitedSeeds);
+	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.2);
+	console.log(`Discovery [Mood]: Looking up track IDs for ${limitedSeeds.length} seeds`);
+	
+	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
 
 	// Filter to found tracks
 	const foundTracks = trackResults.filter(r => r.trackId);
 	if (foundTracks.length === 0) {
-		console.log('discoverByMood: No tracks found on ReccoBeats');
+		console.log('Discovery [Mood]: No tracks found on ReccoBeats');
 	}
 
-	console.log(`discoverByMood: Found ${foundTracks.length}/${limitedSeeds.length} tracks`);
+	console.log(`Discovery [Mood]: Found ${foundTracks.length}/${limitedSeeds.length} tracks on ReccoBeats`);
 
-	const mood = config.moodActivityValue || 'energetic';
 	let moodPreset = reccobeatsApi?.MOOD_AUDIO_TARGETS?.[mood.toLowerCase()];
 	let audioTargets = null;
 
 	if (!moodPreset) {
-		console.error(`discoverByMood: Unknown mood "${mood}"`);
+		console.error(`Discovery [Mood]: Unknown mood "${mood}"`);
 		return [];
 	}
 
-	const audioFeatures = await matchMonkeyReccoBeatsAPI.getAudioFeatures(foundTracks);
+	console.log(`Discovery [Mood]: Using "${mood}" preset with blend ratio ${config.moodSeedBlend}`);
+
+	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
-		console.warn("discoverByMood: No audio features found, using pure mood preset");
+		console.warn("Discovery [Mood]: No audio features found, using pure mood preset");
 		audioTargets = moodPreset;
 	} else {
-		updateProgress('Analyzing audio characteristics...', 0.5);
+		updateProgress('Analyzing audio characteristics...', 0.35);
+		console.log(`Discovery [Mood]: Blending ${audioFeatures.length} seed features with mood preset`);
 
-		const avgSeedsFeature = matchMonkeyReccoBeatsAPI.calculateAverageFeatures(audioFeatures);
+		const avgSeedsFeature = reccobeatsApi.calculateAverageFeatures(audioFeatures);
 
-		// Clamp blend ratio
 		const BLEND_RATIO = config.moodSeedBlend;
 		const ratio = Math.min(1, Math.max(0, BLEND_RATIO));
 
-		audioTargets = matchMonkeyReccoBeatsAPI.blendFeatures(
+		audioTargets = reccobeatsApi.blendFeatures(
 			avgSeedsFeature,
 			moodPreset,
 			ratio
 		);
+		
+		console.log(`Discovery [Mood]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, valence: ${audioTargets.valence?.toFixed(2)}`);
 	}
-	console.log(`discoverByMood: Using "${mood}" mood profile:`, audioTargets);
 
-	updateProgress(`Finding "${mood}" tracks...`, 0.3);
+	updateProgress(`Finding "${mood}" tracks...`, 0.4);
+	console.log(`Discovery [Mood]: Requesting recommendations with mood profile`);
 
 	const seedIds = foundTracks.map(r => r.trackId);
-	const recommendations = await fetchRecommendations(seedIds, audioTargets, 100);
+	const recommendations = await reccobeatsApi.fetchRecommendations(seedIds, audioTargets, 100);
+
+	console.log(`Discovery [Mood]: Received ${recommendations.length} "${mood}" recommendations`);
 
 	let candidates = [];
 	const seenArtists = new Set();
@@ -587,10 +572,9 @@ async function discoverByMood(modules, seeds, config) {
 	const seedIdRecs = { "recommendations": recommendations }
 	candidates = buildReccoCandidates(seedIdRecs, blacklist, seenArtists);
 
-	console.log(`discoverByMood: Built ${candidates.length} candidate artists from recommendations`);
+	console.log(`Discovery [Mood]: Built ${candidates.length} candidate artists for "${mood}" mood`);
 
 	return candidates;
-
 }
 
 /**
@@ -612,68 +596,77 @@ async function discoverByActivity(modules, seeds, config) {
 	const reccobeatsApi = window.matchMonkeyReccoBeatsAPI;
 
 	if (!seeds || seeds.length === 0) {
-		console.warn('discoverByActivity: No seed tracks provided');
+		console.warn('Discovery [Activity]: No seed tracks provided');
 		return { recommendations: [], seedCount: 0, foundCount: 0 };
 	}
 
-	//-- - Expand seeds by splitting artists ---
+	const activity = config.moodActivityValue || 'workout';
+	console.log(`Discovery [Activity]: Processing "${activity}" activity with ${seeds.length} seed track(s)`);
+
+	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
 	//seeds = matchMonkeyHelpers.shuffle(seeds);
-
+	
 	console.log(`discoverByActivity: Processing up to 5 of ${seeds.length} seed track(s)`);
 
-	// Limit to 5 seeds per API spec
 	const limitedSeeds = seeds.slice(0, 5);
 
 	// Step 1: Find track IDs
-	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.1);
-	const trackResults = await findTrackIdsBatch(limitedSeeds);
+	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.2);
+	console.log(`Discovery [Activity]: Looking up track IDs for ${limitedSeeds.length} seeds`);
+	
+	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
 
 	// Filter to found tracks
 	const foundTracks = trackResults.filter(r => r.trackId);
 	if (foundTracks.length === 0) {
-		console.log('discoverByActivity: No tracks found on ReccoBeats');
+		console.log('Discovery [Activity]: No tracks found on ReccoBeats');
 		updateProgress('No tracks found on ReccoBeats', 0.5);
 		return { recommendations: [], seedCount: limitedSeeds.length, foundCount: 0 };
 	}
 
-	console.log(`discoverByActivity: Found ${foundTracks.length}/${limitedSeeds.length} tracks`);
+	console.log(`Discovery [Activity]: Found ${foundTracks.length}/${limitedSeeds.length} tracks on ReccoBeats`);
 
-	const activity = config.moodActivityValue || 'workout';
 	const activityPreset = reccobeatsApi?.ACTIVITY_AUDIO_TARGETS?.[activity.toLowerCase()];
 	let audioTargets = null;
 
 	if (!activityPreset) {
-		console.error(`discoverByActivity: Unknown activity "${activity}"`);
+		console.error(`Discovery [Activity]: Unknown activity "${activity}"`);
 		return [];
 	}
 
-	const audioFeatures = await matchMonkeyReccoBeatsAPI.getAudioFeatures(foundTracks);
+	console.log(`Discovery [Activity]: Using "${activity}" preset with blend ratio ${config.moodSeedBlend}`);
+
+	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
-		console.warn("discoverByMood: No audio features found, using pure mood preset");
-		audioTargets = moodPreset;
+		console.warn("Discovery [Activity]: No audio features found, using pure activity preset");
+		audioTargets = activityPreset;
 	} else {
-		updateProgress('Analyzing audio characteristics...', 0.5);
+		updateProgress('Analyzing audio characteristics...', 0.35);
+		console.log(`Discovery [Activity]: Blending ${audioFeatures.length} seed features with activity preset`);
 
-		const avgSeedsFeature = matchMonkeyReccoBeatsAPI.calculateAverageFeatures(audioFeatures);
+		const avgSeedsFeature = reccobeatsApi.calculateAverageFeatures(audioFeatures);
 
-		// Clamp blend ratio
 		const BLEND_RATIO = config.moodSeedBlend;
 		const ratio = Math.min(1, Math.max(0, BLEND_RATIO));
 
-		audioTargets = matchMonkeyReccoBeatsAPI.blendFeatures(
+		audioTargets = reccobeatsApi.blendFeatures(
 			avgSeedsFeature,
 			activityPreset,
 			ratio
 		);
+		
+		console.log(`Discovery [Activity]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, tempo: ${audioTargets.tempo}`);
 	}
-	console.log(`discoverByActivity: Using "${activity}" activity profile:`, audioTargets);
 
-	updateProgress(`Finding "${activity}" tracks...`, 0.3);
+	updateProgress(`Finding "${activity}" tracks...`, 0.4);
+	console.log(`Discovery [Activity]: Requesting recommendations with activity profile`);
 
 	const seedIds = foundTracks.map(r => r.trackId);
-	const recommendations = await fetchRecommendations(seedIds, audioTargets, 100);
+	const recommendations = await reccobeatsApi.fetchRecommendations(seedIds, audioTargets, 100);
+
+	console.log(`Discovery [Activity]: Received ${recommendations.length} "${activity}" recommendations`);
 
 	let candidates = [];
 	const seenArtists = new Set();
@@ -682,7 +675,7 @@ async function discoverByActivity(modules, seeds, config) {
 	const seedIdRecs = { "recommendations": recommendations }
 	candidates = buildReccoCandidates(seedIdRecs, blacklist, seenArtists);
 
-	console.log(`discoverByActivity: Built ${candidates.length} candidate artists from recommendations`);
+	console.log(`Discovery [Activity]: Built ${candidates.length} candidate artists for "${activity}" activity`);
 
 	return candidates;
 }

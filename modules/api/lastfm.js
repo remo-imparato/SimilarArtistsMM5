@@ -47,7 +47,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		if (cache?.getCachedSimilarArtists) {
 			const cached = cache.getCachedSimilarArtists(artistName);
 			if (cached !== null) {
-				console.log(`fetchSimilarArtists: Using cached results for "${artistName}"`);
+				console.log(`Last.fm API: Using cached similar artists for "${artistName}" (${cached.length} artists)`);
 				return cached;
 			}
 		}
@@ -55,7 +55,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		// Get API key
 		const apiKey = getApiKey();
 		if (!apiKey) {
-			console.error('fetchSimilarArtists: No API key available');
+			console.error('Last.fm API: No API key available');
 			updateProgress('Error: Last.fm API key not configured');
 			cache?.cacheSimilarArtists?.(artistName, []);
 			return [];
@@ -73,14 +73,14 @@ async function fetchSimilarArtists(artistName, limit) {
 		if (lim) params.set('limit', String(lim));
 
 		const url = API_BASE + '?' + params.toString();
-		updateProgress(`Querying Last.fm API: getSimilar for "${artistName}"...`);
-		console.log('fetchSimilarArtists: querying ' + url);
+		updateProgress(`Querying Last.fm for artists similar to "${artistName}"...`);
+		console.log(`Last.fm API: GET ${url}`);
 
 		// Make HTTP request using native fetch (MM5)
 		const res = await fetch(url);
 
 		if (!res || !res.ok) {
-			console.log(`fetchSimilarArtists: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+			console.warn(`Last.fm API: HTTP ${res?.status} ${res?.statusText} for artist.getSimilar "${artistName}"`);
 			updateProgress(`Failed to fetch similar artists for "${artistName}" (HTTP ${res?.status})`);
 			cache?.cacheSimilarArtists?.(artistName, []);
 			return [];
@@ -91,7 +91,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		try {
 			data = await res.json();
 		} catch (e) {
-			console.warn('fetchSimilarArtists: invalid JSON response: ' + e.toString());
+			console.warn(`Last.fm API: Invalid JSON response for "${artistName}": ${e.toString()}`);
 			updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 			cache?.cacheSimilarArtists?.(artistName, []);
 			return [];
@@ -99,7 +99,7 @@ async function fetchSimilarArtists(artistName, limit) {
 
 		// Check for API errors
 		if (data?.error) {
-			console.warn('fetchSimilarArtists: API error: ' + (data.message || data.error));
+			console.warn(`Last.fm API: Error ${data.error} - ${data.message || 'Unknown error'} for "${artistName}"`);
 			updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 			cache?.cacheSimilarArtists?.(artistName, []);
 			return [];
@@ -109,7 +109,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		const artists = data?.similarartists?.artist || [];
 		let asArr = Array.isArray(artists) ? artists : (artists ? [artists] : []);
 		
-		console.log(`fetchSimilarArtists: Retrieved ${asArr.length} similar artists for "${artistName}"`);
+		console.log(`Last.fm API: Retrieved ${asArr.length} similar artists for "${artistName}"`);
 		
 		// Cache results for subsequent calls in this run
 		cache?.cacheSimilarArtists?.(artistName, asArr);
@@ -117,7 +117,7 @@ async function fetchSimilarArtists(artistName, limit) {
 		return asArr;
 
 	} catch (e) {
-		console.error('fetchSimilarArtists error: ' + e.toString());
+		console.error(`Last.fm API: fetchSimilarArtists error for "${artistName}":`, e.toString());
 		window.matchMonkeyNotifications?.updateProgress?.(`Error fetching similar artists: ${e.toString()}`);
 		window.lastfmCache?.cacheSimilarArtists?.(artistName, []);
 		return [];
@@ -145,7 +145,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		if (cache?.getCachedTopTracks) {
 			const cached = cache.getCachedTopTracks(artistName, limit, includePlaycount);
 			if (cached !== null) {
-				console.log(`fetchTopTracks: Using cached results for "${artistName}" (limit: ${limit})`);
+				console.log(`Last.fm API: Using cached top tracks for "${artistName}" (${cached.length} tracks, limit: ${limit})`);
 				return cached;
 			}
 		}
@@ -153,7 +153,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		// Get API key
 		const apiKey = getApiKey();
 		if (!apiKey) {
-			console.error('fetchTopTracks: No API key available');
+			console.error('Last.fm API: No API key available');
 			updateProgress('Error: Last.fm API key not configured');
 			cache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
 			return [];
@@ -172,13 +172,13 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 
 		const url = API_BASE + '?' + params.toString();
 		const purpose = (lim >= 100) ? 'for ranking' : 'for collection';
-		updateProgress(`Querying Last.fm: getTopTracks ${purpose} for "${artistName}" (limit: ${lim || 'default'})...`);
-		console.log(`fetchTopTracks: querying ${url} (${purpose})`);
+		updateProgress(`Fetching top tracks ${purpose} for "${artistName}"...`);
+		console.log(`Last.fm API: GET ${url}`);
 
 		// Make HTTP request using native fetch (MM5)
 		const res = await fetch(url);
 		if (!res || !res.ok) {
-			console.log(`fetchTopTracks: HTTP ${res?.status} ${res?.statusText} for ${artistName}`);
+			console.warn(`Last.fm API: HTTP ${res?.status} ${res?.statusText} for artist.getTopTracks "${artistName}"`);
 			updateProgress(`Failed to fetch top tracks for "${artistName}" (HTTP ${res?.status})`);
 			cache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
 			return [];
@@ -189,7 +189,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		try {
 			data = await res.json();
 		} catch (e) {
-			console.warn('fetchTopTracks: invalid JSON response: ' + e.toString());
+			console.warn(`Last.fm API: Invalid JSON response for "${artistName}": ${e.toString()}`);
 			updateProgress(`Error parsing Last.fm response for "${artistName}"`);
 			cache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
 			return [];
@@ -197,7 +197,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 
 		// Check for API errors
 		if (data?.error) {
-			console.warn('fetchTopTracks: API error: ' + (data.message || data.error));
+			console.warn(`Last.fm API: Error ${data.error} - ${data.message || 'Unknown error'} for "${artistName}"`);
 			updateProgress(`Last.fm API error for "${artistName}": ${data.message || data.error}`);
 			cache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
 			return [];
@@ -222,7 +222,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 			}
 		}
 
-		console.log(`fetchTopTracks: Retrieved ${rows.length} top tracks for "${artistName}" (${purpose})`);
+		console.log(`Last.fm API: Retrieved ${rows.length} top tracks for "${artistName}" (${purpose})`);
 		
 		// Slice to requested limit and cache
 		const out = typeof lim === 'number' ? rows.slice(0, lim) : rows;
@@ -231,7 +231,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		return out;
 
 	} catch (e) {
-		console.error('fetchTopTracks error: ' + e.toString());
+		console.error(`Last.fm API: fetchTopTracks error for "${artistName}":`, e.toString());
 		window.matchMonkeyNotifications?.updateProgress?.(`Error fetching top tracks: ${e.toString()}`);
 		window.lastfmCache?.cacheTopTracks?.(artistName, limit, includePlaycount, []);
 		return [];
@@ -261,14 +261,15 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 
 		// Check cache first
 		if (cache?.isActive?.() && cache._similarTracks?.has?.(cacheKey)) {
-			console.log(`fetchSimilarTracks: Using cached results for "${artistName} - ${trackName}"`);
-			return cache._similarTracks.get(cacheKey) || [];
+			const cached = cache._similarTracks.get(cacheKey) || [];
+			console.log(`Last.fm API: Using cached similar tracks for "${artistName} - ${trackName}" (${cached.length} tracks)`);
+			return cached;
 		}
 
 		// Get API key
 		const apiKey = getApiKey();
 		if (!apiKey) {
-			console.error('fetchSimilarTracks: No API key available');
+			console.error('Last.fm API: No API key available');
 			return [];
 		}
 
@@ -285,13 +286,13 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 		if (lim) params.set('limit', String(lim));
 
 		const url = API_BASE + '?' + params.toString();
-		updateProgress(`Finding similar tracks to "${trackName}"...`);
-		console.log(`fetchSimilarTracks: querying ${url}`);
+		updateProgress(`Finding tracks similar to "${trackName}"...`);
+		console.log(`Last.fm API: GET ${url}`);
 
 		// Make HTTP request
 		const res = await fetch(url);
 		if (!res || !res.ok) {
-			console.log(`fetchSimilarTracks: HTTP ${res?.status} for "${artistName} - ${trackName}"`);
+			console.warn(`Last.fm API: HTTP ${res?.status} for track.getSimilar "${artistName} - ${trackName}"`);
 			return [];
 		}
 
@@ -300,13 +301,13 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 		try {
 			data = await res.json();
 		} catch (e) {
-			console.warn('fetchSimilarTracks: invalid JSON: ' + e.toString());
+			console.warn(`Last.fm API: Invalid JSON response for "${artistName} - ${trackName}": ${e.toString()}`);
 			return [];
 		}
 
 		// Check for API errors
 		if (data?.error) {
-			console.warn('fetchSimilarTracks: API error: ' + (data.message || data.error));
+			console.warn(`Last.fm API: Error ${data.error} - ${data.message || 'Unknown error'} for "${artistName} - ${trackName}"`);
 			return [];
 		}
 
@@ -324,13 +325,13 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 			results.push({
 				title,
 				artist,
-				match: Number(t.match) || 0, // Similarity score 0-1
+				match: Number(t.match) || 0,
 				playcount: Number(t.playcount) || 0,
 				url: t.url || ''
 			});
 		}
 
-		console.log(`fetchSimilarTracks: Found ${results.length} similar tracks for "${artistName} - ${trackName}"`);
+		console.log(`Last.fm API: Found ${results.length} similar tracks for "${artistName} - ${trackName}"`);
 
 		// Cache results
 		if (cache?.isActive?.()) {
@@ -341,7 +342,7 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 		return results;
 
 	} catch (e) {
-		console.error('fetchSimilarTracks error: ' + e.toString());
+		console.error(`Last.fm API: fetchSimilarTracks error for "${artistName} - ${trackName}":`, e.toString());
 		return [];
 	}
 }

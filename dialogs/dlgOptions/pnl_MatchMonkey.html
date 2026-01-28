@@ -114,68 +114,6 @@
 		<!-- RIGHT COLUMN -->
 		<div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1em;">
 
-			<!-- Auto-Queue -->
-			<fieldset>
-				<legend>Auto-queue (endless playback)</legend>
-				<div class="uiRows">
-					<div class="uiRow">
-						<div data-id="AutoModeEnabled" data-control-class="Checkbox">Enable auto-queue?</div>
-					</div>
-					<div class="uiRow">
-						<label class="inline">Discovery mode:</label>
-						<div data-id="AutoModeDiscovery" data-control-class="Dropdown">
-							<option value="artist">Similar Artists</option>
-							<option value="track">Similar Tracks</option>
-							<option value="genre">Similar Genre</option>
-							<option value="aipower">AI-Powered</option>
-						</div>
-					</div>
-					<div class="uiRow">
-						<label class="inline">Auto seeds:</label>
-						<div data-id="AutoModeSeedLimit"
-							 data-control-class="Edit"
-							 data-init-params="{type:'number',min:1,max:10}"></div>
-					</div>
-					<div class="uiRow">
-						<label class="inline">Auto similar limit:</label>
-						<div data-id="AutoModeSimilarLimit"
-							 data-control-class="Edit"
-							 data-init-params="{type:'number',min:1,max:50}"></div>
-					</div>
-					<div class="uiRow">
-						<label class="inline">Auto tracks/artist:</label>
-						<div data-id="AutoModeTracksPerArtist"
-							 data-control-class="Edit"
-							 data-init-params="{type:'number',min:1,max:50}"></div>
-					</div>
-					<div class="uiRow">
-						<label class="inline">Auto max tracks:</label>
-						<div data-id="AutoModeMaxTracks"
-							 data-control-class="Edit"
-							 data-init-params="{type:'number',min:1,max:200}"></div>
-					</div>
-					<div class="uiRow">
-						<div data-id="SkipDuplicates" data-control-class="Checkbox">Skip duplicates in queue?</div>
-					</div>
-				</div>
-			</fieldset>
-
-			<!-- Rating Filter -->
-			<fieldset style="display:none;">
-				<legend>Rating filter</legend>
-				<div class="uiRows">
-					<div class="uiRow">
-						<label class="inline">Minimum rating:</label>
-						<div data-id="MinRating"
-							 data-control-class="Rating"
-							 data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
-					</div>
-					<div class="uiRow">
-						<div data-id="IncludeUnrated" data-control-class="Checkbox">Include unrated tracks?</div>
-					</div>
-				</div>
-			</fieldset>
-
 			<!-- Mood & Activity -->
 			<fieldset>
 				<legend>Mood & Activity defaults</legend>
@@ -231,6 +169,68 @@
 						</span>
 					</div>
 
+				</div>
+			</fieldset>
+
+			<!-- Auto-Queue -->
+			<fieldset>
+				<legend>Auto-queue (endless playback)</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<div data-id="AutoModeEnabled" data-control-class="Checkbox">Enable auto-queue?</div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Discovery mode:</label>
+						<div data-id="AutoModeDiscovery" data-control-class="Dropdown">
+							<option value="artist">Similar Artists</option>
+							<option value="track">Similar Tracks</option>
+							<option value="genre">Similar Genre</option>
+							<option value="aipower">Similar Audio</option>
+						</div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto seeds:</label>
+						<div data-id="AutoModeSeedLimit"
+							 data-control-class="Edit"
+							 data-init-params="{type:'number',min:1,max:10}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto similar limit:</label>
+						<div data-id="AutoModeSimilarLimit"
+							 data-control-class="Edit"
+							 data-init-params="{type:'number',min:1,max:50}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto tracks/artist:</label>
+						<div data-id="AutoModeTracksPerArtist"
+							 data-control-class="Edit"
+							 data-init-params="{type:'number',min:1,max:50}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto max tracks:</label>
+						<div data-id="AutoModeMaxTracks"
+							 data-control-class="Edit"
+							 data-init-params="{type:'number',min:1,max:200}"></div>
+					</div>
+					<div class="uiRow">
+						<div data-id="SkipDuplicates" data-control-class="Checkbox">Skip duplicates in queue?</div>
+					</div>
+				</div>
+			</fieldset>
+
+			<!-- Rating Filter -->
+			<fieldset style="display:none;">
+				<legend>Rating filter</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<label class="inline">Minimum rating:</label>
+						<div data-id="MinRating"
+							 data-control-class="Rating"
+							 data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
+					</div>
+					<div class="uiRow">
+						<div data-id="IncludeUnrated" data-control-class="Checkbox">Include unrated tracks?</div>
+					</div>
 				</div>
 			</fieldset>
 

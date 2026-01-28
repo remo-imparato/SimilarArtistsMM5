@@ -449,7 +449,7 @@ window.matchMonkeyAutoMode = {
 				case 'genre':
 					return 'Similar Genre';
 				case 'aipower':
-					return 'AI-Powered';
+					return 'Similar Audio';
 				default:
 					return 'Similar Tracks';
 			}
