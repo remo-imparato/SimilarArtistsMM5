@@ -294,7 +294,7 @@ async function searchAlbum(albumName) {
 	const normalizedSearch = normalize(albumName);
 	const headers = createHeaders();
 	let page = 0;
-	const maxPages = 1; // Limit pagination to avoid infinite loops
+	let maxPages = 1; // Limit pagination to avoid infinite loops
 
 	console.log(`searchAlbum: Searching for album "${albumName}"`);
 
@@ -313,7 +313,7 @@ async function searchAlbum(albumName) {
 			const data = await res.json();
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
-			if (totalPages > maxPages) 
+			if (totalPages > maxPages)
 				maxPages = totalPages; // Adjust maxPages if needed
 
 			console.log(`searchAlbum: Page ${page + 1}/${totalPages} returned ${content.length} results`);
@@ -357,14 +357,15 @@ async function searchAlbum(albumName) {
 // =============================================================================
 
 /**
- * Get all albums from an artist by artist ID.
+ * Find a specific album in an artist by title.
  * 
  * @param {string} artistId - ReccoBeats artist ID
- * @returns {Promise<object[]>} Array of album objects with id, albumTitle, etc.
+ * @param {string} albumTitle - Album title to find
+ * @returns {Promise<object|null>} Album object or null if not found
  */
-async function getArtistAlbums(artistId, albumName) {
+async function findAlbumInArtist(artistId, albumName) {
 	if (!artistId) {
-		console.warn('getArtistAlbums: No artist ID provided');
+		console.warn('findAlbumInArtist: No artist ID provided');
 		return [];
 	}
 
@@ -373,7 +374,7 @@ async function getArtistAlbums(artistId, albumName) {
 
 	// If no albumName is provided, we can return cached full list
 	if (!albumName && cache?.has(cacheKey)) {
-		console.log(`getArtistAlbums: Cache hit for artist ID ${artistId}`);
+		console.log(`findAlbumInArtist: Cache hit for artist ID ${artistId}`);
 		return cache.get(cacheKey) || [];
 	}
 
@@ -388,12 +389,12 @@ async function getArtistAlbums(artistId, albumName) {
 	while (page < maxPages) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=${page}&size=${size}`;
-			console.log(`getArtistAlbums: GET ${url}`);
+			console.log(`findAlbumInArtist: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
 			if (!res.ok) {
-				console.warn(`getArtistAlbums: HTTP ${res.status} for artist ${artistId}`);
+				console.warn(`findAlbumInArtist: HTTP ${res.status} for artist ${artistId}`);
 				break;
 			}
 
@@ -401,10 +402,7 @@ async function getArtistAlbums(artistId, albumName) {
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
 
-			if (totalPages > maxPages)
-				maxPages = totalPages;
-
-			console.log(`getArtistAlbums: Page ${page + 1}/${totalPages} returned ${content.length} albums`);
+			console.log(`findAlbumInArtist: Page ${page + 1}/${totalPages} returned ${content.length} albums`);
 
 			// Accumulate all albums (for caching)
 			allAlbums = allAlbums.concat(content);
@@ -414,23 +412,27 @@ async function getArtistAlbums(artistId, albumName) {
 				const match = content.find(a => normalize(a.name || '') === normalizedSearch);
 
 				if (match) {
-					console.log(`getArtistAlbums: Found album "${match.name}" (ID: ${match.id})`);
-					return match; // return the album object directly
+					const result = { id: match.id, name: match.name };
+					cache?.set(cacheKey, result);
+					console.log(`findAlbumInArtist: Found album "${match.name}" (ID: ${match.id})`);
+					return result;
 				}
 			}
 
 			// If we've reached the last page
 			if (page >= totalPages - 1) {
 				if (normalizedSearch) {
-					console.log(`getArtistAlbums: No match for "${albumName}" after ${totalPages} pages`);
+					console.log(`findAlbumInArtist: No match for "${albumName}" after ${totalPages} pages`);
 					return null;
 				}
 				break;
 			}
 
+			if (totalPages > maxPages)
+				maxPages = totalPages;
 			page++;
 		} catch (e) {
-			console.error(`getArtistAlbums: Error fetching albums for artist ${artistId}:`, e.message);
+			console.error(`findAlbumInArtist: Error fetching albums for artist ${artistId}:`, e.message);
 			break;
 		}
 	}
@@ -440,33 +442,9 @@ async function getArtistAlbums(artistId, albumName) {
 		cache?.set(cacheKey, allAlbums);
 	}
 
-	console.log(`getArtistAlbums: Found total ${allAlbums.length} albums for artist ${artistId}`);
+	console.log(`findAlbumInArtist: Found total ${allAlbums.length} albums for artist ${artistId}`);
 	return allAlbums;
 }
-
-/**
- * Find a specific album in an artist by title.
- * 
- * @param {string} artistId - ReccoBeats artist ID
- * @param {string} albumTitle - Album title to find
- * @returns {Promise<object|null>} Album object or null if not found
- */
-async function findAlbumInArtist(artistId, albumTitle) {
-	const albums = await getArtistAlbums(artistId, albumTitle);
-	if (!albums.length) return null;
-
-	const normalizedTitle = normalize(albumTitle);
-
-	// Try to match by albumTitle, name, or title fields
-	const match = albums.find(a => a && normalize(a.name) === normalizedTitle);
-
-	if (match) {
-		console.log(`findAlbumInArtist: Found album "${albumTitle}" (ID: ${match.id})`);
-	}
-
-	return match || null;
-}
-
 
 /**
  * Find an album on ReccoBeats by searching for its artist first.
