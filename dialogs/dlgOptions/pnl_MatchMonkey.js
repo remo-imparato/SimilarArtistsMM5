@@ -121,7 +121,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, 
 		// === Auto-Mode Settings ===
 		this._setupAutoModeCheckbox(UI.AutoModeEnabled);
 		UI.AutoModeEnabled.controlClass.checked = cfg.AutoModeEnabled || false;
-		UI.AutoModeDiscovery.controlClass.value = (cfg.AutoModeDiscovery || 'track').toLowerCase();
+		UI.AutoModeDiscovery.controlClass.value = cfg.AutoModeDiscovery || 'Similar Artist';
 		UI.AutoModeSeedLimit.controlClass.value = cfg.AutoModeSeedLimit || 2;
 		UI.AutoModeSimilarLimit.controlClass.value = cfg.AutoModeSimilarLimit || 10;
 		UI.AutoModeTracksPerArtist.controlClass.value = cfg.AutoModeTracksPerArtist || 5;
@@ -298,7 +298,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 			autoEnabled = Boolean(UI.AutoModeEnabled.controlClass.checked);
 		}
 		this.config.AutoModeEnabled = autoEnabled;
-		this.config.AutoModeDiscovery = (UI.AutoModeDiscovery.controlClass.value || 'track').toLowerCase();
+		this.config.AutoModeDiscovery = UI.AutoModeDiscovery.controlClass.value || 'Similar Artist';
 		this.config.AutoModeSeedLimit = parseInt(UI.AutoModeSeedLimit.controlClass.value, 10) || 2;
 		this.config.AutoModeSimilarLimit = parseInt(UI.AutoModeSimilarLimit.controlClass.value, 10) || 10;
 		this.config.AutoModeTracksPerArtist = parseInt(UI.AutoModeTracksPerArtist.controlClass.value, 10) || 5;

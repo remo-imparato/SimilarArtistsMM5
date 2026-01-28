@@ -362,7 +362,7 @@ window.matchMonkeyAutoMode = {
 					const allModes = ['aipower', 'track', 'artist', 'genre'];
 					
 					// Start with user's preferred mode, then try others
-					const modesToTry = [configuredMode.toLowerCase()];
+					const modesToTry = [getDiscoveryModeKey(configuredMode)];
 					for (const mode of allModes) {
 						if (mode !== configuredMode.toLowerCase()) {
 							modesToTry.push(mode);
@@ -451,7 +451,26 @@ window.matchMonkeyAutoMode = {
 				case 'aipower':
 					return 'Similar Audio';
 				default:
-					return 'Similar Tracks';
+					return 'Similar Artists';
+			}
+		}
+
+		/**
+		 * Helper to get discovery mode key from display name
+		 * */
+		function getDiscoveryModeKey(displayName) {
+			const normalized = String(displayName || '').toLowerCase();
+			switch (normalized) {
+				case 'similar artists':
+					return 'artist';
+				case 'similar tracks':
+					return 'track';
+				case 'similar genre':
+					return 'genre';
+				case 'similar audio':
+					return 'aipower';
+				default:
+					return 'artist';
 			}
 		}
 	},

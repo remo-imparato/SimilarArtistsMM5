@@ -234,6 +234,34 @@
 				</div>
 			</fieldset>
 
+			<!-- Filters (Advanced) -->
+			<fieldset style="display:none;">
+				<legend>Filters (advanced)</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<label class="inline">Exclude artists:</label>
+						<div data-id="ArtistBlacklist"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated list of artist names to exclude from results"
+							 data-init-params='{"hint":"e.g., Artist1, Artist2"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Exclude genres:</label>
+						<div data-id="GenreBlacklist"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated list of genres to exclude"
+							 data-init-params='{"hint":"e.g., Christmas, Holiday"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Exclude title words:</label>
+						<div data-id="TitleExclusions"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated words - tracks containing these words in title will be excluded"
+							 data-init-params='{"hint":"e.g., Live, Remix, Demo"}'></div>
+					</div>
+				</div>
+			</fieldset>
+
 		</div>
 
 	</div>
