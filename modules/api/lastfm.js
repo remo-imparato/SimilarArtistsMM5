@@ -74,7 +74,7 @@ async function fetchSimilarArtists(artistName, limit) {
 
 		const url = API_BASE + '?' + params.toString();
 		updateProgress(`Querying Last.fm for artists similar to "${artistName}"...`);
-		console.log(`Last.fm API: GET ${url}`);
+		console.log(`fetchSimilarArtists: GET ${url}`);
 
 		// Make HTTP request using native fetch (MM5)
 		const res = await fetch(url);
@@ -173,7 +173,7 @@ async function fetchTopTracks(artistName, limit, includePlaycount = false) {
 		const url = API_BASE + '?' + params.toString();
 		const purpose = (lim >= 100) ? 'for ranking' : 'for collection';
 		updateProgress(`Fetching top tracks ${purpose} for "${artistName}"...`);
-		console.log(`Last.fm API: GET ${url}`);
+		console.log(`fetchTopTracks: GET ${url}`);
 
 		// Make HTTP request using native fetch (MM5)
 		const res = await fetch(url);
@@ -287,7 +287,7 @@ async function fetchSimilarTracks(artistName, trackName, limit = 100) {
 
 		const url = API_BASE + '?' + params.toString();
 		updateProgress(`Finding tracks similar to "${trackName}"...`);
-		console.log(`Last.fm API: GET ${url}`);
+		console.log(`fetchSimilarTracks: GET ${url}`);
 
 		// Make HTTP request
 		const res = await fetch(url);

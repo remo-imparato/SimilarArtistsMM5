@@ -155,7 +155,7 @@ window.matchMonkeyOrchestration = {
 			// Step 2: Run discovery strategy
 			updateProgress(`Contacting ${modeName} service...`, 0.15);
 			console.log(`Match Monkey: === Phase 1: Discovery via ${modeName} ===`);
-			
+
 			const discoveryFn = strategies.getDiscoveryStrategy(discoveryMode);
 			let candidates;
 
@@ -231,7 +231,7 @@ window.matchMonkeyOrchestration = {
 			// Step 5: Output results
 			const enqueueEnabled = boolSetting('EnqueueMode', false);
 			const outputMode = config_.autoMode || enqueueEnabled ? 'queue' : 'playlist';
-			
+
 			updateProgress(`Adding ${finalResults.length} track(s) to ${outputMode}...`, 0.9);
 			console.log(`Match Monkey: === Phase 3: Output (${outputMode}) ===`);
 
@@ -259,7 +259,7 @@ window.matchMonkeyOrchestration = {
 
 			updateProgress(`Complete! Added ${actualTracksAdded} track(s)`, 1.0);
 			console.log(`Match Monkey: === Complete! ${actualTracksAdded} tracks in ${elapsed}s ===`);
-			
+
 			terminateProgressTask(taskId);
 			cache?.clear?.();
 
@@ -519,37 +519,47 @@ window.matchMonkeyOrchestration = {
 		let added = 0;
 
 		try {
-			// Clear queue if requested
-			if (clearFirst && app.player?.playlist) {
-				app.player.playlist.clear();
+			// Get the real Now Playing playlist
+			const np = (typeof app.player?.getPlaylist === 'function')
+				? app.player.getPlaylist()
+				: null;
+
+			// Wait for NP to load
+			if (np && typeof np.whenLoaded === 'function') {
+				await np.whenLoaded();
 			}
 
-			// Build set of existing track IDs for duplicate detection
-			const existingIds = new Set();
-			if (skipDuplicates && app.player?.playlist) {
-				const np = app.player.playlist;
-				if (typeof np.locked === 'function') {
-					np.locked(() => {
-						for (let i = 0; i < (np.count || 0); i++) {
-							const t = np.getValue(i);
-							if (t?.id || t?.ID) existingIds.add(t.id || t.ID);
+			// Clear queue if requested
+			if (clearFirst && np && typeof np.clear === 'function') {
+				np.clear();
+			}
+
+			// Build set of existing track paths for duplicate detection
+			const existing = new Set();
+
+			if (skipDuplicates && np && typeof np.locked === 'function') {
+				np.locked(() => {
+					for (let i = 0; i < np.count; i++) {
+						const t = np.getFastObject(i);
+						if (t?.path) {
+							existing.add(t.path);
 						}
-					});
-				}
+					}
+				});
 			}
 
 			// Add tracks to Now Playing
 			for (const track of tracks) {
-				const trackId = track.id || track.ID;
+				const key = track.path; // best unique identifier
 
-				if (skipDuplicates && trackId && existingIds.has(trackId)) {
+				if (skipDuplicates && key && existing.has(key)) {
 					continue;
 				}
 
 				try {
 					await db.queueTrack(track);
 					added++;
-					if (trackId) existingIds.add(trackId);
+					if (key) existing.add(key);
 				} catch (e) {
 					console.warn(`Match Monkey: Failed to queue track:`, e.message);
 				}
@@ -737,14 +747,12 @@ window.matchMonkeyOrchestration = {
 	navigateAfterCreation(navigateAfter, playlist) {
 		try {
 			if (navigateAfter === 'Navigate to new playlist' && playlist) {
-				if (typeof navigationHandlers !== 'undefined' &&
-					navigationHandlers['playlist']?.navigate) {
+				if (typeof navigationHandlers !== 'undefined' && navigationHandlers['playlist']?.navigate) {
 					navigationHandlers['playlist'].navigate(playlist);
 					console.log('Match Monkey: Navigated to playlist');
 				}
 			} else if (navigateAfter === 'Navigate to now playing') {
-				if (typeof navigationHandlers !== 'undefined' &&
-					navigationHandlers['nowPlaying']?.navigate) {
+				if (typeof navigationHandlers !== 'undefined' && navigationHandlers['nowPlaying']?.navigate) {
 					navigationHandlers['nowPlaying'].navigate();
 					console.log('Match Monkey: Navigated to Now Playing');
 				}

@@ -417,11 +417,13 @@ async function searchArtist(artistName) {
 	const normalizedSearch = normalize(artistName);
 	const headers = createHeaders();
 	let page = 0;
-	const maxPages = 3;
+	let maxPages = 1; // Will be updated from API response
+	const maxPagesLimit = 50; // Safety limit to prevent infinite loops
 
-	while (page < maxPages) {
+	while (page < maxPages && page < maxPagesLimit) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/artist/search?searchText=${encodeURIComponent(artistName)}&page=${page}&size=50`;
+			console.log(`searchArtist: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -433,6 +435,11 @@ async function searchArtist(artistName) {
 			const data = await res.json();
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
+			
+			// Update maxPages from API response
+			if (totalPages > maxPages) {
+				maxPages = totalPages;
+			}
 
 			console.log(`searchArtist: Page ${page + 1}/${totalPages}, ${content.length} results`);
 
@@ -445,7 +452,7 @@ async function searchArtist(artistName) {
 				return result;
 			}
 
-			if (page >= totalPages - 1) break;
+			// Move to next page
 			page++;
 		} catch (e) {
 			console.error(`searchArtist: Error for "${artistName}":`, e.message);
@@ -453,7 +460,7 @@ async function searchArtist(artistName) {
 		}
 	}
 
-	console.log(`searchArtist: No match found for "${artistName}"`);
+	console.log(`searchArtist: No match found for "${artistName}" after ${page} pages`);
 	cache?.set(cacheKey, null);
 	return null;
 }
@@ -489,11 +496,13 @@ async function searchAlbum(albumName) {
 	const normalizedSearch = normalize(albumName);
 	const headers = createHeaders();
 	let page = 0;
-	let maxPages = 1;
+	let maxPages = 1; // Will be updated from API response
+	const maxPagesLimit = 50; // Safety limit to prevent infinite loops
 
-	while (page < maxPages) {
+	while (page < maxPages && page < maxPagesLimit) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/album/search?searchText=${encodeURIComponent(albumName)}&page=${page}&size=50`;
+			console.log(`searchAlbum: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -552,13 +561,13 @@ async function searchAlbum(albumName) {
  * Find a specific album in an artist by title.
  * 
  * @param {string} artistId - ReccoBeats artist ID
- * @param {string} albumTitle - Album title to find
- * @returns {Promise<object|null>} Album object or null if not found
+ * @param {string} albumName - Album title to find (optional - if not provided, returns all albums)
+ * @returns {Promise<object|object[]|null>} Album object if searching, array if listing all, null if not found
  */
 async function findAlbumInArtist(artistId, albumName) {
 	if (!artistId) {
 		console.warn('findAlbumInArtist: No artist ID provided');
-		return [];
+		return albumName ? null : [];
 	}
 
 	const cache = getCache();
@@ -572,13 +581,14 @@ async function findAlbumInArtist(artistId, albumName) {
 
 	const headers = createHeaders();
 	let page = 0;
-	let maxPages = 1;
+	let maxPages = 1; // Will be updated from API response
+	const maxPagesLimit = 50; // Safety limit to prevent infinite loops
 	const size = 50;
 
 	const normalizedSearch = albumName ? normalize(albumName) : null;
 	let allAlbums = [];
 
-	while (page < maxPages) {
+	while (page < maxPages && page < maxPagesLimit) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=${page}&size=${size}`;
 			console.log(`findAlbumInArtist: GET ${url}`);
@@ -594,6 +604,11 @@ async function findAlbumInArtist(artistId, albumName) {
 			const content = data?.content || [];
 			const totalPages = data?.totalPages ?? 1;
 
+			// Update maxPages from API response
+			if (totalPages > maxPages) {
+				maxPages = totalPages;
+			}
+
 			console.log(`findAlbumInArtist: Page ${page + 1}/${totalPages} returned ${content.length} albums`);
 
 			// Accumulate all albums (for caching)
@@ -605,23 +620,13 @@ async function findAlbumInArtist(artistId, albumName) {
 
 				if (match) {
 					const result = { id: match.id, name: match.name };
-					cache?.set(cacheKey, result);
+					// Don't cache partial results when searching - only cache full album list
 					console.log(`findAlbumInArtist: Found album "${match.name}" (ID: ${match.id})`);
 					return result;
 				}
 			}
 
-			// If we've reached the last page
-			if (page >= totalPages - 1) {
-				if (normalizedSearch) {
-					console.log(`findAlbumInArtist: No match for "${albumName}" after ${totalPages} pages`);
-					return null;
-				}
-				break;
-			}
-
-			if (totalPages > maxPages)
-				maxPages = totalPages;
+			// Move to next page
 			page++;
 		} catch (e) {
 			console.error(`findAlbumInArtist: Error fetching albums for artist ${artistId}:`, e.message);
@@ -629,9 +634,12 @@ async function findAlbumInArtist(artistId, albumName) {
 		}
 	}
 
-	// Cache full album list only when not searching for a specific album
-	if (!normalizedSearch) {
-		cache?.set(cacheKey, allAlbums);
+	// Cache full album list when we've retrieved everything
+	cache?.set(cacheKey, allAlbums);
+
+	if (normalizedSearch) {
+		console.log(`findAlbumInArtist: No match for "${albumName}" after ${page} pages`);
+		return null;
 	}
 
 	console.log(`findAlbumInArtist: Found total ${allAlbums.length} albums for artist ${artistId}`);
@@ -677,7 +685,7 @@ async function findAlbumId(artist, album) {
 	// Step 2: Find the album in the artist
 	const albumInfo = await findAlbumInArtist(artistInfo.id, album);
 	if (!albumInfo) {
-		console.log(`findAlbumId: Album "${album}" not found for artist "${artist}"`);
+		console.log(`findAlbumId: Album "${album}" not found`);
 		cache?.set(cacheKey, null);
 		return null;
 	}
@@ -796,6 +804,7 @@ async function findTrackId(artist, title, album) {
 
 	console.log(`findTrackId: Looking up "${artist} - ${title}" from album "${album}"`);
 
+	// Step 1: Search for the artist
 	const artistInfo = await searchArtist(artist);
 	if (!artistInfo) {
 		console.log(`findTrackId: Artist "${artist}" not found`);
@@ -803,10 +812,11 @@ async function findTrackId(artist, title, album) {
 		return null;
 	}
 
-	// Step 1: Search for the album
+	// Step 2: Search for the album
 	let albumInfo = await findAlbumInArtist(artistInfo.id, album);
 	if (!albumInfo) {
 		console.log(`findTrackId: Album "${album}" not found, try searching for it`);
+	// Step 3: Search for the album
 		albumInfo = await searchAlbum(album);
 	}
 
@@ -816,7 +826,7 @@ async function findTrackId(artist, title, album) {
 		return null;
 	}
 
-	// Step 2: Find the track in the album
+	// Step 4: Find the track in the album
 	const track = await findTrackInAlbum(albumInfo.id, title);
 	if (!track) {
 		console.log(`findTrackId: Track "${title}" not found in album "${album}"`);
