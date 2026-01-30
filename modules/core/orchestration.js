@@ -225,21 +225,48 @@ window.matchMonkeyOrchestration = {
 			console.log(`Match Monkey: Library matching found ${results.length} track(s)`);
 			updateProgress(`Found ${results.length} matching track(s)`, 0.8);
 
-			// Step 4: Apply randomization if enabled
+			// Step 4: Remove duplicates based on artist + title
+			updateProgress(`Removing duplicates...`, 0.82);
+			const makeDupKey = (t) => {
+				if (!t) return '';
+				const artistRaw = t.artist || t.Artist || '';
+				const titleRaw = t.title || t.SongTitle || t.Title || '';
+				const artist = (typeof matchMonkeyHelpers?.cleanArtistName === 'function')
+					? matchMonkeyHelpers.cleanArtistName(artistRaw)
+					: String(artistRaw || '').trim();
+				const title = (typeof matchMonkeyHelpers?.cleanTrackName === 'function')
+					? matchMonkeyHelpers.cleanTrackName(titleRaw)
+					: String(titleRaw || '').trim();
+				return `${artist.toUpperCase()}||${title.toUpperCase()}`;
+			};
+
+			const seenDuplicates = new Set();
+			const dedupedResults = [];
+			for (const track of results) {
+				const dupKey = makeDupKey(track);
+				if (dupKey && !seenDuplicates.has(dupKey)) {
+					seenDuplicates.add(dupKey);
+					dedupedResults.push(track);
+				}
+			}
+
+			console.log(`Match Monkey: Removed ${results.length - dedupedResults.length} duplicates, ${dedupedResults.length} unique tracks remain`);
+
+			// Step 5: Apply randomization if enabled
 			if (config_.randomize) {
-				console.log(`Match Monkey: Randomizing ${results.length} results`);
-				updateProgress(`Shuffling ${results.length} results...`, 0.85);
-				shuffleUtil(results);
+				console.log(`Match Monkey: Randomizing ${dedupedResults.length} results`);
+				updateProgress(`Shuffling ${dedupedResults.length} results...`, 0.85);
+				shuffleUtil(dedupedResults);
 			}
 
 			// Apply final limit
 			const finalResults = config_.totalLimit < 100000
-				? results.slice(0, config_.totalLimit)
-				: results;
+				? dedupedResults.slice(0, config_.totalLimit)
+				: dedupedResults;
 
 			console.log(`Match Monkey: Final track count: ${finalResults.length}`);
 
-			// Step 5: Output results
+			// Step 6: Output results
 			const enqueueEnabled = boolSetting('EnqueueMode', false);
 			const outputMode = config_.autoMode || enqueueEnabled ? 'queue' : 'playlist';
 
@@ -616,7 +643,7 @@ window.matchMonkeyOrchestration = {
 
 		try {
 			const np = app.player.getTracklist();
-			if (!np) return;
+			if (!np) return { added: 0 };
 
 			// Wait for load
 			if (typeof np.whenLoaded === 'function') {
@@ -628,7 +655,24 @@ window.matchMonkeyOrchestration = {
 				np.clear();
 			}
 
-			// Build set of existing track paths for duplicate detection
+			// Helper: build normalized dedupe key from artist + title
+			const makeDupKey = (t) => {
+				if (!t) return '';
+				const artistRaw = t.artist || t.Artist || '';
+				const titleRaw = t.title || t.SongTitle || t.Title || '';
+				// Use existing helpers to normalize names consistently with rest of code
+				const artist = (typeof matchMonkeyHelpers?.cleanArtistName === 'function')
+					? matchMonkeyHelpers.cleanArtistName(artistRaw)
+					: String(artistRaw || '').trim();
+				const title = (typeof matchMonkeyHelpers?.cleanTrackName === 'function')
+					? matchMonkeyHelpers.cleanTrackName(titleRaw)
+					: String(titleRaw || '').trim();
+
+				// Uppercase to make comparison case-insensitive
+				return `${artist.toUpperCase()}||${title.toUpperCase()}`;
+			};
+
+			// Build set of existing artist+title keys for duplicate detection
 			const existing = new Set();
 
 			if (skipDuplicates && np && typeof np.locked === 'function') {
@@ -636,8 +680,9 @@ window.matchMonkeyOrchestration = {
 					let t;
 					for (let i = 0; i < np.count; i++) {
 						t = np.getFastObject(i, t);
-						if (t?.path) {
-							existing.add(t.path);
+						if (t) {
+							const dup = makeDupKey(t);
+							if (dup) existing.add(dup);
 						}
 					}
 				});
@@ -645,18 +690,18 @@ window.matchMonkeyOrchestration = {
 
 			// Add tracks to Now Playing
 			for (const track of tracks) {
-				const key = track.path; // best unique identifier
+				const dupKey = makeDupKey(track);
 
-				if (skipDuplicates && key && existing.has(key)) {
+				if (skipDuplicates && dupKey && existing.has(dupKey)) {
 					continue;
 				}
 
 				try {
 					await db.queueTrack(track);
 					added++;
-					if (key) existing.add(key);
+					if (dupKey) existing.add(dupKey);
 				} catch (e) {
-					console.warn(`Match Monkey: Failed to queue track:`, e.message);
+					console.warn(`Match Monkey: Failed to queue track:`, e?.message || e);
 				}
 			}
 
@@ -786,7 +831,7 @@ window.matchMonkeyOrchestration = {
 		} catch (e) {
 			console.error('Match Monkey: Error creating playlist:', e);
 			showToast(`Failed to create playlist: ${e.message}`, 'error');
-			return { added: 0, playlist: null };
+			return { added: 0, palette: null };
 		}
 	},
 
