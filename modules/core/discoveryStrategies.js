@@ -111,7 +111,7 @@ async function discoverByArtist(modules, seeds, config) {
 		updateProgress(`Fetching top tracks for ${candidates.length} artists from Last.fm...`, 0.5);
 		console.log(`Discovery [Artist]: Fetching top tracks for ${candidates.length} artists (${config.tracksPerArtist} per artist)`);
 		await fetchTracksForCandidates(modules, candidates, config);
-		
+
 		const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
 		updateProgress(`Last.fm: Retrieved ${totalTracks} tracks from ${candidates.length} artists`, 0.6);
 	}
@@ -355,7 +355,7 @@ async function discoverByGenre(modules, seeds, config) {
 			if (tagArtists && tagArtists.length > 0) {
 				totalArtistsFromTags += tagArtists.length;
 				updateProgress(`Last.fm: Found ${tagArtists.length} artists in "${tag}" genre`, progress);
-				
+
 				for (const artist of tagArtists) {
 					if (candidates.length >= maxCandidates) break;
 					if (artist?.name) {
@@ -375,7 +375,7 @@ async function discoverByGenre(modules, seeds, config) {
 	if (candidates.length > 0) {
 		updateProgress(`Fetching top tracks for ${candidates.length} genre artists...`, 0.7);
 		await fetchTracksForCandidates(modules, candidates, config);
-		
+
 		const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
 		updateProgress(`Last.fm: Retrieved ${totalTracks} tracks from ${candidates.length} artists`, 0.8);
 	}
@@ -535,7 +535,7 @@ async function discoverByMood(modules, seeds, config) {
 	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
 	//seeds = matchMonkeyHelpers.shuffle(seeds);
-	
+
 	console.log(`discoverByMood: Processing up to 5 of ${seeds.length} seed track(s)`);
 
 	const limitedSeeds = seeds.slice(0, 5);
@@ -543,7 +543,7 @@ async function discoverByMood(modules, seeds, config) {
 	// Step 1: Find track IDs
 	updateProgress(`ReccoBeats: Looking up ${limitedSeeds.length} tracks...`, 0.2);
 	console.log(`Discovery [Mood]: Looking up track IDs for ${limitedSeeds.length} seeds`);
-	
+
 	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
 
 	// Filter to found tracks
@@ -571,9 +571,10 @@ async function discoverByMood(modules, seeds, config) {
 	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
-		console.warn("Discovery [Mood]: No audio features found, using pure mood preset");
-		updateProgress(`Mood "${mood}": Using pure mood preset (no seed features)`, 0.35);
-		audioTargets = moodPreset;
+		//console.warn("Discovery [Mood]: No audio features found, using pure mood preset");
+		//updateProgress(`Mood "${mood}": Using pure mood preset (no seed features)`, 0.35);
+		//audioTargets = moodPreset;
+		return [];
 	} else {
 		updateProgress(`ReccoBeats: Blending ${audioFeatures.length} seed features with "${mood}" preset...`, 0.35);
 		console.log(`Discovery [Mood]: Blending ${audioFeatures.length} seed features with mood preset`);
@@ -588,9 +589,9 @@ async function discoverByMood(modules, seeds, config) {
 			moodPreset,
 			ratio
 		);
-		
-		console.log(`Discovery [Mood]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, valence: ${audioTargets.valence?.toFixed(2)}`);
-		updateProgress(`Mood "${mood}": Blended energy=${audioTargets.energy?.toFixed(2)}, valence=${audioTargets.valence?.toFixed(2)}`, 0.38);
+
+		// Log all requested audio target properties
+		logAudioTargets('Mood', mood, audioTargets, updateProgress);
 	}
 
 	updateProgress(`ReccoBeats: Finding "${mood}" tracks...`, 0.4);
@@ -646,7 +647,7 @@ async function discoverByActivity(modules, seeds, config) {
 	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
 	//seeds = matchMonkeyHelpers.shuffle(seeds);
-	
+
 	console.log(`discoverByActivity: Processing up to 5 of ${seeds.length} seed track(s)`);
 
 	const limitedSeeds = seeds.slice(0, 5);
@@ -654,7 +655,7 @@ async function discoverByActivity(modules, seeds, config) {
 	// Step 1: Find track IDs
 	updateProgress(`ReccoBeats: Looking up ${limitedSeeds.length} tracks...`, 0.2);
 	console.log(`Discovery [Activity]: Looking up track IDs for ${limitedSeeds.length} seeds`);
-	
+
 	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
 
 	// Filter to found tracks
@@ -682,9 +683,11 @@ async function discoverByActivity(modules, seeds, config) {
 	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
-		console.warn("Discovery [Activity]: No audio features found, using pure activity preset");
-		updateProgress(`Activity "${activity}": Using pure activity preset (no seed features)`, 0.35);
-		audioTargets = activityPreset;
+		//	console.warn("Discovery [Activity]: No audio features found, using pure activity preset");
+		//	updateProgress(`Activity "${activity}": Using pure activity preset (no seed features)`, 0.35);
+		//	audioTargets = activityPreset;
+		return [];
+
 	} else {
 		updateProgress(`ReccoBeats: Blending ${audioFeatures.length} seed features with "${activity}" preset...`, 0.35);
 		console.log(`Discovery [Activity]: Blending ${audioFeatures.length} seed features with activity preset`);
@@ -699,9 +702,9 @@ async function discoverByActivity(modules, seeds, config) {
 			activityPreset,
 			ratio
 		);
-		
-		console.log(`Discovery [Activity]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, tempo: ${audioTargets.tempo}`);
-		updateProgress(`Activity "${activity}": Blended energy=${audioTargets.energy?.toFixed(2)}, tempo=${audioTargets.tempo}`, 0.38);
+
+		// Log all requested audio target properties
+		logAudioTargets('Activity', activity, audioTargets, updateProgress);
 	}
 
 	updateProgress(`ReccoBeats: Finding "${activity}" tracks...`, 0.4);
@@ -923,7 +926,7 @@ async function fetchTracksForCandidates(modules, candidates, config) {
 					playcount: typeof t === 'object' ? (t.playcount || 0) : 0,
 					rank: typeof t === 'object' ? (t.rank || 0) : 0
 				})).filter(t => t.title);
-				
+
 				artistsWithTracks++;
 				totalTracksFound += candidate.tracks.length;
 			}
@@ -979,6 +982,49 @@ function getDiscoveryModeName(mode) {
 			return 'Activity';
 		case DISCOVERY_MODES.ARTIST:
 		default: return 'Similar';
+	}
+}
+
+/**
+ * Helper to format numeric audio target values safely.
+ */
+function _formatVal(v) {
+	if (v === null || v === undefined) return 'N/A';
+	if (typeof v === 'number') return Number.isFinite(v) ? v.toFixed(2) : String(v);
+	return String(v);
+}
+
+/**
+ * Log and push progress messages for audio target properties.
+ * Logs: energy, valence, danceability, tempo, loudness
+ * 
+ * @param {string} type - 'Mood' or 'Activity' (used in log)
+ * @param {string} name - mood/activity name
+ * @param {object} audioTargets - object containing audio target properties
+ * @param {function} updateProgress - function to update UI progress (optional)
+ */
+function logAudioTargets(type, name, audioTargets, updateProgress) {
+	try {
+		if (!audioTargets || typeof audioTargets !== 'object') {
+			console.log(`Discovery [${type}]: No audio targets available for "${name}"`);
+			if (typeof updateProgress === 'function') updateProgress(`${type} "${name}": No audio targets`, 0.38);
+			return;
+		}
+
+		const energy = _formatVal(audioTargets.energy);
+		const valence = _formatVal(audioTargets.valence);
+		const danceability = _formatVal(audioTargets.danceability);
+		const tempo = _formatVal(audioTargets.tempo);
+		const loudness = _formatVal(audioTargets.loudness);
+
+		const msg = `Blended targets - energy: ${energy}, valence: ${valence}, danceability: ${danceability}, tempo: ${tempo}, loudness: ${loudness}`;
+
+		console.log(`Discovery [${type}]: ${msg}`);
+		if (typeof updateProgress === 'function') {
+			updateProgress(`${type} "${name}": ${msg}`, 0.38);
+		}
+	} catch (e) {
+		console.warn(`logAudioTargets error: ${e.message}`);
 	}
 }
 

@@ -72,22 +72,19 @@ const AUDIO_FEATURE_NAMES = [
  * Audio feature targets for different moods.
  * Used when generating mood-based playlists without seed tracks.
  */
-/**
- * Audio feature targets for different moods.
- * Used when generating mood-based playlists without seed tracks.
- */
 const MOOD_AUDIO_TARGETS = {
-	// High-energy pop, EDM, pop-rock, upbeat indie. Fast, bright, motivational.
+	// High-energy pop, EDM, pop-rock, upbeat indie.
 	energetic: {
 		energy: 0.8,
 		valence: 0.7,
 		danceability: 0.7,
 		speechiness: 0.10,
 		loudness: -6,
+		liveness: 0.1,
 		tempo: 130
 	},
 
-	// Chill indie, soft pop, acoustic, mellow electronic. Smooth, calm, laid-back.
+	// Chill indie, soft pop, acoustic, mellow electronic.
 	relaxed: {
 		energy: 0.3,
 		valence: 0.5,
@@ -95,20 +92,22 @@ const MOOD_AUDIO_TARGETS = {
 		acousticness: 0.5,
 		instrumentalness: 0.2,
 		speechiness: 0.05,
+		liveness: 0.1,
 		tempo: 80
 	},
 
-	// Feel-good pop, upbeat indie, dance-pop. Bright, cheerful, catchy.
+	// Feel-good pop, upbeat indie, dance-pop.
 	happy: {
 		energy: 0.6,
 		valence: 0.9,
 		danceability: 0.6,
 		acousticness: 0.2,
 		speechiness: 0.10,
+		loudness: -5,
 		tempo: 115
 	},
 
-	// Emotional ballads, soft acoustic, mellow indie, sad pop. Slow, reflective, gentle.
+	// Emotional ballads, soft acoustic, mellow indie.
 	sad: {
 		energy: 0.3,
 		valence: 0.2,
@@ -116,10 +115,11 @@ const MOOD_AUDIO_TARGETS = {
 		acousticness: 0.6,
 		instrumentalness: 0.15,
 		speechiness: 0.05,
+		loudness: -10,
 		tempo: 70
 	},
 
-	// Ambient electronic, downtempo, lo-fi beats, minimal techno. Steady, unobtrusive, focus-friendly.
+	// Ambient electronic, downtempo, lo-fi beats.
 	focused: {
 		energy: 0.4,
 		valence: 0.4,
@@ -127,40 +127,44 @@ const MOOD_AUDIO_TARGETS = {
 		instrumentalness: 0.6,
 		acousticness: 0.4,
 		speechiness: 0.05,
+		loudness: -10,
 		tempo: 95
 	},
 
-	// hard rock, metalcore, punk, aggressive alt-rock, rap, EDM, hip-hop, alt. Loud, intense, driving.
+	// Hard rock, metalcore, punk, aggressive alt-rock, rap, EDM.
 	angry: {
 		energy: 0.9,
 		valence: 0.2,
 		danceability: 0.5,
 		speechiness: 0.15,
+		acousticness: 0.05,
 		loudness: -7,
 		tempo: 120
 	},
 
-	// Soft pop, R&B, acoustic love songs, smooth indie. Warm, intimate, slow-mid tempo.
+	// Soft pop, R&B, acoustic love songs.
 	romantic: {
 		energy: 0.4,
 		valence: 0.6,
 		danceability: 0.4,
 		acousticness: 0.5,
 		speechiness: 0.05,
+		loudness: -8,
 		tempo: 90
 	},
 
-	// Uplifting pop, indie-pop, cinematic pop, inspirational EDM. Bright, emotional, feel-good.
+	// Uplifting pop, indie-pop, cinematic pop, inspirational EDM.
 	uplifting: {
 		energy: 0.7,
 		valence: 0.8,
 		danceability: 0.5,
 		acousticness: 0.3,
 		speechiness: 0.05,
+		loudness: -6,
 		tempo: 120
 	},
 
-	// Dark pop, alt-electronic, moody indie, atmospheric rock. Brooding, shadowy, dramatic.
+	// Dark pop, alt-electronic, moody indie.
 	dark: {
 		energy: 0.5,
 		valence: 0.2,
@@ -168,6 +172,7 @@ const MOOD_AUDIO_TARGETS = {
 		acousticness: 0.4,
 		instrumentalness: 0.3,
 		speechiness: 0.05,
+		loudness: -8,
 		tempo: 100
 	}
 };
@@ -177,7 +182,7 @@ const MOOD_AUDIO_TARGETS = {
  * Used when generating activity-based playlists without seed tracks.
  */
 const ACTIVITY_AUDIO_TARGETS = {
-	// High-energy EDM, hip-hop, pop, rock. Fast, loud, motivating.
+	// High-energy EDM, hip-hop, pop, rock.
 	workout: {
 		energy: 0.9,
 		danceability: 0.8,
@@ -186,16 +191,17 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 140
 	},
 
-	// Lo-fi beats, ambient, soft electronic, instrumental study music. Calm, steady, non-distracting.
+	// Lo-fi beats, ambient, soft electronic.
 	study: {
 		energy: 0.3,
 		instrumentalness: 0.7,
 		acousticness: 0.6,
 		speechiness: 0.05,
+		liveness: 0.1,
 		tempo: 85
 	},
 
-	// Dance-pop, EDM, club tracks, upbeat hip-hop. Fun, bright, high-danceability.
+	// Dance-pop, EDM, club tracks.
 	party: {
 		energy: 0.8,
 		valence: 0.8,
@@ -205,7 +211,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 125
 	},
 
-	// Ambient, soft acoustic, sleep playlists, gentle drones. Slow, quiet, soothing.
+	// Ambient, soft acoustic, sleep playlists.
 	sleep: {
 		energy: 0.1,
 		acousticness: 0.75,
@@ -215,7 +221,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 60
 	},
 
-	// Driving pop, alt-rock, synth-pop, road trip indie. Steady, melodic, mid-energy.
+	// Driving pop, alt-rock, synth-pop.
 	driving: {
 		energy: 0.6,
 		valence: 0.6,
@@ -225,7 +231,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 110
 	},
 
-	// Meditation/ambient soundscapes, drones, soft acoustic. Very calm, minimal, atmospheric.
+	// Meditation/ambient soundscapes.
 	meditation: {
 		energy: 0.2,
 		acousticness: 0.85,
@@ -235,7 +241,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 60
 	},
 
-	// Chill pop, upbeat indie, soft electronic. Pleasant background energy for cooking.
+	// Chill pop, upbeat indie, soft electronic.
 	cooking: {
 		energy: 0.5,
 		valence: 0.7,
@@ -245,7 +251,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 100
 	},
 
-	// Upbeat pop, dance-pop, rhythmic indie, funky grooves. Motivating, bouncy, fun.
+	// Upbeat pop, dance-pop, rhythmic indie.
 	cleaning: {
 		energy: 0.75,
 		valence: 0.7,
@@ -255,7 +261,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 125
 	},
 
-	// Indie-pop, soft electronic, light rock, feel-good mid-tempo. Smooth, steady walking pace.
+	// Indie-pop, soft electronic, light rock.
 	walking: {
 		energy: 0.55,
 		valence: 0.6,
@@ -265,7 +271,7 @@ const ACTIVITY_AUDIO_TARGETS = {
 		tempo: 115
 	},
 
-	// Minimal electronic, downtempo, ambient techno, lo-fi. Focused, repetitive, non-intrusive.
+	// Minimal electronic, downtempo, ambient techno.
 	coding: {
 		energy: 0.35,
 		valence: 0.35,
@@ -591,7 +597,7 @@ async function findAlbumInArtist(artistId, albumName) {
 	while (page < maxPages && page < maxPagesLimit) {
 		try {
 			const url = `${RECCOBEATS_API_BASE}/artist/${artistId}/album?page=${page}&size=${size}`;
-			console.log(`findAlbumInArtist: GET ${url}`);
+			//console.log(`findAlbumInArtist: GET ${url}`);
 
 			const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -726,7 +732,7 @@ async function getAlbumTracks(albumId) {
 
 	try {
 		const url = `${RECCOBEATS_API_BASE}/album/${albumId}/track`;
-		console.log(`getAlbumTracks: GET ${url}`);
+		//console.log(`getAlbumTracks: GET ${url}`);
 
 		const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -903,7 +909,7 @@ async function fetchTrackAudioFeatures(trackId) {
 	try {
 		// Use the single track audio-features endpoint
 		const url = `${RECCOBEATS_API_BASE}/track/${trackId}/audio-features`;
-		console.log(`fetchTrackAudioFeatures: GET ${url}`);
+		//console.log(`fetchTrackAudioFeatures: GET ${url}`);
 
 		const res = await rateLimitedFetch(url, { method: 'GET', headers });
 
@@ -964,6 +970,7 @@ async function getAudioFeatures(foundTracks) {
 	return audioFeatures;
 }
 
+
 /**
  * Conditionally blends seed features with mood features.
  *
@@ -973,29 +980,52 @@ async function getAudioFeatures(foundTracks) {
  *
  * @returns {Object} blended feature object
  */
-
 function blendFeatures(seedAvg, moodPreset, blendRatio) {
 	const result = {};
-
-	// Only keep properties defined in the template
 	const templateKeys = Object.keys(moodPreset);
+
+	// Debug collector
+	const debug = {
+		seedAvg,
+		moodPreset,
+		blendRatio,
+		keys: {},
+		final: null
+	};
 
 	for (const key of templateKeys) {
 		const seedHas = key in seedAvg;
 		const moodHas = key in moodPreset;
 
-		// Shared property → weighted blend
 		if (seedHas && moodHas) {
-			result[key] =
+			const blended =
 				seedAvg[key] * (1 - blendRatio) +
 				moodPreset[key] * blendRatio;
+
+			result[key] = blended;
+
+			debug.keys[key] = {
+				type: "blended",
+				seedValue: seedAvg[key],
+				moodValue: moodPreset[key],
+				blendRatio,
+				finalValue: blended
+			};
 		}
 
-		// Template-only property → keep template value
 		else if (moodHas) {
 			result[key] = moodPreset[key];
+
+			debug.keys[key] = {
+				type: "template-only",
+				moodValue: moodPreset[key],
+				finalValue: moodPreset[key]
+			};
 		}
 	}
+
+	debug.final = result;
+	console.info("blendFeatures DEBUG:", debug);
 
 	return result;
 }
@@ -1012,7 +1042,6 @@ function calculateAverageFeatures(features) {
 		return {};
 	}
 
-	// Features that strongly influence similarity
 	const CORE_FEATURES = [
 		'energy',
 		'valence',
@@ -1021,7 +1050,6 @@ function calculateAverageFeatures(features) {
 		'loudness'
 	];
 
-	// Features included only if consistent across seeds
 	const CONDITIONAL_FEATURES = [
 		'acousticness',
 		'instrumentalness',
@@ -1031,14 +1059,13 @@ function calculateAverageFeatures(features) {
 
 	const result = {};
 
-	// Debug collector
 	const debug = {
+		inputCount: features.length,
 		core: {},
 		conditional: {},
 		final: null
 	};
 
-	// Helper: average a feature
 	const avg = (name) => {
 		const vals = features
 			.map(f => f[name])
@@ -1048,13 +1075,13 @@ function calculateAverageFeatures(features) {
 		return vals.reduce((a, b) => a + b, 0) / vals.length;
 	};
 
-	// 1. Average core features
+	// Core features
 	for (const name of CORE_FEATURES) {
 		const value = avg(name);
 
 		if (value !== undefined) {
 			const finalValue = name === 'tempo'
-				? Math.round(value / 5) * 5 // round tempo to nearest 5 BPM
+				? Math.round(value / 5) * 5
 				: value;
 
 			result[name] = finalValue;
@@ -1072,7 +1099,7 @@ function calculateAverageFeatures(features) {
 		}
 	}
 
-	// 2. Add conditional features only if consistent
+	// Conditional features
 	for (const name of CONDITIONAL_FEATURES) {
 		const vals = features
 			.map(f => f[name])
@@ -1113,13 +1140,10 @@ function calculateAverageFeatures(features) {
 	}
 
 	debug.final = result;
-
-	console.debug("calculateAverageFeatures DEBUG:", debug);
+	console.info("calculateAverageFeatures DEBUG:", debug);
 
 	return result;
 }
-
-//*/
 
 function getLogAudioFeatures(audioFeatures) {
 	const fmt = (v, digits = 2) => {
