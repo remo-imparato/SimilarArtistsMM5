@@ -5,7 +5,7 @@
  * Handles prefix variations (e.g., "The Beatles" vs "Beatles, The")
  * and fuzzy title matching with punctuation/whitespace normalization.
  * 
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';

@@ -1,19 +1,23 @@
-/**
+﻿/**
  * MatchMonkey Add-on for MediaMonkey 5
  * 
  * Complete refactored implementation using modular architecture.
- * Supports three discovery modes:
- * - Artist-based: Find similar artists (artist.getSimilar API)
- * - Track-based: Find similar tracks (track.getSimilar API)
- * - Genre-based: Find artists in same genre (tag.getTopArtists API)
+ * Supports multiple discovery modes:
+ * - Artist-based: Find similar artists (Last.fm artist.getSimilar API)
+ * - Track-based: Find similar tracks (Last.fm track.getSimilar API)
+ * - Genre-based: Find artists in same genre (Last.fm tag.getTopArtists API)
+ * - Recco-based: Find similar tracks using ReccoBeats (requires seed tracks)
+ * - Mood-based: Find tracks matching mood profiles
+ * - Activity-based: Find tracks matching activity profiles
  * 
  * @author Remo Imparato
- * @version 2.1.0
- * @description Generates playlists or queues tracks from similar artists/tracks/genres using Last.fm API.
- *              Supports automatic mode to queue similar tracks when approaching end of playlist.
+ * @version 2.2.0
+ * @description Generates playlists or queues tracks from similar artists/tracks/genres using Last.fm API
+ *              and ReccoBeats. Supports automatic mode to queue similar tracks when approaching
+ *              end of playlist.
  * 
  * @repository https://github.com/remo-imparato/SimilarArtistsMM5
- * @license MIT
+
  */
 
 (function(globalArg) {
@@ -85,17 +89,23 @@
 		// ============================================================================
 		// DISCOVERY MODES
 		// ============================================================================
-		
+
 		/**
-		 * Discovery mode types
-		 * - 'artist': Use artist.getSimilar to find similar artists
-		 * - 'track': Use track.getSimilar to find musically similar tracks
-		 * - 'genre': Use tag.getTopArtists to find artists in same genre
+		 * Discovery mode types:
+		 * - 'artist': Use Last.fm artist.getSimilar to find similar artists
+		 * - 'track': Use Last.fm track.getSimilar to find musically similar tracks
+		 * - 'genre': Use Last.fm tag.getTopArtists to find artists in same genre
+		 * - 'acoustics': Use ReccoBeats to find recommendations based on seed tracks
+		 * - 'mood': Use predefined mood audio profiles
+		 * - 'activity': Use predefined activity audio profiles
 		 */
 		const DISCOVERY_MODES = {
 			ARTIST: 'artist',
 			TRACK: 'track',
-			GENRE: 'genre'
+			GENRE: 'genre',
+			ACOUSTICS: 'acoustics',
+			MOOD: 'mood',
+			ACTIVITY: 'activity'
 		};
 
 		// ============================================================================
@@ -108,10 +118,12 @@
 		 * Main entry point for all action handlers.
 		 * 
 		 * @param {boolean} [autoModeFlag=false] - Whether running in auto-mode
-		 * @param {string} [discoveryMode='artist'] - Discovery mode: 'artist', 'track', or 'genre'
+		 * @param {string} [discoveryMode='artist'] - Discovery mode constant
+		 * @param {object} [options={}] - Additional options
+		 * @param {string} [options.moodActivityValue] - Specific mood or activity value to use
 		 * @returns {Promise<object>} Result from orchestration
 		 */
-		async function runMatchMonkey(autoModeFlag = false, discoveryMode = DISCOVERY_MODES.ARTIST) {
+		async function runMatchMonkey(autoModeFlag = false, discoveryMode = DISCOVERY_MODES.ARTIST, options = {}) {
 			try {
 				// Validate discovery mode
 				const validModes = Object.values(DISCOVERY_MODES);
@@ -120,9 +132,36 @@
 					discoveryMode = DISCOVERY_MODES.ARTIST;
 				}
 				
-				console.log(`Match Monkey: Running (autoMode=${autoModeFlag}, discoveryMode=${discoveryMode})`);
+				console.log(`Match Monkey: Running (autoMode=${autoModeFlag}, discoveryMode=${discoveryMode}, options=${JSON.stringify(options)})`);
 				
-				const result = await orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode);
+				// Build enriched modules with mood/activity context if specified
+				let enrichedModules = modules;
+				
+				// Handle mood/activity modes with optional value override
+				if (discoveryMode === DISCOVERY_MODES.MOOD || discoveryMode === DISCOVERY_MODES.ACTIVITY) {
+					const { getSetting } = storage;
+					const context = discoveryMode === DISCOVERY_MODES.MOOD ? 'mood' : 'activity';
+					
+					// Use provided value or fall back to settings default
+					let value = options.moodActivityValue;
+					if (!value) {
+						value = context === 'mood' 
+							? getSetting('DefaultMood', 'energetic')
+							: getSetting('DefaultActivity', 'workout');
+					}
+					
+					enrichedModules = {
+						...modules,
+						_moodActivityContext: {
+							context,
+							value
+						}
+					};
+					
+					console.log(`Match Monkey: Using ${context} "${value}"`);
+				}
+				
+				const result = await orchestration.generateSimilarPlaylist(enrichedModules, autoModeFlag, discoveryMode);
 				
 				if (result.success) {
 					console.log(`Match Monkey: Success - added ${result.tracksAdded} tracks`);
@@ -134,7 +173,6 @@
 
 			} catch (e) {
 				console.error(`Match Monkey: Error in runMatchMonkey: ${e.toString()}`);
-				// Don't throw - return error result instead
 				return {
 					success: false,
 					error: e.message || String(e),
@@ -155,7 +193,7 @@
 				const currentState = autoMode.isAutoModeEnabled(getSetting);
 				const newState = !currentState;
 				
-				setSetting('OnPlay', newState);
+				setSetting('AutoModeEnabled', newState);
 				console.log(`Match Monkey: Auto-mode setting changed from ${currentState} to ${newState}`);
 				
 				if (!appState.autoModeState) {
@@ -197,6 +235,46 @@
 			}
 		}
 
+		/**
+		 * Run mood/activity-based playlist generation (convenience function).
+		 * 
+		 * @param {string} [mood] - Target mood (e.g., 'energetic', 'relaxed')
+		 * @param {string} [activity] - Target activity (e.g., 'workout', 'study')
+		 * @returns {Promise<object>} Result from orchestration
+		 */
+		async function runMoodActivityPlaylist(mood, activity) {
+			try {
+				const { getSetting } = storage;
+				
+				// Determine context and value
+				let discoveryMode, value;
+				
+				if (mood) {
+					discoveryMode = DISCOVERY_MODES.MOOD;
+					value = mood;
+				} else if (activity) {
+					discoveryMode = DISCOVERY_MODES.ACTIVITY;
+					value = activity;
+				} else {
+					// Use defaults from settings
+					discoveryMode = DISCOVERY_MODES.MOOD;
+					value = getSetting('DefaultMood', 'energetic');
+				}
+				
+				console.log(`Match Monkey: Running ${discoveryMode} playlist (${value})`);
+				
+				return await runMatchMonkey(false, discoveryMode, { moodActivityValue: value });
+				
+			} catch (e) {
+				console.error(`Match Monkey: Error in runMoodActivityPlaylist: ${e.toString()}`);
+				return {
+					success: false,
+					error: e.message || String(e),
+					tracksAdded: 0,
+				};
+			}
+		}
+
 		// ============================================================================
 		// AUTO-MODE SETUP
 		// ============================================================================
@@ -205,7 +283,6 @@
 
 		/**
 		 * Clear the cached auto trigger handler so it gets recreated with new settings.
-		 * Called when settings change to pick up new AutoMode value.
 		 */
 		function clearAutoTriggerHandlerCache() {
 			cachedAutoTriggerHandler = null;
@@ -215,57 +292,76 @@
 		function createAutoTriggerHandler() {
 			if (cachedAutoTriggerHandler) return cachedAutoTriggerHandler;
 
-			const { getSetting } = storage;
+			const { getSetting, intSetting } = storage;
 			const { showToast } = modules.ui.notifications;
+
+			// Read threshold from settings
+			const threshold = intSetting('AutoModeSeedLimit', 2);
 
 			cachedAutoTriggerHandler = autoMode.createAutoTriggerHandler({
 				getSetting,
-				// Auto-mode uses the discovery mode configured in settings (AutoMode)
-				// Options: 'Artist', 'Track', or 'Genre'
-				// If a discoveryMode is explicitly provided (for retries), use that instead
-				generateSimilarPlaylist: (autoModeFlag, discoveryMode) => {
+				generateSimilarPlaylist: (autoModeFlag, discoveryMode, thresholdParam) => {
+					// Use provided threshold or fall back to settings
+					const actualThreshold = typeof thresholdParam === 'number' ? thresholdParam : threshold;
+					
 					// If discoveryMode is explicitly provided (e.g., from retry logic), use it
 					if (discoveryMode) {
 						console.log(`Match Monkey Auto-Mode: Using explicit discovery mode: ${discoveryMode}`);
-						return orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode);
+						return orchestration.generateSimilarPlaylist(modules, autoModeFlag, discoveryMode, actualThreshold);
 					}
-					
-					// Otherwise, read from settings
-					const autoModeSetting = getSetting('AutoMode', 'Track');
-					let mode = DISCOVERY_MODES.TRACK; // Default to track-based
-					
-					// Map setting value to discovery mode constant
-					if (autoModeSetting === 'Artist') {
-						mode = DISCOVERY_MODES.ARTIST;
-					} else if (autoModeSetting === 'Genre') {
-						mode = DISCOVERY_MODES.GENRE;
-					} else {
-						mode = DISCOVERY_MODES.TRACK;
-					}
-					
-					console.log(`Match Monkey Auto-Mode: Using ${autoModeSetting} discovery from settings (mode=${mode})`);
-					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, mode);
+
+					// Otherwise, read from settings and normalize to lowercase
+					const autoModeSetting = getSetting('AutoModeDiscovery', 'track');
+					const mode = autoModeSetting.toLowerCase(); // ✅ Normalize to lowercase
+
+					console.log(`Match Monkey Auto-Mode: Using ${mode} discovery from settings`);
+					return orchestration.generateSimilarPlaylist(modules, autoModeFlag, mode, actualThreshold);
 				},
 				showToast,
 				isAutoModeEnabled: () => autoMode.isAutoModeEnabled(getSetting),
-				threshold: 2,
+				threshold,
 				logger: console.log,
-				// Pass the mode name getter for toast messages
 				getModeName: () => {
-					const autoModeSetting = getSetting('AutoMode', 'Track');
-					if (autoModeSetting === 'Artist') return 'Similar Artists';
-					if (autoModeSetting === 'Genre') return 'Similar Genre';
-					return 'Similar Tracks';
+					// Use centralized display name function
+					const autoModeSetting = getSetting('AutoModeDiscovery', 'track');
+					return getDiscoveryModeDisplayName(autoModeSetting.toLowerCase());
 				},
 			});
 
 			return cachedAutoTriggerHandler;
 		}
 
+		/**
+		 * Get human-readable display name for discovery mode.
+		 * Centralized function to ensure consistency.
+		 * 
+		 * @param {string} mode - Discovery mode (lowercase)
+		 * @returns {string} Display name
+		 */
+		function getDiscoveryModeDisplayName(mode) {
+			const normalized = String(mode || '').toLowerCase();
+			switch (normalized) {
+				case 'artist':
+					return 'Similar Artists';
+				case 'track':
+					return 'Similar Tracks';
+				case 'genre':
+					return 'Similar Genre';
+				case 'acoustics':
+					return 'Similar Acoustics';
+				case 'mood':
+					return 'Mood';
+				case 'activity':
+					return 'Activity';
+				default:
+					return 'Similar';
+			}
+		}
+
 		function initializeAutoMode() {
 			try {
 				const { getSetting } = storage;
-				const autoModeSetting = getSetting('AutoMode', 'Track');
+				const autoModeSetting = getSetting('AutoModeDiscovery', 'Track');
 				console.log(`Match Monkey: Initializing auto-mode (configured for ${autoModeSetting} discovery)`);
 
 				const handler = createAutoTriggerHandler();
@@ -289,7 +385,6 @@
 					autoMode.shutdownAutoMode(appState.autoModeState, console.log);
 					appState.autoModeState = null;
 				}
-				// Clear the cached handler on shutdown
 				clearAutoTriggerHandlerCache();
 			} catch (e) {
 				console.error(`Match Monkey: Error shutting down auto-mode: ${e.toString()}`);
@@ -325,7 +420,6 @@
 			try {
 				const { getSetting } = storage;
 
-				// Clear cached handler so it picks up new AutoMode setting
 				clearAutoTriggerHandlerCache();
 
 				if (!appState.autoModeState) {
@@ -425,6 +519,7 @@
 			start,
 			shutdown,
 			runMatchMonkey,
+			runMoodActivityPlaylist,
 			toggleAuto,
 			isAutoEnabled,
 

@@ -1,7 +1,7 @@
 /**
  * MatchMonkey Options Panel for MediaMonkey 5
  * 
- * MediaMonkey 5 API Only
+
  * 
  * @author Remo Imparato
  * @version 2.1.0
@@ -22,6 +22,10 @@
  * - PreferHighQuality -> PreferHighQuality
  * - MinRating -> MinRating
  * - IncludeUnrated -> IncludeUnrated
+ * - DefaultMood -> DefaultMood
+ * - DefaultActivity -> DefaultActivity
+ * - HybridMode -> HybridMode
+ * - MoodActivityBlendRatio -> MoodActivityBlendRatio (0-100 slider -> 0.0-1.0 ratio)
  * - AutoModeEnabled -> AutoModeEnabled
  * - AutoModeDiscovery -> AutoModeDiscovery
  * - AutoModeSeedLimit -> AutoModeSeedLimit
@@ -36,7 +40,7 @@
  * - GenreBlacklist -> GenreBlacklist
  * - TitleExclusions -> TitleExclusions
  * 
- * @license MIT
+
  */
 
 'use strict';
@@ -79,17 +83,12 @@ function setSetting(key, value) {
  */
 optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, pnl, wndParams) {
 	try {
-		// Read configuration from system storage
-		this.config = app.getValue(SCRIPT_ID, {});
 
-		// Verify config exists
-		if (!this.config || Object.keys(this.config).length === 0) {
-			console.warn('Match Monkey Options: No configuration found');
-			return;
-		}
+		// Read configuration from system storage (may be empty)
+		this.config = app.getValue(SCRIPT_ID, {}) || {};
+		const cfg = this.config || {};
 
 		const UI = getAllUIElements(pnl);
-		const cfg = this.config;
 
 		// === Playlist Creation ===
 		UI.PlaylistName.controlClass.value = cfg.PlaylistName || '- Similar to %';
@@ -112,9 +111,17 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, 
 		this._setRatingControl(UI.MinRating, ratingValue);
 		UI.IncludeUnrated.controlClass.checked = cfg.IncludeUnrated !== false; // Default true
 
-		// === Auto-Mode ===
+		// === Mood & Activity (ReccoBeats) ===
+		UI.DefaultMood.controlClass.value = cfg.DefaultMood || 'energetic';
+		UI.DefaultActivity.controlClass.value = cfg.DefaultActivity || 'workout';
+		// Blend ratio: stored as 0.0-1.0, displayed as 0-100%
+		const blendRatioPercent = Math.round((cfg.MoodActivityBlendRatio ?? 0.5) * 100);
+		UI.MoodActivityBlendRatio.controlClass.value = blendRatioPercent;
+
+		// === Auto-Mode Settings ===
 		this._setupAutoModeCheckbox(UI.AutoModeEnabled);
-		UI.AutoModeDiscovery.controlClass.value = cfg.AutoModeDiscovery || 'Track';
+		UI.AutoModeEnabled.controlClass.checked = cfg.AutoModeEnabled || false;
+		UI.AutoModeDiscovery.controlClass.value = cfg.AutoModeDiscovery || 'Similar Artist';
 		UI.AutoModeSeedLimit.controlClass.value = cfg.AutoModeSeedLimit || 2;
 		UI.AutoModeSimilarLimit.controlClass.value = cfg.AutoModeSimilarLimit || 10;
 		UI.AutoModeTracksPerArtist.controlClass.value = cfg.AutoModeTracksPerArtist || 5;
@@ -126,16 +133,17 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.load = async function (sett, 
 		UI.ClearQueueFirst.controlClass.checked = Boolean(cfg.ClearQueueFirst);
 		UI.NavigateAfter.controlClass.value = cfg.NavigateAfter || 'Navigate to new playlist';
 
-		// === Filters ===
+		// === Filters (Advanced) ===
 		UI.ArtistBlacklist.controlClass.value = cfg.ArtistBlacklist || '';
 		UI.GenreBlacklist.controlClass.value = cfg.GenreBlacklist || '';
 		UI.TitleExclusions.controlClass.value = cfg.TitleExclusions || '';
+
+		console.log('Match Monkey Options: Settings loaded successfully');
 
 	} catch (e) {
 		console.error('Match Monkey Options: load error:', e.toString());
 	}
 };
-
 /**
  * Helper to set rating control value.
  */
@@ -173,7 +181,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setRatingControl = function 
  * Helper to setup auto-mode checkbox with change listener.
  */
 optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = function (uiCheckbox) {
-	// Set initial state
+	// Set initial state from addon if available, otherwise from config
 	try {
 		if (window.matchMonkey?.isAutoEnabled) {
 			uiCheckbox.controlClass.checked = Boolean(window.matchMonkey.isAutoEnabled());
@@ -184,13 +192,13 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 		uiCheckbox.controlClass.checked = Boolean(this.config.AutoModeEnabled);
 	}
 
-	// Change handler
+	// Change handler - syncs with addon
 	const onCheckboxChanged = () => {
 		try {
 			const desired = Boolean(uiCheckbox.controlClass.checked);
 			setSetting('AutoModeEnabled', desired);
 
-			// Sync with addon
+			// Sync with addon if available
 			if (window.matchMonkey?.toggleAuto) {
 				const current = Boolean(window.matchMonkey.isAutoEnabled?.());
 				if (current !== desired) {
@@ -216,7 +224,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey._setupAutoModeCheckbox = func
 		}
 	}
 
-	// Listen for auto-mode changes from other sources
+	// Listen for auto-mode changes from other sources (toolbar button, etc.)
 	const onAutoModeChanged = (event) => {
 		try {
 			if (event.detail?.enabled !== undefined) {
@@ -270,6 +278,13 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 		this.config.MinRating = rawRating;
 		this.config.IncludeUnrated = UI.IncludeUnrated.controlClass.checked;
 
+		// === Mood & Activity (ReccoBeats) ===
+		this.config.DefaultMood = UI.DefaultMood.controlClass.value || 'energetic';
+		this.config.DefaultActivity = UI.DefaultActivity.controlClass.value || 'workout';
+		// Convert slider percentage (0-100) to ratio (0.0-1.0)
+		const blendRatioPercent = parseInt(UI.MoodActivityBlendRatio.controlClass.value, 10) || 50;
+		this.config.MoodActivityBlendRatio = Math.max(0, Math.min(100, blendRatioPercent)) / 100.0;
+
 		// === Auto-Mode ===
 		// Get auto-mode state from addon if available, otherwise from checkbox
 		let autoEnabled = false;
@@ -283,7 +298,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 			autoEnabled = Boolean(UI.AutoModeEnabled.controlClass.checked);
 		}
 		this.config.AutoModeEnabled = autoEnabled;
-		this.config.AutoModeDiscovery = UI.AutoModeDiscovery.controlClass.value || 'Track';
+		this.config.AutoModeDiscovery = UI.AutoModeDiscovery.controlClass.value || 'Similar Artist';
 		this.config.AutoModeSeedLimit = parseInt(UI.AutoModeSeedLimit.controlClass.value, 10) || 2;
 		this.config.AutoModeSimilarLimit = parseInt(UI.AutoModeSimilarLimit.controlClass.value, 10) || 10;
 		this.config.AutoModeTracksPerArtist = parseInt(UI.AutoModeTracksPerArtist.controlClass.value, 10) || 5;
@@ -303,7 +318,7 @@ optionPanels.pnl_Library.subPanels.pnl_MatchMonkey.save = function (sett) {
 		// Save all settings
 		try {
 			app.setValue(SCRIPT_ID, this.config);
-			console.log('Match Monkey Options: Settings saved');
+			console.log('Match Monkey Options: Settings saved successfully');
 		} catch (e) {
 			console.error('Match Monkey Options: Failed to save:', e.toString());
 		}

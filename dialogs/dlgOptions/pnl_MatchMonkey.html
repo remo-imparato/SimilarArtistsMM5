@@ -1,234 +1,278 @@
-﻿<!--
-	MatchMonkey Options Panel for MediaMonkey 5
+﻿<div data-id="SimilarArtistsSettings" class="innerDlg">
 
-	@author Remo Imparato
-	@description Configuration UI for MatchMonkey add-on in Tools > Options > Library
-	
-	Config Property Names:
-	- PlaylistName: Playlist name template (% = artist name)
-	- PlaylistMode: Create new / Overwrite / Do not create
-	- ParentPlaylist: Name of parent playlist to organize results under
-	- SimilarArtistsLimit: Max similar artists per seed from Last.fm
-	- TracksPerArtist: Max tracks to fetch per artist from library
-	- MaxPlaylistTracks: Final output limit (0 = unlimited)
-	- IncludeSeedArtist: Include original seed artist
-	- UseLastfmRanking: Sort by Last.fm popularity
-	- PreferHighQuality: Prefer higher bitrate/rating versions
-	- ShuffleResults: Randomize final playlist
-	- ShowConfirmDialog: Show playlist selection dialog
-	- MinRating: Minimum track rating (0-100)
-	- IncludeUnrated: Include tracks without ratings
-	- ArtistBlacklist: Comma-separated blacklisted artists
-	- GenreBlacklist: Comma-separated blacklisted genres
-	- TitleExclusions: Comma-separated title words to exclude
-	- NavigateAfter: Navigate to new playlist / now playing / none
-	- EnqueueMode: Add to Now Playing instead of creating playlist
-	- ClearQueueFirst: Clear Now Playing before adding
-	- SkipDuplicates: Skip tracks already in Now Playing
-	- AutoModeEnabled: Enable auto-queue when playlist ends
-	- AutoModeDiscovery: Auto-mode discovery type (Artist/Track/Genre)
-	- AutoModeSeedLimit: Seeds to process in auto-mode
-	- AutoModeSimilarLimit: Similar artists per seed in auto-mode
-	- AutoModeTracksPerArtist: Tracks per artist in auto-mode
-	- AutoModeMaxTracks: Max tracks to add in auto-mode
--->
+	<!-- TWO COLUMN WRAPPER -->
+	<div style="display:flex; gap:1.5em; width:100%; align-items:flex-start;">
 
-<div data-id="SimilarArtistsSettings" class="innerDlg">
+		<!-- LEFT COLUMN -->
+		<div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1em;">
 
-	<!-- Playlist Creation Settings -->
-	<fieldset>
-		<legend>Playlist creation</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<label class="inline">Playlist name:</label>
-				<div data-id="PlaylistName"
-					 data-control-class="Edit"
-					 data-tip="Template for playlist name. Use % as placeholder for the seed artist name."
-					 data-init-params='{"hint":"Use % for artist name"}'></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">Parent playlist:</label>
-				<div data-id="ParentPlaylist"
-					 data-control-class="Edit"
-					 data-tip="Optional: Name of a parent playlist to organize results under. New playlists will be created as children. Leave blank for root level."
-					 data-init-params='{"hint":"Leave blank for root level"}'></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">Playlist creation:</label>
-				<div data-id="PlaylistMode" data-control-class="Dropdown" data-tip="How to handle playlist creation when running manually">
-					<option>Create new playlist</option>
-					<option>Overwrite existing playlist</option>
-					<option>Do not create playlist</option>
+			<!-- Playlist Creation -->
+			<fieldset>
+				<legend>Playlist creation</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<label class="inline">Playlist name:</label>
+						<div data-id="PlaylistName"
+							 data-control-class="Edit"
+							 data-tip="Template for playlist name. Use % as placeholder for the seed artist name."
+							 data-init-params='{"hint":"Use % for artist name"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Parent playlist:</label>
+						<div data-id="ParentPlaylist"
+							 data-control-class="Edit"
+							 data-tip="Optional: Name of a parent playlist to organize results under. Leave blank to place results at root."
+							 data-init-params='{"hint":"Leave blank for root level"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Playlist creation:</label>
+						<div data-id="PlaylistMode" data-control-class="Dropdown" data-tip="Choose whether to create a new playlist, overwrite an existing one, or skip playlist creation.">
+							<option>Create new playlist</option>
+							<option>Overwrite existing playlist</option>
+							<option>Do not create playlist</option>
+						</div>
+					</div>
+					<div class="uiRow">
+						<div data-id="ShowConfirmDialog" data-control-class="Checkbox" data-tip="Show a confirmation dialog before creating or modifying a playlist.">Show confirmation prompt?</div>
+					</div>
+					<div class="uiRow">
+						<div data-id="ShuffleResults" data-control-class="Checkbox" data-tip="Randomly shuffle the results before adding them to the playlist or queue.">Shuffle results?</div>
+					</div>
+					<div class="uiRow">
+						<div data-id="IncludeSeedArtist" data-control-class="Checkbox" data-tip="Include tracks from the seed artist(s) in the results (useful to keep the original artist in the list).">Include seed artist?</div>
+					</div>
 				</div>
-			</div>
-			<div class="uiRow">
-				<div data-id="ShowConfirmDialog" data-control-class="Checkbox" data-tip="Show a dialog to select or create a playlist before adding tracks">Show confirmation prompt?</div>
-			</div>
-			<div class="uiRow">
-				<div data-id="ShuffleResults" data-control-class="Checkbox" data-tip="Randomize the order of tracks in the final playlist">Shuffle results?</div>
-			</div>
-			<div class="uiRow">
-				<div data-id="IncludeSeedArtist" data-control-class="Checkbox" data-tip="Include tracks from the original seed artist(s) in results">Include seed artist?</div>
-			</div>
-		</div>
-	</fieldset>
+			</fieldset>
 
-	<!-- Discovery Limits -->
-	<fieldset>
-		<legend>Discovery limits</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<label class="inline" data-tip="Maximum number of similar artists to fetch from Last.fm for each seed artist. Higher = more variety but slower.">Similar artists per seed:</label>
-				<div data-id="SimilarArtistsLimit"
-					 data-control-class="Edit"
-					 data-tip="Maximum similar artists to fetch from Last.fm per seed (e.g., 20 means up to 20 similar artists for each seed artist)"
-					 data-init-params="{type: 'number', min:1, max:100}"></div>
-			</div>
+			<!-- Discovery Limits -->
+			<fieldset>
+				<legend>Discovery limits</legend>
+				<div class="uiRows">
 
-			<div class="uiRow">
-				<label class="inline" data-tip="Maximum number of similar tracks to fetch from Last.fm for each seed track in track-based discovery. Higher values improve match rates.">Similar tracks per seed:</label>
-				<div data-id="TrackSimilarLimit"
-					 data-control-class="Edit"
-					 data-tip="Maximum similar tracks to fetch from Last.fm per seed track (recommended: 50-200 for better library matching)"
-					 data-init-params="{type: 'number', min:10, max:500}"></div>
-			</div>
+					<div class="uiRow">
+						<label class="inline">Similar artists per seed track:</label>
+						<div data-id="SimilarArtistsLimit"
+							 data-control-class="Edit"
+							 data-tip="Maximum number of similar artists to fetch for each seed track. Higher = more candidates but slower."
+							 data-init-params="{type:'number',min:1,max:100}"></div>
+					</div>
 
-			<div class="uiRow">
-				<label class="inline" data-tip="Maximum tracks to search for per artist in your local library. Higher = more tracks but slower.">Tracks per artist:</label>
-				<div data-id="TracksPerArtist"
-					 data-control-class="Edit"
-					 data-tip="Maximum tracks to find in your library for each discovered artist"
-					 data-init-params="{type: 'number', min:1, max:500}"></div>
-			</div>
+					<div class="uiRow">
+						<label class="inline">Similar tracks per seed track:</label>
+						<div data-id="TrackSimilarLimit"
+							 data-control-class="Edit"
+							 data-tip="When using track-based discovery, how many similar tracks to request per seed track. Higher improves matching but is more API intensive."
+							 data-init-params="{type:'number',min:10,max:500}"></div>
+					</div>
 
-			<div class="uiRow">
-				<label class="inline" data-tip="Maximum total tracks in final playlist. Set to 0 for unlimited (add all found tracks).">Max playlist tracks:</label>
-				<div data-id="MaxPlaylistTracks"
-					 data-control-class="Edit"
-					 data-tip="Final limit on playlist size. Set to 0 to include all found tracks without limit."
-					 data-init-params="{type: 'number', min:0, max:10000}"></div>
-			</div>
+					<div class="uiRow">
+						<label class="inline">Top Tracks per artist:</label>
+						<div data-id="TracksPerArtist"
+							 data-control-class="Edit"
+							 data-tip="Number of top tracks to fetch for each discovered artist when enriching results."
+							 data-init-params="{type:'number',min:1,max:500}"></div>
+					</div>
 
-			<div class="uiRow">
-				<div data-id="UseLastfmRanking" data-control-class="Checkbox" data-tip="Sort tracks by their Last.fm popularity (playcount). Most popular tracks appear first.">Sort by Last.fm popularity?</div>
-			</div>
+					<div class="uiRow">
+						<label class="inline">Max playlist tracks:</label>
+						<div data-id="MaxPlaylistTracks"
+							 data-control-class="Edit"
+							 data-tip="Maximum number of tracks to add to the resulting playlist. Set to 0 for no limit."
+							 data-init-params="{type:'number',min:0,max:10000}"></div>
+					</div>
 
-			<div class="uiRow">
-				<div data-id="PreferHighQuality" data-control-class="Checkbox" data-tip="When multiple versions of a track exist (different albums), prefer the one with highest bitrate and rating.">Prefer high quality versions?</div>
-			</div>
-		</div>
-	</fieldset>
+					<div class="uiRow">
+						<div data-id="UseLastfmRanking" data-control-class="Checkbox" data-tip="If enabled, prefer tracks that Last.fm ranks higher (popularity).">Sort by Last.fm popularity?</div>
+					</div>
 
-	<!-- Rating Filter -->
-	<fieldset>
-		<legend>Rating filter</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<label class="inline">Minimum rating:</label>
-				<div data-id="MinRating" data-control-class="Rating" data-tip="Only include tracks with at least this rating" data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
-			</div>
-			<div class="uiRow">
-				<div data-id="IncludeUnrated" data-control-class="Checkbox" data-tip="Include tracks that have no rating set">Include unrated tracks?</div>
-			</div>
-		</div>
-	</fieldset>
+					<div class="uiRow">
+						<div data-id="PreferHighQuality" data-control-class="Checkbox" data-tip="When possible, prefer higher bitrate / better quality versions of tracks.">Prefer high quality versions?</div>
+					</div>
 
-	<!-- Auto-Mode Settings -->
-	<fieldset>
-		<legend>Auto-queue (endless playback)</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<div data-id="AutoModeEnabled" data-control-class="Checkbox" data-tip="Automatically queue similar tracks when Now Playing is near the end. Creates endless playback based on what you're listening to.">Enable auto-queue?</div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">Discovery mode:</label>
-				<div data-id="AutoModeDiscovery" data-control-class="Dropdown" data-tip="How auto-mode discovers new tracks: Artist = similar artists, Track = similar tracks, Genre = same genre">
-					<option value="Artist">Similar Artists</option>
-					<option value="Track">Similar Tracks</option>
-					<option value="Genre">Similar Genre</option>
 				</div>
-			</div>
-			<div class="uiRow">
-				<label class="inline" data-tip="How many seed artists to process in auto-mode. Lower = faster, higher = more variety.">Auto seeds:</label>
-				<div data-id="AutoModeSeedLimit"
-					 data-control-class="Edit"
-					 data-tip="Number of seed artists to use when auto-queuing (recommended: 1-3)"
-					 data-init-params="{type: 'number', min:1, max:10}"></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline" data-tip="Similar artists to fetch per seed in auto-mode.">Auto similar limit:</label>
-				<div data-id="AutoModeSimilarLimit"
-					 data-control-class="Edit"
-					 data-tip="Similar artists per seed in auto-mode (recommended: 5-15)"
-					 data-init-params="{type: 'number', min:1, max:50}"></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline" data-tip="Tracks per artist in auto-mode.">Auto tracks/artist:</label>
-				<div data-id="AutoModeTracksPerArtist"
-					 data-control-class="Edit"
-					 data-tip="Tracks per artist in auto-mode (recommended: 3-10)"
-					 data-init-params="{type: 'number', min:1, max:50}"></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline" data-tip="Maximum tracks to add each time auto-mode triggers.">Auto max tracks:</label>
-				<div data-id="AutoModeMaxTracks"
-					 data-control-class="Edit"
-					 data-tip="Maximum tracks to add per auto-queue trigger (recommended: 10-50)"
-					 data-init-params="{type: 'number', min:1, max:200}"></div>
-			</div>
-			<div class="uiRow">
-				<div data-id="SkipDuplicates" data-control-class="Checkbox" data-tip="Don't add tracks that are already in the Now Playing queue">Skip duplicates in queue?</div>
-			</div>
-		</div>
-	</fieldset>
+			</fieldset>
 
-	<!-- Enqueue Behavior -->
-	<fieldset>
-		<legend>Queue behavior</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<div data-id="EnqueueMode" data-control-class="Checkbox" data-tip="Add tracks directly to Now Playing instead of creating a new playlist">Enqueue to Now Playing instead of creating playlist?</div>
-			</div>
-			<div class="uiRow">
-				<div data-id="ClearQueueFirst" data-control-class="Checkbox" data-tip="Clear the current Now Playing queue before adding new tracks">Clear queue before adding?</div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">After completion:</label>
-				<div data-id="NavigateAfter" data-control-class="Dropdown" data-tip="Where to navigate after tracks are added">
-					<option>Navigate to new playlist</option>
-					<option>Navigate to now playing</option>
-					<option>Stay in current view</option>
+			<!-- Rating Filter -->
+			<fieldset>
+				<legend>Rating filter</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<label class="inline">Minimum rating:</label>
+						<div data-id="MinRating"
+							 data-control-class="Rating"
+							 data-tip="Set the minimum track rating to include in results. Use stars to choose threshold; unknown ratings can be included separately."
+							 data-init-params='{"starWidth":"1.75em","tabbable":true,"useUnknown":true,"position":"left"}'></div>
+					</div>
+					<div class="uiRow">
+						<div data-id="IncludeUnrated" data-control-class="Checkbox" data-tip="Include tracks with no rating (unknown) when enabled.">Include unrated tracks?</div>
+					</div>
 				</div>
-			</div>
-		</div>
-	</fieldset>
+			</fieldset>
 
-	<!-- Filters (Advanced) -->
-	<fieldset>
-		<legend>Filters (advanced)</legend>
-		<div class="uiRows">
-			<div class="uiRow">
-				<label class="inline">Exclude artists:</label>
-				<div data-id="ArtistBlacklist" 
-					 data-control-class="Edit" 
-					 data-tip="Comma-separated list of artist names to exclude from results"
-					 data-init-params='{"hint":"e.g., Artist1, Artist2"}'></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">Exclude genres:</label>
-				<div data-id="GenreBlacklist" 
-					 data-control-class="Edit" 
-					 data-tip="Comma-separated list of genres to exclude"
-					 data-init-params='{"hint":"e.g., Christmas, Holiday"}'></div>
-			</div>
-			<div class="uiRow">
-				<label class="inline">Exclude title words:</label>
-				<div data-id="TitleExclusions" 
-					 data-control-class="Edit" 
-					 data-tip="Comma-separated words - tracks containing these words in title will be excluded"
-					 data-init-params='{"hint":"e.g., Live, Remix, Demo"}'></div>
-			</div>
 		</div>
-	</fieldset>
+
+		<!-- RIGHT COLUMN -->
+		<div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:1em;">
+
+			<!-- Mood & Activity -->
+			<fieldset>
+				<legend>Mood & Activity defaults</legend>
+				<div class="uiRows">
+
+					<div class="uiRow" style="display:none;">
+						<label class="inline">Default mood:</label>
+						<div data-id="DefaultMood" data-control-class="Dropdown" data-tip="Choose the default mood preset used...">
+							<option value="energetic">Energetic</option>
+							<option value="relaxed">Relaxed</option>
+							<option value="happy">Happy</option>
+							<option value="sad">Sad</option>
+							<option value="focused">Focused</option>
+							<option value="angry">Angry</option>
+							<option value="romantic">Romantic</option>
+						</div>
+					</div>
+
+					<div class="uiRow" style="display:none;">
+						<label class="inline">Default activity:</label>
+						<div data-id="DefaultActivity" data-control-class="Dropdown" data-tip="Choose the default activity preset used...">
+							<option value="workout">Workout</option>
+							<option value="study">Study</option>
+							<option value="party">Party</option>
+							<option value="sleep">Sleep</option>
+							<option value="driving">Driving</option>
+							<option value="meditation">Meditation</option>
+							<option value="cooking">Cooking</option>
+						</div>
+					</div>
+
+					<div class="uiRow">
+						<label class="inline">Acoustic feature balance:</label>
+						<div class="sliderContainer" style="width:30em;">
+							<div data-id="MoodActivityBlendRatio"
+								 data-control-class="Slider"
+								 data-tip="Adjust how much the mood/activity preset influences your results. 0% = seeds only, 50% = balanced, 100% = mood/activity only"
+								 data-init-params='{"min":0,"max":100,"step":10,"ticks":[0,50,100]}'></div>
+
+							<div style="display:flex; width:100%; justify-content:space-between; align-items:center;">
+								<span style="white-space:nowrap;">Seeds Only</span>
+								<span style="flex:1; text-align:center; white-space:nowrap;">Balanced Mix</span>
+								<span style="white-space:nowrap;">Preset Only</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="uiRow" style="margin-top:0.5em;padding:0.5em;background:var(--panel-background,#f8f8f8);border-radius:4px;">
+						<span style="font-size:0.9em;color:var(--text-secondary,#666);">
+							<strong>Tip:</strong> Mood and Activity modes apply predefined audio profiles on top of your seed tracks.
+							The <strong>Acoustic Feature Balance</strong> slider controls how strongly the mood influences the results.
+							For AI‑powered suggestions that use only your selected tracks—without applying a template—use the <strong>Similar acoustics</strong> menu.
+						</span>
+					</div>
+
+				</div>
+			</fieldset>
+
+			<!-- Auto-Queue -->
+			<fieldset>
+				<legend>Auto-queue (endless playback)</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<div data-id="AutoModeEnabled" data-control-class="Checkbox" data-tip="When enabled, MatchMonkey will automatically enqueue new tracks as the queue nears its end.">Enable auto-queue?</div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Discovery mode:</label>
+						<div data-id="AutoModeDiscovery" data-control-class="Dropdown" data-tip="Select which discovery mode Auto-queue should use when generating tracks.">
+							<option value="artist">Similar Artists</option>
+							<option value="track">Similar Tracks</option>
+							<option value="genre">Similar Genre</option>
+							<option value="acoustics">Similar Acoustics</option>
+						</div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto threshold:</label>
+						<div data-id="AutoModeSeedLimit"
+							 data-control-class="Edit"
+							 data-tip="Number of tracks left in the now playing to trigger auto mode. The remaining tracks are used to generates recommendations."
+							 data-init-params="{type:'number',min:1,max:10}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto similar limit:</label>
+						<div data-id="AutoModeSimilarLimit"
+							 data-control-class="Edit"
+							 data-tip="How many similar artists/tracks to fetch during each Auto-queue generation. Lower = faster updates."
+							 data-init-params="{type:'number',min:1,max:50}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto tracks/artist:</label>
+						<div data-id="AutoModeTracksPerArtist"
+							 data-control-class="Edit"
+							 data-tip="Number of tracks to fetch per discovered artist when Auto-queue runs."
+							 data-init-params="{type:'number',min:1,max:50}"></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Auto max tracks:</label>
+						<div data-id="AutoModeMaxTracks"
+							 data-control-class="Edit"
+							 data-tip="Maximum number of tracks to add during a single Auto-queue operation."
+							 data-init-params="{type:'number',min:1,max:200}"></div>
+					</div>
+					<div class="uiRow">
+						<div data-id="SkipDuplicates" data-control-class="Checkbox" data-tip="Prevent adding tracks that already exist in the current Now Playing queue when Auto-queue is active.">Skip duplicates in queue?</div>
+					</div>
+				</div>
+			</fieldset>
+
+			<!-- Queue Behavior -->
+			<fieldset>
+				<legend>Queue behavior (playlist creation override)</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<div data-id="EnqueueMode" data-control-class="Checkbox" data-tip="If enabled, add results to Now Playing (queue) instead of creating a playlist.">Enqueue to Now Playing instead of creating playlist?</div>
+					</div>
+					<div class="uiRow">
+						<div data-id="ClearQueueFirst" data-control-class="Checkbox" data-tip="If checked, clear the current Now Playing queue before adding results.">Clear queue before adding?</div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">After completion:</label>
+						<div data-id="NavigateAfter" data-control-class="Dropdown" data-tip="Choose where the app should navigate after playlist/queue creation.">
+							<option>Navigate to new playlist</option>
+							<option>Navigate to now playing</option>
+							<option>Stay in current view</option>
+						</div>
+					</div>
+				</div>
+			</fieldset>
+
+			<!-- Filters (Advanced) -->
+			<fieldset style="display:none;">
+				<legend>Filters (advanced) {do not use}</legend>
+				<div class="uiRows">
+					<div class="uiRow">
+						<label class="inline">Exclude artists:</label>
+						<div data-id="ArtistBlacklist"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated list of artist names to exclude from results (case-insensitive)."
+							 data-init-params='{"hint":"e.g., Artist1, Artist2"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Exclude genres:</label>
+						<div data-id="GenreBlacklist"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated list of genres to exclude when discovering artists/tracks."
+							 data-init-params='{"hint":"e.g., Christmas, Holiday"}'></div>
+					</div>
+					<div class="uiRow">
+						<label class="inline">Exclude title words:</label>
+						<div data-id="TitleExclusions"
+							 data-control-class="Edit"
+							 data-tip="Comma-separated words - tracks containing these words in the title will be excluded (e.g., Live, Remix)."
+							 data-init-params='{"hint":"e.g., Live, Remix, Demo"}'></div>
+					</div>
+				</div>
+			</fieldset>
+
+		</div>
+
+	</div>
 
 </div>

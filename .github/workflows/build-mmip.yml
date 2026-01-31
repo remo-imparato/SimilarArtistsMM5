@@ -177,6 +177,9 @@ jobs:
             README.md \
             dialogs/ \
             modules/ \
+            docs/QUICK_START.md \
+            docs/USER_GUIDE.md \
+            docs/QUICK_REFERENCE.md \
             -x "*.git*" \
             -x ".github/*" \
             -x "ai_MM/*" \

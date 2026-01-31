@@ -2,7 +2,7 @@
  * SQL Query Building Utilities
  * 
  * Helpers for constructing safe SQL queries with proper escaping and filtering.
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';

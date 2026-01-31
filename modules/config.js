@@ -3,7 +3,7 @@
  * 
  * Centralized configuration constants and script identifiers.
  * 
- * MediaMonkey 5 API Only
+
  * 
  * NOTE: Default configuration values are defined in init.js
  *       and initialized when the addon is first loaded.

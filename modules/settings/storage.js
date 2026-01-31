@@ -4,7 +4,7 @@
  * Get/set application settings persisted under the script namespace.
  * Handles type coercion for settings retrieval.
  * 
- * MediaMonkey 5 API Only
+
  * 
  * NOTE: Default values are set by init.js during addon initialization.
  *       This module only provides get/set helpers and type conversion.

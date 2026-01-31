@@ -5,7 +5,7 @@
  * artist names and track titles. Supports both single and batch lookups
  * with configurable filtering options.
  *
- * MediaMonkey 5 API Only - No MM4 fallbacks
+ - No MM4 fallbacks
  *
  * @module modules/db/library
  * @requires ../utils/sql       - SQL query building utilities
@@ -16,36 +16,31 @@
 'use strict';
 
 /**
- * Find tracks in the library matching a single artist name and optional track titles.
+ * Find tracks in the library matching optional artist name and/or track titles.
  *
- * Searches the MediaMonkey library for tracks by a specified artist.
- * Optionally filters to specific track titles for more precise matching.
- * Supports filtering by rating and genre through options.
+ * Searches the MediaMonkey library for tracks. Can search by artist,
+ * track titles, or return random tracks from the entire library.
+ * Supports filtering by rating through options.
  *
  * @async
  * @function findLibraryTracks
- * @param {string} artistName - Artist to search for (will be normalized with prefix stripping)
- * @param {string|string[]} [trackTitles] - Optional specific track title(s) to match
+ * @param {string|null} artistName - Artist to search for (null for any artist)
+ * @param {string|string[]|null} [trackTitles] - Optional specific track title(s) to match
  * @param {number} [limit=100] - Maximum number of tracks to return
  * @param {object} [options={}] - Query options
  * @param {boolean} [options.rank=true] - Include ranking in results
  * @param {boolean} [options.best=false] - Only include highly-rated tracks
  * @param {number} [options.minRating=0] - Minimum rating threshold (0-100)
+ * @param {boolean} [options.allowUnknown=true] - Include tracks with unknown (-1) rating
  * @returns {Promise<object[]>} Array of matching track objects
  */
 async function findLibraryTracks(artistName, trackTitles, limit = 100, options = {}) {
 	try {
-		const { rank = true, best = false, minRating = 0 } = options;
+		const { rank = true, best = false, minRating = 0, allowUnknown = true } = options;
 
 		// Validate MM5 environment
 		if (typeof app === 'undefined' || !app.db || !app.db.getTracklist) {
 			console.warn('findLibraryTracks: MM5 app.db.getTracklist not available');
-			return [];
-		}
-
-		const normalizedArtist = window.matchMonkeyPrefixes?.fixPrefixes?.(artistName) || artistName;
-		if (!normalizedArtist) {
-			console.warn('findLibraryTracks: Invalid artist name');
 			return [];
 		}
 
@@ -55,8 +50,13 @@ async function findLibraryTracks(artistName, trackTitles, limit = 100, options =
 		const escapeSql = (s) => String(s ?? '').replace(/'/g, "''");
 		const quote = (s) => `'${escapeSql(s)}'`;
 
-		// Build artist matching clause with prefix variations
+		// Build artist matching clause with prefix variations (only if artist specified)
 		const artistClause = (() => {
+			if (!artistName) return ''; // No artist filter
+			
+			const normalizedArtist = window.matchMonkeyPrefixes?.fixPrefixes?.(artistName) || artistName;
+			if (!normalizedArtist) return '';
+
 			const artistConds = [];
 			const add = (name) => {
 				const n = String(name || '').trim();
@@ -97,23 +97,51 @@ async function findLibraryTracks(artistName, trackTitles, limit = 100, options =
 			return `(${conds.join(' OR ')})`;
 		})();
 
+		// Build rating clause
+		const ratingClause = (() => {
+			if (ratingThreshold > 0) {
+				if (allowUnknown) {
+					return `(Songs.Rating < 0 OR Songs.Rating >= ${ratingThreshold})`;
+				} else {
+					return `(Songs.Rating >= ${ratingThreshold} AND Songs.Rating <= 100)`;
+				}
+			} else if (!allowUnknown) {
+				return `(Songs.Rating >= 0 AND Songs.Rating <= 100)`;
+			}
+			return '';
+		})();
+
 		// Build WHERE clause
 		const where = [];
 		if (artistClause) where.push(artistClause);
 		if (titleClause) where.push(titleClause);
-		if (ratingThreshold > 0) where.push(`(Songs.Rating >= ${Number(ratingThreshold)})`);
+		if (ratingClause) where.push(ratingClause);
 
 		const orderClause = best ? 'ORDER BY Songs.Rating DESC, Random()' : 'ORDER BY Random()';
 
-		const query = `
-			SELECT Songs.*
-			FROM Songs
-			INNER JOIN ArtistsSongs ON Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1
-			INNER JOIN Artists ON ArtistsSongs.IDArtist = Artists.ID
-			${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-			${orderClause}
-			LIMIT ${Math.max(1, Math.min(limit, 10000))}
-		`;
+		// Different query structure depending on whether we're filtering by artist
+		let query;
+		if (artistClause) {
+			// Query with artist join
+			query = `
+				SELECT Songs.*
+				FROM Songs
+				INNER JOIN ArtistsSongs ON Songs.ID = ArtistsSongs.IDSong AND ArtistsSongs.PersonType = 1
+				INNER JOIN Artists ON ArtistsSongs.IDArtist = Artists.ID
+				${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+				${orderClause}
+				LIMIT ${Math.max(1, Math.min(limit, 10000))}
+			`;
+		} else {
+			// Query without artist join (search entire library)
+			query = `
+				SELECT Songs.*
+				FROM Songs
+				${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+				${orderClause}
+				LIMIT ${Math.max(1, Math.min(limit, 10000))}
+			`;
+		}
 
 		// Execute query via MM5 API
 		const tracklist = app.db.getTracklist(query, -1);
@@ -136,10 +164,11 @@ async function findLibraryTracks(artistName, trackTitles, limit = 100, options =
 		}
 
 		if (results.length > 0) {
+			const searchDesc = artistName ? `"${artistName}"` : 'entire library';
 			const summary = results.slice(0, 3).map(r => 
 				`"${r.title || r.SongTitle || ''}" by ${r.artist || r.Artist || ''}`
 			).join(', ');
-			console.log(`findLibraryTracks: Found ${results.length} track(s) for "${artistName}": ${summary}${results.length > 3 ? '...' : ''}`);
+			console.log(`findLibraryTracks: Found ${results.length} track(s) from ${searchDesc}: ${summary}${results.length > 3 ? '...' : ''}`);
 		}
 
 		return results;

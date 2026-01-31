@@ -1,0 +1,9 @@
+﻿**MatchMonkey — Smart, fast, and endlessly fun music discovery.**  
+• Powered by **Last.fm** and **ReccoBeats.com** for artist-, track-, genre-, and acoustics‑based recommendations matched to your local library  
+• Build playlists instantly or send tracks straight to Now Playing (new, overwrite, enqueue)  
+• Multi‑pass fuzzy matching finds the best local versions of recommended songs  
+• Mood & Activity playlists blend your taste with ReccoBeats audio‑feature targets  
+• Auto‑Queue keeps the music flowing with intelligent similar‑track suggestions  
+• Ranking, quality, and rating filters help you pick the best versions every time  
+
+**Short, sweet, and seriously powerful — discover more and keep your library alive.**

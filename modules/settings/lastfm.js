@@ -2,7 +2,7 @@
  * Last.fm API Configuration
  * 
  * Handles Last.fm API key retrieval and Last.fm-specific settings.
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';

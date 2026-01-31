@@ -10,7 +10,7 @@
  * Note: Action registration is handled by actions_add.js as per MM5 standards.
  * 
  * @author Remo Imparato
- * @license MIT
+
  */
 
 'use strict';

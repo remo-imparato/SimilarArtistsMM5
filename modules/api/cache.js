@@ -4,7 +4,7 @@
  * Per-run caches for Last.fm queries (cleared on each runMatchMonkey invocation).
  * Reduces redundant API calls within a single operation.
  * 
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';
@@ -13,6 +13,9 @@
  * Per-run cache structure containing:
  * - similarArtists: Map<string, object[]>
  * - topTracks: Map<string, (string|object)[]>
+ * - _similarTracks: Map<string, object[]> (for track.getSimilar)
+ * - _artistInfo: Map<string, object> (for artist.getInfo)
+ * - _reccobeats: Map<string, object[]> (for ReccoBeats API)
  */
 let lastfmRunCache = null;
 
@@ -44,6 +47,9 @@ function initLastfmRunCache() {
 	lastfmRunCache = {
 		similarArtists: new Map(),
 		topTracks: new Map(),
+		_similarTracks: new Map(),
+		_artistInfo: new Map(),
+		_reccobeats: new Map(),
 	};
 }
 
@@ -61,10 +67,10 @@ function clearLastfmRunCache() {
  * @returns {object[]|null} Cached artists array, or null if not cached.
  */
 function getCachedSimilarArtists(artistName) {
-	if (!lastfmRunCache?.matchMonkey) return null;
+	if (!lastfmRunCache?.similarArtists) return null;
 	const key = cacheKeyArtist(artistName);
-	return lastfmRunCache.matchMonkey.has(key) 
-		? lastfmRunCache.matchMonkey.get(key) 
+	return lastfmRunCache.similarArtists.has(key) 
+		? lastfmRunCache.similarArtists.get(key) 
 		: null;
 }
 
@@ -74,9 +80,9 @@ function getCachedSimilarArtists(artistName) {
  * @param {object[]} artists Array of similar artist objects.
  */
 function cacheSimilarArtists(artistName, artists) {
-	if (!lastfmRunCache?.matchMonkey) return;
+	if (!lastfmRunCache?.similarArtists) return;
 	const key = cacheKeyArtist(artistName);
-	lastfmRunCache.matchMonkey.set(key, artists || []);
+	lastfmRunCache.similarArtists.set(key, artists || []);
 }
 
 /**
@@ -115,6 +121,22 @@ function isCacheActive() {
 	return lastfmRunCache !== null;
 }
 
+/**
+ * Get cache statistics for debugging.
+ * @returns {object} Cache statistics
+ */
+function getCacheStats() {
+	if (!lastfmRunCache) return { active: false };
+	return {
+		active: true,
+		similarArtists: lastfmRunCache.similarArtists?.size || 0,
+		topTracks: lastfmRunCache.topTracks?.size || 0,
+		similarTracks: lastfmRunCache._similarTracks?.size || 0,
+		artistInfo: lastfmRunCache._artistInfo?.size || 0,
+		reccobeats: lastfmRunCache._reccobeats?.size || 0,
+	};
+}
+
 // Export to window namespace for MM5
 window.lastfmCache = {
 	init: initLastfmRunCache,
@@ -124,6 +146,7 @@ window.lastfmCache = {
 	getCachedTopTracks,
 	cacheTopTracks,
 	isActive: isCacheActive,
+	getStats: getCacheStats,
 };
 
 // Also export cache key functions globally for other modules

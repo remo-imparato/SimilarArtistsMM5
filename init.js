@@ -4,11 +4,11 @@
  * This script runs on every MediaMonkey startup.
  * It loads all modules and ensures configuration exists with proper defaults.
  * 
- * MediaMonkey 5 API Only
+
  * 
  * @author Remo Imparato
  * @version 2.2.0
- * @license MIT
+
  */
 
 'use strict';
@@ -41,6 +41,7 @@ localRequirejs('modules/ui/notifications');
 // API (depend on utils and settings)
 localRequirejs('modules/api/cache');
 localRequirejs('modules/api/lastfm');
+localRequirejs('modules/api/reccobeats');  // NEW: ReccoBeats API integration
 	
 // Database individual modules FIRST
 localRequirejs('modules/db/library');
@@ -55,11 +56,19 @@ localRequirejs('modules/core/orchestration');
 localRequirejs('modules/core/autoMode');
 localRequirejs('modules/core/mm5Integration');
 
+/*
+//Debuging tools (depend on utils)
+requirejs('helpers/debugTools');
+registerDebuggerEntryPoint.call(this, 'start');
+
+//*/
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 
-(function() {
+//NOTE: use a named function so we can register it for debugging
+function start() {
 	'use strict';
 
 	// Script namespace
@@ -101,17 +110,23 @@ localRequirejs('modules/core/mm5Integration');
 
 		// === Auto-Mode Settings ===
 		AutoModeEnabled: false,         // Enable auto-queue on playlist end
-		AutoModeDiscovery: 'Track',     // Discovery type: Artist/Track/Genre
+		AutoModeDiscovery: 'Similar Tracks',     // Discovery type: artist/track/genre/acoustics
 		AutoModeSeedLimit: 2,           // Seeds to process in auto-mode
 		AutoModeSimilarLimit: 10,       // Similar artists per seed in auto-mode
 		AutoModeTracksPerArtist: 5,     // Tracks per artist in auto-mode
-		AutoModeMaxTracks: 30,          // Max tracks per auto-queue trigger
+		AutoModeMaxTracks: 10,          // Max tracks per auto-queue trigger
 
 		// === Queue Behavior ===
 		EnqueueMode: false,             // Add to Now Playing instead of playlist
 		ClearQueueFirst: false,         // Clear queue before adding
 		SkipDuplicates: true,           // Skip tracks already in queue
 		NavigateAfter: 'Navigate to new playlist', // Navigation after completion
+
+		// === Mood/Activity Discovery (ReccoBeats) ===
+		DefaultMood: '',                // Default mood: energetic, relaxed, happy, sad, focused
+		DefaultActivity: '',            // Default activity: workout, study, party, sleep, driving
+		MoodActivityBlendRatio: 0.5,    // Blend ratio: 0.5 = 50% seeds + 50% mood (0=all mood, 1=all seeds)
+		HybridMode: true,               // Combine ReccoBeats + Last.fm
 
 		// === Filters ===
 		ArtistBlacklist: '',            // Comma-separated blacklisted artists
@@ -283,5 +298,10 @@ localRequirejs('modules/core/mm5Integration');
 		setTimeout(initializeAddon, 500);
 	}
 
-})();
+}
+
+//-- make it named function so we can register it for debugging
+start();
+
+
 

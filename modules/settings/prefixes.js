@@ -4,7 +4,7 @@
  * Handles MediaMonkey's "Ignore THE" feature to normalize artist names
  * for Last.fm API queries and comparisons.
  * 
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';

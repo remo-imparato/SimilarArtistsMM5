@@ -12,7 +12,7 @@
  * - Error recovery and logging
  * 
  * @author Remo Imparato
- * @license MIT
+
  */
 
 'use strict';
@@ -23,7 +23,7 @@ window.matchMonkeyAutoMode = {
 	 * Auto-mode state container
 	 * Tracks listener subscriptions and prevents concurrent runs
 	 */
-	createAutoModeState: function() {
+	createAutoModeState: function () {
 		return {
 			// Listener subscription handle for detachment
 			autoListen: null,
@@ -47,7 +47,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Optional logging function
 	 * @returns {boolean} True if successfully attached, false otherwise
 	 */
-	attachAutoModeListener: function(state, handleAutoTrigger, logger = console.log) {
+	attachAutoModeListener: function (state, handleAutoTrigger, logger = console.log) {
 		try {
 			// Validate environment
 			if (typeof app === 'undefined' || !app.player) {
@@ -75,8 +75,8 @@ window.matchMonkeyAutoMode = {
 			// MM5 fires 'playbackState' event with values like 'trackChanged', 'playing', 'stopped', etc.
 			const player = app.player;
 			state.autoListen = app.listen(player, 'playbackState', (newState) => {
-				logger(`Auto-Mode: Playback state changed to '${newState}'`);
-				
+				//logger(`Auto-Mode: Playback state changed to '${newState}'`);
+
 				// Only respond to track changes
 				if (newState === 'trackChanged') {
 					// Check cooldown
@@ -88,15 +88,15 @@ window.matchMonkeyAutoMode = {
 					}
 
 					logger('Auto-Mode: Track changed event - checking if should trigger...');
-					
-					// Log current playlist state for debugging
-					try {
-						const remaining = window.matchMonkeyAutoMode.getPlaylistRemaining(player, logger);
-						logger(`Auto-Mode: Current remaining tracks: ${remaining}`);
-					} catch (e) {
-						logger(`Auto-Mode: Could not check remaining: ${e.toString()}`);
-					}
-					
+
+					//// Log current playlist state for debugging
+					//try {
+					//	const remaining = window.matchMonkeyAutoMode.getPlaylistRemaining(player, logger);
+					//	logger(`Auto-Mode: Current remaining tracks: ${remaining}`);
+					//} catch (e) {
+					//	logger(`Auto-Mode: Could not check remaining: ${e.toString()}`);
+					//}
+
 					// Call handler
 					Promise.resolve(handleAutoTrigger(state, logger)).catch((e) => {
 						logger(`Auto-Mode: Trigger handler error: ${e?.stack || e?.message || e}`);
@@ -124,7 +124,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Optional logging function
 	 * @returns {boolean} True if detached successfully, false if no listener was attached
 	 */
-	detachAutoModeListener: function(state, logger = console.log) {
+	detachAutoModeListener: function (state, logger = console.log) {
 		try {
 			if (!state || !state.autoListen) {
 				logger('Auto-Mode: No listener to detach');
@@ -163,7 +163,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Optional logging function
 	 * @returns {number} Remaining entries (0 if cannot be determined)
 	 */
-	getPlaylistRemaining: function(player, logger = console.log) {
+	getPlaylistRemaining: function (player, logger = console.log) {
 		if (!player) {
 			logger('Auto-Mode: Player not available');
 			return 0;
@@ -178,7 +178,7 @@ window.matchMonkeyAutoMode = {
 				const played = player.getCountOfPlayedEntries();
 				// Remaining = total - played (this includes the currently playing track)
 				remaining = total - played;
-				logger(`Auto-Mode: Method 1 (entriesCount): total=${total}, played=${played}, remaining=${remaining}`);
+				//logger(`Auto-Mode: Method 1 (entriesCount): total=${total}, played=${played}, remaining=${remaining}`);
 				if (remaining >= 0) return remaining;
 			}
 		} catch (e) {
@@ -240,13 +240,10 @@ window.matchMonkeyAutoMode = {
 	 * @param {string} [settingKey='AutoModeEnabled'] - Settings key for auto-mode
 	 * @returns {boolean} True if auto-mode is enabled
 	 */
-	isAutoModeEnabled: function(getSetting, settingKey = 'AutoModeEnabled') {
+	isAutoModeEnabled: function (getSetting, settingKey = 'AutoModeEnabled') {
 		try {
 			// Try new property name first, fall back to old
 			let enabled = getSetting(settingKey, undefined);
-			if (enabled === undefined) {
-				enabled = getSetting('OnPlay', false); // Old property name
-			}
 			return Boolean(enabled);
 		} catch (e) {
 			console.error(`Auto-Mode: Error checking enabled status: ${e.toString()}`);
@@ -275,7 +272,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} [config.logger=console.log] - Logging function
 	 * @returns {Function} Handler function for playback events
 	 */
-	createAutoTriggerHandler: function(config) {
+	createAutoTriggerHandler: function (config) {
 		const {
 			getSetting,
 			generateSimilarPlaylist,
@@ -293,10 +290,7 @@ window.matchMonkeyAutoMode = {
 				const log = loggerFunc || logger;
 
 				// Get mode name for messages (try new property name, fall back to old)
-				let configuredMode = getSetting('AutoModeDiscovery', undefined);
-				if (configuredMode === undefined) {
-					configuredMode = getSetting('AutoMode', 'Track');
-				}
+				let configuredMode = getDiscoveryModeKey(getSetting('AutoModeDiscovery', undefined));
 				const modeName = typeof getModeName === 'function' ? getModeName() : 'Similar Tracks';
 
 				// Support both styles:
@@ -340,12 +334,12 @@ window.matchMonkeyAutoMode = {
 					log(`Auto-Mode [${modeName}]: Not near end yet (remaining=${remaining}, threshold=${threshold}), skipping`);
 					return;
 				}
-				
+
 				if (remaining < 0) {
 					log(`Auto-Mode [${modeName}]: Invalid remaining count (${remaining}), skipping`);
 					return;
 				}
-				
+
 				// Note: We trigger even when remaining=0 (on last track) to give one last chance
 				log(`Auto-Mode [${modeName}]: Near end of playlist detected (remaining=${remaining}), will trigger`);
 
@@ -362,13 +356,13 @@ window.matchMonkeyAutoMode = {
 				state.lastTriggerTime = now;
 
 				try {
-					log(`Auto-Mode: User configured mode: ${configuredMode}`);
+					log(`Auto-Mode: User configured mode: ${getDiscoveryModeDisplayName(configuredMode)}`);
 
 					// Define all discovery modes to try in order
-					const allModes = ['track', 'artist', 'genre'];
-					
+					const allModes = ['track', 'acoustics', 'artist', 'genre'];
+
 					// Start with user's preferred mode, then try others
-					const modesToTry = [configuredMode.toLowerCase()];
+					const modesToTry = [configuredMode];
 					for (const mode of allModes) {
 						if (mode !== configuredMode.toLowerCase()) {
 							modesToTry.push(mode);
@@ -393,8 +387,8 @@ window.matchMonkeyAutoMode = {
 						}
 
 						try {
-							// Call Phase 5 orchestration with autoMode=true and specific discovery mode
-							const result = await generateSimilarPlaylist(true, attemptMode);
+							// Call Phase 5 orchestration with autoMode=true, discovery mode, and threshold
+							const result = await generateSimilarPlaylist(true, attemptMode, threshold);
 
 							if (result && result.success && result.tracksAdded > 0) {
 								totalTracksAdded = result.tracksAdded;
@@ -404,7 +398,7 @@ window.matchMonkeyAutoMode = {
 								break; // Success - stop trying
 							} else {
 								log(`Auto-Mode [${attemptModeName}]: No tracks added (${result?.error || 'no matches'})`);
-								
+
 								// If this was the last attempt, show error
 								if (i === modesToTry.length - 1) {
 									log(`Auto-Mode: All discovery modes exhausted, no tracks added`);
@@ -414,7 +408,7 @@ window.matchMonkeyAutoMode = {
 
 						} catch (attemptError) {
 							log(`Auto-Mode [${attemptModeName}]: Attempt failed with error: ${attemptError.toString()}`);
-							
+
 							// If this was the last attempt, show error
 							if (i === modesToTry.length - 1) {
 								showToast(`Auto-queue error: ${attemptError.message}`, 'error');
@@ -441,20 +435,42 @@ window.matchMonkeyAutoMode = {
 				showToast(`Auto-queue error: ${e.message}`, 'error');
 			}
 		};
-		
+
 		/**
 		 * Helper to get display name for discovery mode
 		 */
 		function getDiscoveryModeDisplayName(mode) {
-			switch (mode) {
-				case 'track':
-					return 'Similar Tracks';
+			const normalized = String(mode || '').toLowerCase();
+			switch (normalized) {
 				case 'artist':
 					return 'Similar Artists';
+				case 'track':
+					return 'Similar Tracks';
 				case 'genre':
 					return 'Similar Genre';
+				case 'acoustics':
+					return 'Similar Acoustics';
 				default:
-					return 'Similar Tracks';
+					return 'Similar Artists';
+			}
+		}
+
+		/**
+		 * Helper to get discovery mode key from display name
+		 * */
+		function getDiscoveryModeKey(displayName) {
+			const normalized = String(displayName || '').toLowerCase();
+			switch (normalized) {
+				case 'similar artists':
+					return 'artist';
+				case 'similar tracks':
+					return 'track';
+				case 'similar genre':
+					return 'genre';
+				case 'similar acoustics':
+					return 'acoustics';
+				default:
+					return 'artist';
 			}
 		}
 	},
@@ -471,7 +487,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Logging function
 	 * @returns {boolean} True if listener is now attached
 	 */
-	syncAutoModeListener: function(state, getSetting, handleAutoTrigger, logger = console.log) {
+	syncAutoModeListener: function (state, getSetting, handleAutoTrigger, logger = console.log) {
 		try {
 			const enabled = this.isAutoModeEnabled(getSetting);
 
@@ -510,7 +526,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Logging function
 	 * @returns {boolean} New enabled state
 	 */
-	toggleAutoMode: function(state, getSetting, setSetting, handleAutoTrigger, onStateChange = null, logger = console.log) {
+	toggleAutoMode: function (state, getSetting, setSetting, handleAutoTrigger, onStateChange = null, logger = console.log) {
 		try {
 			const currentState = this.isAutoModeEnabled(getSetting);
 			const newState = !currentState;
@@ -550,7 +566,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {Function} logger - Logging function
 	 * @returns {object} Initialized state object
 	 */
-	initializeAutoMode: function(getSetting, handleAutoTrigger, logger = console.log) {
+	initializeAutoMode: function (getSetting, handleAutoTrigger, logger = console.log) {
 		try {
 			logger('Auto-Mode: Initializing...');
 
@@ -577,7 +593,7 @@ window.matchMonkeyAutoMode = {
 	 * @param {object} state - Auto-mode state
 	 * @param {Function} logger - Logging function
 	 */
-	shutdownAutoMode: function(state, logger = console.log) {
+	shutdownAutoMode: function (state, logger = console.log) {
 		try {
 			logger('Auto-Mode: Shutting down...');
 			this.detachAutoModeListener(state, logger);

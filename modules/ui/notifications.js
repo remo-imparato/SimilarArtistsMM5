@@ -2,7 +2,7 @@
  * UI Notifications and Progress Display
  * 
  * Handles toast notifications and progress bar updates for user feedback.
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';

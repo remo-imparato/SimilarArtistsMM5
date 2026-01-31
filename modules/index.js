@@ -4,7 +4,7 @@
  * Exports the consolidated module namespace for organized access.
  * All modules are loaded by init.js using localRequirejs().
  * 
- * MediaMonkey 5 API Only
+
  */
 
 'use strict';
@@ -44,6 +44,7 @@ window.matchMonkeyModules = {
 	api: {
 		cache: window.lastfmCache,
 		lastfmApi: window.matchMonkeyLastfmAPI,
+		reccobeatsApi: window.matchMonkeyReccoBeatsAPI,
 	},
 	
 	// Database modules
