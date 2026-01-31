@@ -977,29 +977,21 @@ async function getAudioFeatures(foundTracks) {
 function blendFeatures(seedAvg, moodPreset, blendRatio) {
 	const result = {};
 
-	// Get all unique keys from both objects
-	const allKeys = new Set([
-		...Object.keys(seedAvg),
-		...Object.keys(moodPreset)
-	]);
+	// Only keep properties defined in the template
+	const templateKeys = Object.keys(moodPreset);
 
-	for (const key of allKeys) {
+	for (const key of templateKeys) {
 		const seedHas = key in seedAvg;
 		const moodHas = key in moodPreset;
 
-		// Shared property → apply weighted blend
+		// Shared property → weighted blend
 		if (seedHas && moodHas) {
 			result[key] =
 				seedAvg[key] * (1 - blendRatio) +
 				moodPreset[key] * blendRatio;
 		}
 
-		// Unique to seeds → keep seed value
-		else if (seedHas) {
-			result[key] = seedAvg[key];
-		}
-
-		// Unique to mood → keep mood value
+		// Template-only property → keep template value
 		else if (moodHas) {
 			result[key] = moodPreset[key];
 		}
@@ -1122,10 +1114,38 @@ function calculateAverageFeatures(features) {
 
 	debug.final = result;
 
-	console.log("calculateAverageFeatures DEBUG:", debug);
+	console.debug("calculateAverageFeatures DEBUG:", debug);
 
 	return result;
 }
+
+//*/
+
+function getLogAudioFeatures(audioFeatures) {
+	const fmt = (v, digits = 2) => {
+		if (v === undefined || v === null || Number.isNaN(Number(v))) return 'n/a';
+		// For integer-like features (tempo, mode) prefer no decimals when values look integral
+		if (Number.isInteger(v)) return String(v);
+		return Number(v).toFixed(digits);
+	};
+
+	const parts = [
+		`energy: ${fmt(audioFeatures.energy)}`,
+		`valence: ${fmt(audioFeatures.valence)}`,
+		`danceability: ${fmt(audioFeatures.danceability)}`,
+		`acousticness: ${fmt(audioFeatures.acousticness)}`,
+		`instrumentalness: ${fmt(audioFeatures.instrumentalness)}`,
+		`speechiness: ${fmt(audioFeatures.speechiness)}`,
+		`liveness: ${fmt(audioFeatures.liveness)}`,
+		`loudness: ${audioFeatures.loudness !== undefined && audioFeatures.loudness !== null && !Number.isNaN(Number(audioFeatures.loudness)) ? Number(audioFeatures.loudness).toFixed(1) : 'n/a'}`,
+		`mode: ${audioFeatures.mode !== undefined && audioFeatures.mode !== null && !Number.isNaN(Number(audioFeatures.mode)) ? String(audioFeatures.mode) : 'n/a'}`,
+		`tempo: ${audioFeatures.tempo !== undefined && audioFeatures.tempo !== null && !Number.isNaN(Number(audioFeatures.tempo)) ? String(audioFeatures.tempo) : 'n/a'}`
+	];
+
+	return parts;
+
+}
+
 
 // =============================================================================
 // RECOMMENDATION API
@@ -1255,6 +1275,7 @@ async function getReccoRecommendations(seeds, limit = 100) {
 
 	// Step 2: Fetch audio features
 	updateProgress(`Analyzing audio features of ${foundTracks.length} tracks...`, 0.35);
+
 	console.log(`getReccoRecommendations: Step 2 - Fetching audio features`);
 	
 	const audioFeatures = await getAudioFeatures(foundTracks);

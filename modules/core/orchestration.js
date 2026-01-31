@@ -251,18 +251,25 @@ window.matchMonkeyOrchestration = {
 			}
 
 			console.log(`Match Monkey: Removed ${results.length - dedupedResults.length} duplicates, ${dedupedResults.length} unique tracks remain`);
+			updateProgress(`Removed ${results.length - dedupedResults.length} duplicates ? ${dedupedResults.length} unique tracks`, 0.83);
 
 			// Step 5: Apply randomization if enabled
 			if (config_.randomize) {
 				console.log(`Match Monkey: Randomizing ${dedupedResults.length} results`);
-				updateProgress(`Shuffling ${dedupedResults.length} results...`, 0.85);
+				updateProgress(`Shuffling ${dedupedResults.length} tracks...`, 0.85);
 				shuffleUtil(dedupedResults);
+				updateProgress(`Shuffled ${dedupedResults.length} tracks`, 0.86);
 			}
 
 			// Apply final limit
 			const finalResults = config_.totalLimit < 100000
 				? dedupedResults.slice(0, config_.totalLimit)
 				: dedupedResults;
+
+			if (finalResults.length < dedupedResults.length) {
+				console.log(`Match Monkey: Applied limit: ${dedupedResults.length} ? ${finalResults.length} tracks`);
+				updateProgress(`Applied limit: ${finalResults.length} of ${dedupedResults.length} tracks`, 0.87);
+			}
 
 			console.log(`Match Monkey: Final track count: ${finalResults.length}`);
 
@@ -505,6 +512,10 @@ window.matchMonkeyOrchestration = {
 
 		const totalCandidates = candidates.length;
 		console.log(`Match Monkey: Matching ${totalCandidates} candidates to library`);
+		updateProgress(`Searching local library for ${totalCandidates} artists...`, 0.55);
+
+		let artistsMatched = 0;
+		let totalTracksMatched = 0;
 
 		for (let i = 0; i < totalCandidates; i++) {
 			const candidate = candidates[i];
@@ -515,8 +526,8 @@ window.matchMonkeyOrchestration = {
 
 			// Update progress periodically
 			if (i % 5 === 0) {
-				const progress = 0.5 + ((i / totalCandidates) * 0.3);
-				updateProgress(`Searching library (${i + 1}/${totalCandidates})...`, progress);
+				const progress = 0.55 + ((i / totalCandidates) * 0.25);
+				updateProgress(`Library: Searching "${candidate.artist}" (${i + 1}/${totalCandidates})...`, progress);
 			}
 
 			try {
@@ -561,12 +572,19 @@ window.matchMonkeyOrchestration = {
 				}
 
 				// Add unique tracks to results
+				let matchedForArtist = 0;
 				for (const track of tracks) {
 					const trackId = track.id || track.ID || track.path;
 					if (trackId && !seenTrackIds.has(trackId)) {
 						seenTrackIds.add(trackId);
 						results.push(track);
+						matchedForArtist++;
 					}
+				}
+
+				if (matchedForArtist > 0) {
+					artistsMatched++;
+					totalTracksMatched += matchedForArtist;
 				}
 
 			} catch (e) {
@@ -575,6 +593,7 @@ window.matchMonkeyOrchestration = {
 		}
 
 		console.log(`Match Monkey: Library matching found ${results.length} unique tracks`);
+		updateProgress(`Library: Found ${totalTracksMatched} tracks from ${artistsMatched}/${totalCandidates} artists`, 0.8);
 		return results;
 	},
 
@@ -633,8 +652,9 @@ window.matchMonkeyOrchestration = {
 	 * @returns {Promise<object>} Result with count added
 	 */
 	async queueResults(modules, tracks, config) {
-		const { db, settings: { storage } } = modules;
+		const { db, settings: { storage }, ui: { notifications } } = modules;
 		const { boolSetting } = storage;
+		const { updateProgress } = notifications;
 
 		const clearFirst = boolSetting('ClearQueueFirst', false);
 		const skipDuplicates = boolSetting('SkipDuplicates', true);
@@ -652,6 +672,7 @@ window.matchMonkeyOrchestration = {
 
 			// Clear queue if requested
 			if (clearFirst && np && typeof np.clear === 'function') {
+				updateProgress('Clearing Now Playing queue...', 0.91);
 				np.clear();
 			}
 
@@ -674,6 +695,7 @@ window.matchMonkeyOrchestration = {
 
 			// Build set of existing artist+title keys for duplicate detection
 			const existing = new Set();
+			let existingCount = 0;
 
 			if (skipDuplicates && np && typeof np.locked === 'function') {
 				np.locked(() => {
@@ -685,14 +707,24 @@ window.matchMonkeyOrchestration = {
 							if (dup) existing.add(dup);
 						}
 					}
+					existingCount = np.count;
 				});
+				
+				if (existingCount > 0) {
+					updateProgress(`Checking ${tracks.length} tracks against ${existingCount} in queue...`, 0.92);
+				}
 			}
 
+			let skippedDuplicates = 0;
+
 			// Add tracks to Now Playing
+			updateProgress(`Adding ${tracks.length} tracks to Now Playing...`, 0.93);
+			
 			for (const track of tracks) {
 				const dupKey = makeDupKey(track);
 
 				if (skipDuplicates && dupKey && existing.has(dupKey)) {
+					skippedDuplicates++;
 					continue;
 				}
 
@@ -705,6 +737,13 @@ window.matchMonkeyOrchestration = {
 				}
 			}
 
+			if (skippedDuplicates > 0) {
+				console.log(`Match Monkey: Skipped ${skippedDuplicates} duplicates already in queue`);
+				updateProgress(`Queued ${added} tracks (skipped ${skippedDuplicates} duplicates)`, 0.98);
+			} else {
+				updateProgress(`Queued ${added} tracks to Now Playing`, 0.98);
+			}
+			
 			console.log(`Match Monkey: Queued ${added} tracks to Now Playing`);
 
 		} catch (e) {
@@ -725,7 +764,7 @@ window.matchMonkeyOrchestration = {
 	async buildResultsPlaylist(modules, tracks, config) {
 		const { db, settings: { storage }, ui: { notifications } } = modules;
 		const { stringSetting } = storage;
-		const { showToast } = notifications;
+		const { showToast, updateProgress } = notifications;
 
 		const playlistTemplate = stringSetting('PlaylistName', '- Similar to %');
 		const parentName = stringSetting('ParentPlaylist', '');
@@ -749,8 +788,12 @@ window.matchMonkeyOrchestration = {
 			const capitalizedValue = config.moodActivityValue.charAt(0).toUpperCase() + config.moodActivityValue.slice(1);
 			const contextLabel = config.moodActivityContext === 'mood' ? 'Mood' : 'Activity';
 			playlistName = `${playlistName} (${contextLabel}: ${capitalizedValue})`;
-		} else if (config.discoveryMode === 'recco') {
-			playlistName = `${playlistName} (ReccoBeats)`;
+		} else if (config.discoveryMode === 'aipower') {
+			playlistName = `${playlistName} (AI Audio)`;
+		} else if (config.discoveryMode === 'track') {
+			playlistName = `${playlistName} (Similar Tracks)`;
+		} else if (config.discoveryMode === 'genre') {
+			playlistName = `${playlistName} (Genre)`;
 		} else {
 			playlistName = `${playlistName} (${modeName})`;
 		}
@@ -761,6 +804,7 @@ window.matchMonkeyOrchestration = {
 		}
 
 		console.log(`Match Monkey: Building playlist "${playlistName}" (mode: ${playlistMode})`);
+		updateProgress(`Creating playlist "${playlistName}"...`, 0.92);
 
 		// Handle "Do not create playlist" mode
 		if (playlistMode === 'Do not create playlist') {
@@ -773,11 +817,12 @@ window.matchMonkeyOrchestration = {
 		// Show confirmation dialog if enabled
 		if (config.showConfirm) {
 			console.log('Match Monkey: Showing playlist selection dialog');
+			updateProgress('Waiting for playlist selection...', 0.93);
 			try {
 				const dialogResult = await this.showPlaylistDialog();
 
 				if (dialogResult === null) {
-					console.log('Match Monkey: User cancelled playlist dialog');
+					console.log('Match Monkey: UserCancelled playlist dialog');
 					return { added: 0, playlist: null, cancelled: true };
 				}
 
@@ -791,6 +836,7 @@ window.matchMonkeyOrchestration = {
 
 		try {
 			// Resolve target playlist
+			updateProgress(`Resolving playlist "${playlistName}"...`, 0.94);
 			const resolution = await db.resolveTargetPlaylist(
 				playlistName,
 				parentName,
@@ -810,15 +856,19 @@ window.matchMonkeyOrchestration = {
 			// Clear existing tracks if needed
 			if (shouldClear) {
 				console.log('Match Monkey: Clearing existing tracks');
+				updateProgress(`Clearing existing tracks from "${targetPlaylist.name}"...`, 0.95);
 				await db.clearPlaylistTracks(targetPlaylist);
 			}
 
 			// Add tracks to playlist
+			updateProgress(`Adding ${tracks.length} tracks to "${targetPlaylist.name}"...`, 0.96);
 			const addedCount = await db.addTracksToPlaylist(targetPlaylist, tracks);
 
 			if (addedCount === 0) {
 				console.warn('Match Monkey: No tracks were added to playlist');
 				showToast(`Warning: No tracks could be added to playlist`, 'warning');
+			} else {
+				updateProgress(`Added ${addedCount} tracks to "${targetPlaylist.name}"`, 0.98);
 			}
 
 			// Navigate based on user settings
@@ -831,7 +881,7 @@ window.matchMonkeyOrchestration = {
 		} catch (e) {
 			console.error('Match Monkey: Error creating playlist:', e);
 			showToast(`Failed to create playlist: ${e.message}`, 'error');
-			return { added: 0, palette: null };
+			return { added: 0, playlist: null };
 		}
 	},
 

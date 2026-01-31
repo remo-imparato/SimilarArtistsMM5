@@ -63,12 +63,14 @@ async function discoverByArtist(modules, seeds, config) {
 	const artistCount = uniqueArtists.length;
 
 	console.log(`Discovery [Artist]: Processing ${artistCount} seed artist(s), max ${config.similarLimit} similar per artist`);
-	updateProgress(`Finding similar artists (${artistCount} seeds)...`, 0.2);
+	updateProgress(`Querying Last.fm for ${artistCount} seed artist(s)...`, 0.2);
+
+	let totalSimilarFound = 0;
 
 	for (let i = 0; i < artistCount; i++) {
 		const artistName = uniqueArtists[i];
 		const progress = 0.2 + ((i + 1) / artistCount) * 0.25;
-		updateProgress(`Finding artists similar to "${artistName}" (${i + 1}/${artistCount})...`, progress);
+		updateProgress(`Last.fm: Finding artists similar to "${artistName}" (${i + 1}/${artistCount})...`, progress);
 
 		try {
 			const fixedName = fixPrefixes(artistName);
@@ -76,10 +78,13 @@ async function discoverByArtist(modules, seeds, config) {
 
 			if (!similar || similar.length === 0) {
 				console.log(`Discovery [Artist]: No similar artists found for "${artistName}"`);
+				updateProgress(`Last.fm: No similar artists for "${artistName}"`, progress);
 				continue;
 			}
 
+			totalSimilarFound += similar.length;
 			console.log(`Discovery [Artist]: Found ${similar.length} similar artists for "${artistName}"`);
+			updateProgress(`Last.fm: Found ${similar.length} similar to "${artistName}"`, progress);
 
 			// Include seed artist if configured
 			if (config.includeSeedArtist) {
@@ -98,13 +103,17 @@ async function discoverByArtist(modules, seeds, config) {
 		}
 	}
 
-	console.log(`Discovery [Artist]: Found ${candidates.length} candidate artists total`);
+	console.log(`Discovery [Artist]: Found ${candidates.length} candidate artists total (${totalSimilarFound} from Last.fm)`);
+	updateProgress(`Last.fm returned ${totalSimilarFound} similar artists → ${candidates.length} unique candidates`, 0.45);
 
 	// Fetch top tracks for all candidates
 	if (candidates.length > 0) {
-		updateProgress(`Fetching top tracks for ${candidates.length} artists...`, 0.5);
+		updateProgress(`Fetching top tracks for ${candidates.length} artists from Last.fm...`, 0.5);
 		console.log(`Discovery [Artist]: Fetching top tracks for ${candidates.length} artists (${config.tracksPerArtist} per artist)`);
 		await fetchTracksForCandidates(modules, candidates, config);
+		
+		const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
+		updateProgress(`Last.fm: Retrieved ${totalTracks} tracks from ${candidates.length} artists`, 0.6);
 	}
 
 	return candidates;
@@ -142,20 +151,21 @@ async function discoverByTrack(modules, seeds, config) {
 	const trackSimilarLimit = config.trackSimilarLimit || 100;
 
 	console.log(`Discovery [Track]: Processing ${seedLimit} seed tracks, max ${trackSimilarLimit} similar per track`);
+	updateProgress(`Querying Last.fm for ${seedLimit} seed track(s)...`, 0.2);
 
 	// If includeSeedArtist is enabled, add seed tracks first
 	if (config.includeSeedArtist) {
 		addSeedTracksToResults(seeds, seedLimit, blacklist, seenArtists, tracksByArtist);
 	}
 
-	updateProgress(`Finding similar tracks (${seedLimit} seeds)...`, 0.2);
+	let totalSimilarTracks = 0;
 
 	for (let i = 0; i < seedLimit; i++) {
 		const seed = seeds[i];
 		if (!seed?.artist || !seed?.title) continue;
 
 		const progress = 0.2 + ((i + 1) / seedLimit) * 0.3;
-		updateProgress(`Finding tracks similar to "${seed.title}" (${i + 1}/${seedLimit})...`, progress);
+		updateProgress(`Last.fm: Finding tracks similar to "${seed.title}" (${i + 1}/${seedLimit})...`, progress);
 
 		// Split artists by ';' and query each separately
 		const artists = seed.artist.split(';').map(a => a.trim()).filter(Boolean);
@@ -171,7 +181,9 @@ async function discoverByTrack(modules, seeds, config) {
 					continue;
 				}
 
+				totalSimilarTracks += similarTracks.length;
 				console.log(`Discovery [Track]: Found ${similarTracks.length} similar to "${fixedArtistName} - ${seed.title}"`);
+				updateProgress(`Last.fm: Found ${similarTracks.length} tracks similar to "${seed.title}"`, progress);
 
 				// Group by artist
 				for (const simTrack of similarTracks) {
@@ -221,6 +233,7 @@ async function discoverByTrack(modules, seeds, config) {
 	}
 
 	console.log(`Discovery [Track]: Found ${candidates.length} candidate artists from track similarity`);
+	updateProgress(`Last.fm returned ${totalSimilarTracks} similar tracks → ${candidates.length} artists`, 0.5);
 
 	return candidates;
 }
@@ -259,7 +272,7 @@ async function discoverByGenre(modules, seeds, config) {
 	console.log(`discoverByGenre: Target ${maxCandidates} candidates from up to ${maxTagsToSearch} tags`);
 
 	// Step 1: Collect genres from seed tracks
-	updateProgress('Analyzing seed genres...', 0.1);
+	updateProgress('Analyzing seed genres from tracks...', 0.1);
 
 	const seedLimit = Math.min(seeds.length, config.seedLimit || 5);
 
@@ -289,10 +302,11 @@ async function discoverByGenre(modules, seeds, config) {
 
 		for (const artistName of uniqueArtists) {
 			try {
-				updateProgress(`Getting genre tags for "${artistName}"...`, 0.15);
+				updateProgress(`Last.fm: Getting genre tags for "${artistName}"...`, 0.15);
 				const artistInfo = await fetchArtistInfo(fixPrefixes(artistName));
 
 				if (artistInfo?.tags && artistInfo.tags.length > 0) {
+					updateProgress(`Last.fm: Found ${artistInfo.tags.length} tags for "${artistName}"`, 0.18);
 					for (const tag of artistInfo.tags.slice(0, 3)) {
 						const tagKey = tag.toLowerCase();
 						collectedTags.set(tagKey, (collectedTags.get(tagKey) || 0) + 1);
@@ -306,6 +320,7 @@ async function discoverByGenre(modules, seeds, config) {
 
 	if (collectedTags.size === 0) {
 		console.log('discoverByGenre: No tags found');
+		updateProgress('No genre tags found from seeds', 0.2);
 		return candidates;
 	}
 
@@ -315,9 +330,11 @@ async function discoverByGenre(modules, seeds, config) {
 		.map(([tag]) => tag);
 
 	console.log(`discoverByGenre: Top tags: ${sortedTags.slice(0, maxTagsToSearch).join(', ')}`);
+	updateProgress(`Found ${sortedTags.length} genre tags: ${sortedTags.slice(0, 3).join(', ')}...`, 0.25);
 
 	// Step 2: Get top artists for each tag
 	const numTags = Math.min(sortedTags.length, maxTagsToSearch);
+	let totalArtistsFromTags = 0;
 
 	for (let i = 0; i < numTags; i++) {
 		if (candidates.length >= maxCandidates) {
@@ -327,7 +344,7 @@ async function discoverByGenre(modules, seeds, config) {
 
 		const tag = sortedTags[i];
 		const progress = 0.3 + ((i + 1) / numTags) * 0.3;
-		updateProgress(`Searching "${tag}" genre (${i + 1}/${numTags})...`, progress);
+		updateProgress(`Last.fm: Searching "${tag}" genre (${i + 1}/${numTags})...`, progress);
 
 		try {
 			const remainingNeeded = maxCandidates - candidates.length;
@@ -336,6 +353,9 @@ async function discoverByGenre(modules, seeds, config) {
 			const tagArtists = await fetchArtistsByTag(tag, fetchLimit);
 
 			if (tagArtists && tagArtists.length > 0) {
+				totalArtistsFromTags += tagArtists.length;
+				updateProgress(`Last.fm: Found ${tagArtists.length} artists in "${tag}" genre`, progress);
+				
 				for (const artist of tagArtists) {
 					if (candidates.length >= maxCandidates) break;
 					if (artist?.name) {
@@ -349,11 +369,15 @@ async function discoverByGenre(modules, seeds, config) {
 	}
 
 	console.log(`discoverByGenre: Found ${candidates.length} candidate artists`);
+	updateProgress(`Last.fm returned ${totalArtistsFromTags} genre artists → ${candidates.length} candidates`, 0.6);
 
 	// Step 3: Fetch top tracks
 	if (candidates.length > 0) {
-		updateProgress('Fetching top tracks from genre artists...', 0.7);
+		updateProgress(`Fetching top tracks for ${candidates.length} genre artists...`, 0.7);
 		await fetchTracksForCandidates(modules, candidates, config);
+		
+		const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
+		updateProgress(`Last.fm: Retrieved ${totalTracks} tracks from ${candidates.length} artists`, 0.8);
 	}
 
 	return candidates;
@@ -445,9 +469,10 @@ async function discoverByRecco(modules, seeds, config) {
 	const blacklist = buildBlacklist(modules);
 
 	console.log(`Discovery [ReccoBeats]: Processing ${seeds.length} seed track(s)`);
+	updateProgress(`ReccoBeats: Analyzing ${seeds.length} seed track(s)...`, 0.2);
 
 	// Step 1: Get ReccoBeats recommendations based on seed tracks
-	updateProgress('Analyzing seeds with ReccoBeats AI...', 0.2);
+	updateProgress('ReccoBeats: Requesting AI-powered recommendations...', 0.25);
 	console.log(`Discovery [ReccoBeats]: Requesting AI recommendations (limit: ${config.similarLimit || 100})`);
 
 	const result = await reccobeatsApi.getReccoRecommendations(
@@ -457,17 +482,21 @@ async function discoverByRecco(modules, seeds, config) {
 
 	if (!result.recommendations || result.recommendations.length === 0) {
 		console.log('Discovery [ReccoBeats]: No recommendations received');
+		updateProgress('ReccoBeats: No recommendations found', 0.4);
 		return candidates;
 	}
 
 	console.log(`Discovery [ReccoBeats]: Received ${result.recommendations.length} recommendations from ${result.foundCount} seed(s)`);
+	updateProgress(`ReccoBeats: Found ${result.recommendations.length} AI recommendations from ${result.foundCount} seed(s)`, 0.4);
 
 	// Step 2: Extract artists from recommendations
-	updateProgress(`Processing ${result.recommendations.length} AI recommendations...`, 0.4);
+	updateProgress(`Processing ${result.recommendations.length} ReccoBeats recommendations...`, 0.5);
 
 	candidates = buildReccoCandidates(result, blacklist, seenArtists);
 
+	const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
 	console.log(`Discovery [ReccoBeats]: Built ${candidates.length} candidate artists from AI recommendations`);
+	updateProgress(`ReccoBeats: ${candidates.length} artists with ${totalTracks} tracks from AI`, 0.6);
 
 	return candidates;
 }
@@ -501,6 +530,7 @@ async function discoverByMood(modules, seeds, config) {
 
 	const mood = config.moodActivityValue || 'energetic';
 	console.log(`Discovery [Mood]: Processing "${mood}" mood with ${seeds.length} seed track(s)`);
+	updateProgress(`Mood "${mood}": Preparing ${seeds.length} seed track(s)...`, 0.15);
 
 	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
@@ -511,7 +541,7 @@ async function discoverByMood(modules, seeds, config) {
 	const limitedSeeds = seeds.slice(0, 5);
 
 	// Step 1: Find track IDs
-	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.2);
+	updateProgress(`ReccoBeats: Looking up ${limitedSeeds.length} tracks...`, 0.2);
 	console.log(`Discovery [Mood]: Looking up track IDs for ${limitedSeeds.length} seeds`);
 	
 	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
@@ -520,6 +550,9 @@ async function discoverByMood(modules, seeds, config) {
 	const foundTracks = trackResults.filter(r => r.trackId);
 	if (foundTracks.length === 0) {
 		console.log('Discovery [Mood]: No tracks found on ReccoBeats');
+		updateProgress('ReccoBeats: No matching tracks found in database', 0.3);
+	} else {
+		updateProgress(`ReccoBeats: Found ${foundTracks.length}/${limitedSeeds.length} tracks in database`, 0.25);
 	}
 
 	console.log(`Discovery [Mood]: Found ${foundTracks.length}/${limitedSeeds.length} tracks on ReccoBeats`);
@@ -533,14 +566,16 @@ async function discoverByMood(modules, seeds, config) {
 	}
 
 	console.log(`Discovery [Mood]: Using "${mood}" preset with blend ratio ${config.moodSeedBlend}`);
+	updateProgress(`Mood "${mood}": Analyzing audio features...`, 0.3);
 
 	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
 		console.warn("Discovery [Mood]: No audio features found, using pure mood preset");
+		updateProgress(`Mood "${mood}": Using pure mood preset (no seed features)`, 0.35);
 		audioTargets = moodPreset;
 	} else {
-		updateProgress('Analyzing audio characteristics...', 0.35);
+		updateProgress(`ReccoBeats: Blending ${audioFeatures.length} seed features with "${mood}" preset...`, 0.35);
 		console.log(`Discovery [Mood]: Blending ${audioFeatures.length} seed features with mood preset`);
 
 		const avgSeedsFeature = reccobeatsApi.calculateAverageFeatures(audioFeatures);
@@ -555,15 +590,17 @@ async function discoverByMood(modules, seeds, config) {
 		);
 		
 		console.log(`Discovery [Mood]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, valence: ${audioTargets.valence?.toFixed(2)}`);
+		updateProgress(`Mood "${mood}": Blended energy=${audioTargets.energy?.toFixed(2)}, valence=${audioTargets.valence?.toFixed(2)}`, 0.38);
 	}
 
-	updateProgress(`Finding "${mood}" tracks...`, 0.4);
+	updateProgress(`ReccoBeats: Finding "${mood}" tracks...`, 0.4);
 	console.log(`Discovery [Mood]: Requesting recommendations with mood profile`);
 
 	const seedIds = foundTracks.map(r => r.trackId);
 	const recommendations = await reccobeatsApi.fetchRecommendations(seedIds, audioTargets, 100);
 
 	console.log(`Discovery [Mood]: Received ${recommendations.length} "${mood}" recommendations`);
+	updateProgress(`ReccoBeats: Found ${recommendations.length} "${mood}" recommendations`, 0.5);
 
 	let candidates = [];
 	const seenArtists = new Set();
@@ -572,7 +609,9 @@ async function discoverByMood(modules, seeds, config) {
 	const seedIdRecs = { "recommendations": recommendations }
 	candidates = buildReccoCandidates(seedIdRecs, blacklist, seenArtists);
 
+	const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
 	console.log(`Discovery [Mood]: Built ${candidates.length} candidate artists for "${mood}" mood`);
+	updateProgress(`Mood "${mood}": ${candidates.length} artists with ${totalTracks} tracks`, 0.6);
 
 	return candidates;
 }
@@ -602,6 +641,7 @@ async function discoverByActivity(modules, seeds, config) {
 
 	const activity = config.moodActivityValue || 'workout';
 	console.log(`Discovery [Activity]: Processing "${activity}" activity with ${seeds.length} seed track(s)`);
+	updateProgress(`Activity "${activity}": Preparing ${seeds.length} seed track(s)...`, 0.15);
 
 	// Expand seeds by splitting artists
 	seeds = expandSeedsByArtist(seeds);
@@ -612,7 +652,7 @@ async function discoverByActivity(modules, seeds, config) {
 	const limitedSeeds = seeds.slice(0, 5);
 
 	// Step 1: Find track IDs
-	updateProgress(`Looking up ${limitedSeeds.length} tracks on ReccoBeats...`, 0.2);
+	updateProgress(`ReccoBeats: Looking up ${limitedSeeds.length} tracks...`, 0.2);
 	console.log(`Discovery [Activity]: Looking up track IDs for ${limitedSeeds.length} seeds`);
 	
 	const trackResults = await reccobeatsApi.findTrackIdsBatch(limitedSeeds);
@@ -621,11 +661,12 @@ async function discoverByActivity(modules, seeds, config) {
 	const foundTracks = trackResults.filter(r => r.trackId);
 	if (foundTracks.length === 0) {
 		console.log('Discovery [Activity]: No tracks found on ReccoBeats');
-		updateProgress('No tracks found on ReccoBeats', 0.5);
+		updateProgress('ReccoBeats: No matching tracks found in database', 0.3);
 		return { recommendations: [], seedCount: limitedSeeds.length, foundCount: 0 };
 	}
 
 	console.log(`Discovery [Activity]: Found ${foundTracks.length}/${limitedSeeds.length} tracks on ReccoBeats`);
+	updateProgress(`ReccoBeats: Found ${foundTracks.length}/${limitedSeeds.length} tracks in database`, 0.25);
 
 	const activityPreset = reccobeatsApi?.ACTIVITY_AUDIO_TARGETS?.[activity.toLowerCase()];
 	let audioTargets = null;
@@ -636,14 +677,16 @@ async function discoverByActivity(modules, seeds, config) {
 	}
 
 	console.log(`Discovery [Activity]: Using "${activity}" preset with blend ratio ${config.moodSeedBlend}`);
+	updateProgress(`Activity "${activity}": Analyzing audio features...`, 0.3);
 
 	const audioFeatures = await reccobeatsApi.getAudioFeatures(foundTracks);
 
 	if (!audioFeatures || audioFeatures.length === 0) {
 		console.warn("Discovery [Activity]: No audio features found, using pure activity preset");
+		updateProgress(`Activity "${activity}": Using pure activity preset (no seed features)`, 0.35);
 		audioTargets = activityPreset;
 	} else {
-		updateProgress('Analyzing audio characteristics...', 0.35);
+		updateProgress(`ReccoBeats: Blending ${audioFeatures.length} seed features with "${activity}" preset...`, 0.35);
 		console.log(`Discovery [Activity]: Blending ${audioFeatures.length} seed features with activity preset`);
 
 		const avgSeedsFeature = reccobeatsApi.calculateAverageFeatures(audioFeatures);
@@ -658,15 +701,17 @@ async function discoverByActivity(modules, seeds, config) {
 		);
 		
 		console.log(`Discovery [Activity]: Blended targets - energy: ${audioTargets.energy?.toFixed(2)}, tempo: ${audioTargets.tempo}`);
+		updateProgress(`Activity "${activity}": Blended energy=${audioTargets.energy?.toFixed(2)}, tempo=${audioTargets.tempo}`, 0.38);
 	}
 
-	updateProgress(`Finding "${activity}" tracks...`, 0.4);
+	updateProgress(`ReccoBeats: Finding "${activity}" tracks...`, 0.4);
 	console.log(`Discovery [Activity]: Requesting recommendations with activity profile`);
 
 	const seedIds = foundTracks.map(r => r.trackId);
 	const recommendations = await reccobeatsApi.fetchRecommendations(seedIds, audioTargets, 100);
 
 	console.log(`Discovery [Activity]: Received ${recommendations.length} "${activity}" recommendations`);
+	updateProgress(`ReccoBeats: Found ${recommendations.length} "${activity}" recommendations`, 0.5);
 
 	let candidates = [];
 	const seenArtists = new Set();
@@ -675,7 +720,9 @@ async function discoverByActivity(modules, seeds, config) {
 	const seedIdRecs = { "recommendations": recommendations }
 	candidates = buildReccoCandidates(seedIdRecs, blacklist, seenArtists);
 
+	const totalTracks = candidates.reduce((sum, c) => sum + (c.tracks?.length || 0), 0);
 	console.log(`Discovery [Activity]: Built ${candidates.length} candidate artists for "${activity}" activity`);
+	updateProgress(`Activity "${activity}": ${candidates.length} artists with ${totalTracks} tracks`, 0.6);
 
 	return candidates;
 }
@@ -848,6 +895,9 @@ async function fetchTracksForCandidates(modules, candidates, config) {
 
 	console.log(`fetchTracksForCandidates: Fetching up to ${tracksPerArtist} tracks for ${totalCandidates} artists`);
 
+	let artistsWithTracks = 0;
+	let totalTracksFound = 0;
+
 	for (let i = 0; i < totalCandidates; i++) {
 		const candidate = candidates[i];
 
@@ -860,7 +910,7 @@ async function fetchTracksForCandidates(modules, candidates, config) {
 		// Update progress every 5 artists
 		if (i % 5 === 0) {
 			const progress = 0.5 + ((i + 1) / totalCandidates) * 0.3;
-			updateProgress(`Getting tracks for "${candidate.artist}" (${i + 1}/${totalCandidates})...`, progress);
+			updateProgress(`Last.fm: Getting tracks for "${candidate.artist}" (${i + 1}/${totalCandidates})...`, progress);
 		}
 
 		try {
@@ -873,11 +923,16 @@ async function fetchTracksForCandidates(modules, candidates, config) {
 					playcount: typeof t === 'object' ? (t.playcount || 0) : 0,
 					rank: typeof t === 'object' ? (t.rank || 0) : 0
 				})).filter(t => t.title);
+				
+				artistsWithTracks++;
+				totalTracksFound += candidate.tracks.length;
 			}
 		} catch (e) {
 			console.warn(`fetchTracksForCandidates: Error for "${candidate.artist}": ${e.message}`);
 		}
 	}
+
+	console.log(`fetchTracksForCandidates: Retrieved ${totalTracksFound} tracks from ${artistsWithTracks} artists`);
 }
 
 /**

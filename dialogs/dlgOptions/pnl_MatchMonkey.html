@@ -50,15 +50,15 @@
 				<div class="uiRows">
 
 					<div class="uiRow">
-						<label class="inline">Similar artists per seed:</label>
+						<label class="inline">Similar artists per seed track:</label>
 						<div data-id="SimilarArtistsLimit"
 							 data-control-class="Edit"
-							 data-tip="Maximum number of similar artists to fetch for each seed artist. Higher = more candidates but slower."
+							 data-tip="Maximum number of similar artists to fetch for each seed track. Higher = more candidates but slower."
 							 data-init-params="{type:'number',min:1,max:100}"></div>
 					</div>
 
 					<div class="uiRow">
-						<label class="inline">Similar tracks per seed:</label>
+						<label class="inline">Similar tracks per seed track:</label>
 						<div data-id="TrackSimilarLimit"
 							 data-control-class="Edit"
 							 data-tip="When using track-based discovery, how many similar tracks to request per seed track. Higher improves matching but is more API intensive."
@@ -171,13 +171,13 @@
 						<div class="sliderContainer" style="width:30em;">
 							<div data-id="MoodActivityBlendRatio"
 								 data-control-class="Slider"
-								 data-tip="Adjust how much the mood influences your results. 0% = seeds only, 50% = balanced, 100% = mood only"
+								 data-tip="Adjust how much the mood/activity preset influences your results. 0% = seeds only, 50% = balanced, 100% = mood/activity only"
 								 data-init-params='{"min":0,"max":100,"step":10,"ticks":[0,50,100]}'></div>
 
 							<div style="display:flex; width:100%; justify-content:space-between; align-items:center;">
 								<span style="white-space:nowrap;">Seeds Only</span>
 								<span style="flex:1; text-align:center; white-space:nowrap;">Balanced Mix</span>
-								<span style="white-space:nowrap;">Mood Only</span>
+								<span style="white-space:nowrap;">Preset Only</span>
 							</div>
 						</div>
 					</div>
