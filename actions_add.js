@@ -541,7 +541,7 @@ if (!window.menus) {
 				{ action: actions.similarArtistsRun, order: 20 },
 				{ action: actions.similarGenreRun, order: 30 },
 				{ separator: true, order: 40 },
-				{ action: actions.similarReccoRun, order:510 },
+				{ action: actions.similarReccoRun, order:50 },
 				{
 					action: {
 						title: _('&Mood'),
