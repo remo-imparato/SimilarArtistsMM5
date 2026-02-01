@@ -99,7 +99,7 @@ The hybrid mode combines:
   - Select two or more tracks (from one or more artists) and run the add-on.
   - Each selected track contributes its artist as a seed; the add-on deduplicates seed artists and processes them up to the configured seed limit.
 
-- Title or Genre based discovery (new)
+- Title or Genre based discovery 
   - Choose "Similar → By Title" to use a track title (or titles) as seeds; useful to find different versions and covers locally.
   - Choose "Similar → By Genre" to request top artists for a genre and match tracks from those artists in your library.
 
@@ -144,7 +144,7 @@ Access settings via **Tools → Options → Similar Artists**
 | **Include seed track** | Include the original seed track (single seed only) |
 | **Discovery mode** | Choose Artist / Title / Genre / Mood / Activity |
 
-### Mood & Activity Options *(NEW)*
+### Mood & Activity Options **
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -219,11 +219,11 @@ The add-on intelligently handles common artist name prefix patterns:
 ## 💡 Tips & Tricks
 
 1. **Use Auto-Queue Mode** - Enable it in settings for endless music discovery
-2. **Mood Playlists** *(NEW)* - Try `runMoodActivityPlaylist('energetic', null)` for instant workout mixes
-3. **Activity Context** *(NEW)* - Use activity-based discovery for studying, working, or relaxing
+2. **Mood Playlists** ** - Try `runMoodActivityPlaylist('energetic', null)` for instant workout mixes
+3. **Activity Context** ** - Use activity-based discovery for studying, working, or relaxing
 4. **Seed Multiple Tracks** - Select multiple tracks for more diverse recommendations
 5. **Ranking Mode** - Enable "Select highest ranked by Last.fm" for popular tracks
-6. **Hybrid Mode** *(NEW)* - Keep HybridMode enabled for best mood/activity recommendations
+6. **Hybrid Mode** ** - Keep HybridMode enabled for best mood/activity recommendations
 
 ---
 
