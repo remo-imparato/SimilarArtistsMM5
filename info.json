@@ -2,7 +2,7 @@
 	"title": "Match Monkey",
 	"id": "MatchMonkey",
 	"description": "Create/enqueue playlists of similar artists/tracks/genre using Last.fm and your MediaMonkey library.",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"minAppVersion": "5.0.0",
 	"type": "general",
 	"author": "rimparato",

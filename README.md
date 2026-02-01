@@ -30,6 +30,16 @@ You can run discovery by Track, Artist, Genre or Acoustics (ReccoBeats AI) — c
 
 ---
 
+## Documentation
+
+- **Quick Start**: [Quick Start](docs/QUICK_START.md)
+- **Quick Reference**: [Quick Reference](docs/QUICK_REFERENCE.md)
+- **Full Guide**: [Full Guide](docs/USER_GUIDE.md)
+- **Examples**: [Examples](docs/EXAMPLES_TUTORIAL.md)
+- **Donate:** https://ko-fi.com/remoimparato  
+
+---
+
 ## 🚀 Installation
 
 1. Download the latest release from the [Releases](https://github.com/remo-imparato/SimilarArtistsMM5/releases) page
@@ -37,15 +47,6 @@ You can run discovery by Track, Artist, Genre or Acoustics (ReccoBeats AI) — c
 3. Click **Install Extension** and select the downloaded `.mmip` file
 4. Restart MediaMonkey 5
 5. Configure the add-on via **Tools → Options → Similar Artists**
-
----
-
-## Documentation
-
-- **Quick Start**: [Quick Start](docs/QUICK_START.md)
-- **Quick Reference**: [Quick Reference](docs/QUICK_REFERENCE.md)
-- **Full Guide**: [Full Guide](docs/USER_GUIDE.md)
-- **Examples**: [Examples](docs/EXAMPLES_TUTORIAL.md)
 
 ---
 
@@ -244,7 +245,7 @@ Match Monkey is dual-licensed:
 If you plan to use Match Monkey commercially, please obtain a license:
 
 - **Email:** rimparato@hotmail.com  
-- **Ko‑fi:** https://ko-fi.com/remoimparato  
+- **Donate:** https://ko-fi.com/remoimparato  
 - **GitHub:** https://github.com/remo-imparato/
 
 See the included **LICENSE** (MIT) and **license-commercial.txt** (Commercial EULA) for full terms.
