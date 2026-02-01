@@ -34,7 +34,7 @@ You can run discovery by Track, Artist, Genre or Acoustics (ReccoBeats AI) — c
 
 - **Quick Start**: [Quick Start](docs/QUICK_START.md)
 - **Quick Reference**: [Quick Reference](docs/QUICK_REFERENCE.md)
-- **Full Guide**: [Full Guide](docs/USER_GUIDE.md)
+- **User Guide**: [Full Guide](docs/USER_GUIDE.md)
 - **Examples**: [Examples](docs/EXAMPLES_TUTORIAL.md)
 - **Donate:** https://ko-fi.com/remoimparato  
 
