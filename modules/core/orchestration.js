@@ -180,7 +180,7 @@ window.matchMonkeyOrchestration = {
 
 			if (!candidates || candidates.length === 0) {
 				terminateProgressTask(taskId);
-				showToast(`No ${modeName.toLowerCase()} candidates found. Try different seeds or settings.`, { type: 'info', duration: 5000 });
+				showToast(`No ${modeName.toLowerCase()} candidates found. Try different seeds or settings. Acoustic search require perfect artist/album/track tags.`, { type: 'info', duration: 5000 });
 				console.log(`Match Monkey: Discovery returned no candidates`);
 				return { success: false, error: `No ${modeName.toLowerCase()} found.`, tracksAdded: 0 };
 			}
