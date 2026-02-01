@@ -68,3 +68,26 @@ Note: Mood and Activity flows compute or blend audio features from seed tracks a
 Tools → Options → Match Monkey — adjust discovery mode defaults, limits, mood/activity blend, playlist behavior, and auto-mode settings.
 
 ---
+
+## Mood Tooltips
+- Energetic: High‑energy, upbeat, fast‑moving tracks
+- Relaxed: Calm, mellow, chill background music
+- Happy: Bright, feel‑good, upbeat pop vibes
+- Sad: Soft, emotional, low‑energy songs
+- Focused: Minimal, steady, distraction‑free instrumentals
+- Angry: Loud, intense, aggressive high‑energy music
+- Romantic: Warm, smooth, intimate love‑leaning tracks
+- Uplifting: Positive, inspiring, motivational songs
+- Dark: Moody, atmospheric, low‑valence tracks
+
+## Activity Tooltips
+- Workout: Fast, loud, high‑energy motivation
+- Study: Quiet, steady, mostly instrumental
+- Party: Danceable, upbeat, club‑ready tracks
+- Sleep: Soft, slow, soothing ambient music
+- Driving: Steady, feel‑good road‑trip energy
+- Meditation: Calm, spacious, ambient soundscapes
+- Cooking: Light, pleasant, upbeat background music
+- Cleaning: Energetic, catchy, movement‑friendly
+- Walking: Mid‑tempo, feel‑good everyday tracks
+- Coding: Minimal, repetitive, focus‑friendly electronic

@@ -1,4 +1,4 @@
-# MatchMonkey - Complete Quick Reference
+ï»¿# MatchMonkey - Complete Quick Reference
 
 ## Discovery Modes
 
@@ -140,24 +140,114 @@ MatchMonkey supports the following discovery modes:
 
 ---
 
-## Available Moods
+## Mood Tooltips
+- Energetic: Highâ€‘energy, upbeat, fastâ€‘moving tracks
+- Relaxed: Calm, mellow, chill background music
+- Happy: Bright, feelâ€‘good, upbeat pop vibes
+- Sad: Soft, emotional, lowâ€‘energy songs
+- Focused: Minimal, steady, distractionâ€‘free instrumentals
+- Angry: Loud, intense, aggressive highâ€‘energy music
+- Romantic: Warm, smooth, intimate loveâ€‘leaning tracks
+- Uplifting: Positive, inspiring, motivational songs
+- Dark: Moody, atmospheric, lowâ€‘valence tracks
 
-- energetic — High-energy, upbeat tracks
-- relaxed — Calm, chill music
-- happy — Uplifting, positive vibes
-- sad — Melancholic, emotional tracks
-- focused — Concentration-friendly music
-
-## Available Activities
-
-- workout — High tempo, motivating tracks
-- study — Instrumental, focus-enhancing
-- party — Danceable, crowd-pleasing hits
-- sleep — Soothing, ambient sounds
-- driving — Engaging road trip music
+## Activity Tooltips
+- Workout: Fast, loud, highâ€‘energy motivation
+- Study: Quiet, steady, mostly instrumental
+- Party: Danceable, upbeat, clubâ€‘ready tracks
+- Sleep: Soft, slow, soothing ambient music
+- Driving: Steady, feelâ€‘good roadâ€‘trip energy
+- Meditation: Calm, spacious, ambient soundscapes
+- Cooking: Light, pleasant, upbeat background music
+- Cleaning: Energetic, catchy, movementâ€‘friendly
+- Walking: Midâ€‘tempo, feelâ€‘good everyday tracks
+- Coding: Minimal, repetitive, focusâ€‘friendly electronic
 
 ---
 
 ## Troubleshooting and Performance Tips
 
-(The rest of the file remains unchanged.)
+---
+
+## Troubleshooting
+
+### No Results
+
+**Problem**: Playlist has no tracks
+
+**Causes & Solutions**:
+1. **No internet**: APIs require online access
+2. **No seeds selected**: Select tracks first (except genre/mood pure discovery)
+3. **Rating filter too high**: Lower MinRating or enable IncludeUnrated
+4. **Blacklist too restrictive**: Check ArtistBlacklist and GenreBlacklist
+5. **No library matches**: Try different seeds or discovery mode
+
+### Results Too Random
+
+**Problem**: Tracks don't match your taste
+
+**Causes & Solutions**:
+1. **Blend ratio too low**: Increase to 0.7 (mood/activity mode)
+2. **Poor seed selection**: Select consistent genre seeds
+3. **Genre mode too broad**: Use artist or track mode instead
+4. **Similar limit too high**: Lower to 10-15 for focus
+
+### Results Too Similar
+
+**Problem**: All tracks from same artists
+
+**Causes & Solutions**:
+1. **Blend ratio too high**: Decrease to 0.3 (mood/activity mode)
+2. **Similar limit too low**: Increase to 25-30
+3. **Tracks per artist too high**: Lower to 10-15
+4. **Try different mode**: Switch from artist to track mode
+5. **Enable shuffle**: Check ShuffleResults
+
+### Slow Performance
+
+**Problem**: Takes too long to generate
+
+**Causes & Solutions**:
+1. **Similar limit too high**: Lower to 10-15
+2. **Tracks per artist too high**: Lower to 10-20
+3. **Track similar limit too high**: Lower to 50 (track mode)
+4. **Use artist mode**: Fastest discovery mode
+5. **Reduce max tracks**: Set MaxPlaylistTracks to 50-100
+
+### Auto-Queue Not Working
+
+**Problem**: No tracks added automatically
+
+**Causes & Solutions**:
+1. **Not enabled**: Check AutoModeEnabled
+2. **Queue not low enough**: Needs 2 or fewer tracks left
+3. **Limits too restrictive**: Check AutoModeSeedLimit, AutoModeSimilarLimit
+4. **No seeds available**: Needs tracks in Now Playing history
+5. **Check console**: F12 for error messages
+
+---
+
+## Performance Tips
+
+1. **First Run**: Slower (API queries, no cache)
+2. **Cached Runs**: Much faster (same seeds/mood)
+3. **Artist Mode**: Fastest discovery mode
+4. **Track Mode**: Slower (more API calls)
+5. **Mood/Activity**: Medium speed (hybrid approach)
+6. **Reduce Limits**: Lower for speed, higher for variety
+
+---
+
+## Documentation
+
+- **Quick Start**: `docs/QUICKSTART.md`
+- **Full Guide**: `docs/USER_GUIDE.md`
+- **Examples**: `docs/EXAMPLES_TUTORIAL.md`
+
+---
+
+## Support
+
+- **Issues**: https://github.com/remo-imparato/SimilarArtistsMM5/issues
+- **Email**: rimparato@hotmail.com
+- **Ko-fi**: https://ko-fi.com/remoimparato
